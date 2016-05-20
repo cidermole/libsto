@@ -10,14 +10,11 @@
 #include <string>
 #include <memory>
 
+#include "Vocab.h"
+#include "MappedFile.h"
 #include "CorpusTypes.h"
 
 namespace sto {
-
-template<class Token>
-class Vocab;
-
-class MappedFile;
 
 /**
  * Memory-mapped corpus.

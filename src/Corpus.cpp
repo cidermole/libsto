@@ -5,7 +5,7 @@
  ****************************************************/
 
 #include "Corpus.h"
-#include "MappedFile.h"
+#include "Types.h"
 
 namespace sto {
 
@@ -37,5 +37,9 @@ Corpus<Token>::Corpus(const std::string &filename, const Vocab<Token> &vocab) : 
   }
   // maybe it would be nicer if the headers read themselves, without mmap usage.
 }
+
+// explicit template instantiation
+template class Corpus<SrcToken>;
+template class Corpus<TrgToken>;
 
 } // namespace sto

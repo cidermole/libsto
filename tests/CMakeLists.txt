@@ -1,9 +1,16 @@
 #include_directories(${GTEST_SOURCE_DIR}/include ${GTEST_SOURCE_DIR})
 
-add_executable(runVocabTests VocabTests.cpp $<TARGET_OBJECTS:src_objs>)
 
 #install(FILES res/vocab.tdx DESTINATION ${CMAKE_CURRENT_BINARY_DIR} CONFIGURATIONS Debug Release)
 #configure_file(res/vocab.tdx COPYONLY)
-file(COPY res/vocab.tdx DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/res/)
 
-target_link_libraries(runVocabTests gtest gtest_main)
+set(RESOURCES res/vocab.tdx res/corpus.mct)
+set(TEST_SOURCES VocabTests.cpp CorpusTests.cpp)
+
+file(COPY ${RESOURCES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/res/)
+
+foreach(testSrc ${TEST_SOURCES})
+    get_filename_component(testName ${testSrc} NAME_WE)
+    add_executable(run${testName} ${testSrc} $<TARGET_OBJECTS:src_objs>)
+    target_link_libraries(run${testName} gtest gtest_main)
+endforeach(testSrc)

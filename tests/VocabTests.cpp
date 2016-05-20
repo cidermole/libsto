@@ -27,7 +27,7 @@ TEST(Vocab, insertion) {
 
 TEST(Vocab, load) {
   // file built like this:
-  // $ echo "apple orange and pear" | mtt-build -i -o vocab.tdx
+  // $ echo "apple and orange and pear and apple and orange" | mtt-build -i -o vocab
   Vocab<SrcToken> sv("res/vocab.tdx");
 
   EXPECT_EQ(sv.at("NULL").vid, 0);
