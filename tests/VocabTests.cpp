@@ -20,6 +20,8 @@ TEST(Vocab, insertion) {
   EXPECT_EQ(apple, sv.at("apple")) << "comparing apple and apple";
   EXPECT_NE(apple, orange) << "comparing apple and orange";
 
+  EXPECT_EQ(sv.at(apple), "apple") << "first Token must be apple";
+
   ASSERT_THROW(sv.at("banana"), std::out_of_range) << "out-of-range access must throw an exception";
 }
 

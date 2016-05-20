@@ -12,10 +12,14 @@
 
 namespace sto {
 
+/**
+ * Vocabulary mapping between surface forms and Tokens (holding vocabulary IDs).
+ * Choose between SrcToken and TrgToken from Types.h
+ */
 template<class Token>
 class Vocab {
 public:
-  /** Empty vocabulary */
+  /** Create empty vocabulary */
   Vocab();
 
   /** Load vocabulary from mtt-build .tdx format */
