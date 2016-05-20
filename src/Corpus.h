@@ -24,6 +24,9 @@ namespace sto {
 template<class Token>
 class Corpus {
 public:
+  typedef uint32_t Sid; /** sentence ID type */
+  typedef uint8_t Offset; /** type of token offset within sentence */
+
   /** Create empty corpus */
   Corpus();
 
@@ -37,6 +40,26 @@ private:
 
   CorpusTrackHeader trackHeader_;
   SentIndexHeader sentIndexHeader_;
+};
+
+/**
+ * Position of a Token within a Corpus. Compares in lexicographic order
+ * until the end of sentence.
+ */
+template<class Token>
+class Position {
+public:
+  typedef typename Corpus<Token>::Sid Sid;
+  typedef typename Corpus<Token>::Offset Offset;
+
+  Position(Corpus<Token> &corpus, Sid sid, Offset offset);
+
+  bool operator<(const Position<Token> &other);
+
+private:
+  Corpus<Token> *corpus_;
+  Sid sid_; /** sentence ID */
+  Offset offset_; /** offset within sentence */
 };
 
 } // namespace sto

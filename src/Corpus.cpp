@@ -44,4 +44,19 @@ Corpus<Token>::Corpus(const std::string &filename, const Vocab<Token> &vocab) : 
 template class Corpus<SrcToken>;
 template class Corpus<TrgToken>;
 
+// --------------------------------------------------------
+
+template<class Token>
+Position<Token>::Position(Corpus<Token> &corpus, Sid sid, Offset offset) : corpus_(&corpus), sid_(sid), offset_(offset)
+{}
+
+template<class Token>
+bool Position<Token>::operator<(const Position<Token> &other) {
+  return false; // TODO
+}
+
+// explicit template instantiation
+template class Position<SrcToken>;
+template class Position<TrgToken>;
+
 } // namespace sto
