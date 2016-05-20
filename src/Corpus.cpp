@@ -34,6 +34,8 @@ Corpus<Token>::Corpus(const std::string &filename, const Vocab<Token> &vocab) : 
     SentIndexHeader &idxHeader = *reinterpret_cast<SentIndexHeader*>(sentIndex_->ptr);
     sentIndexHeader_ = idxHeader;
     sentIndex_->ptr += sizeof(SentIndexHeader);
+  } else {
+    throw std::runtime_error(std::string("unknown version magic in ") + filename);
   }
   // maybe it would be nicer if the headers read themselves, without mmap usage.
 }
