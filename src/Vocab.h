@@ -15,7 +15,11 @@ namespace sto {
 template<class Token>
 class Vocab {
 public:
+  /** Empty vocabulary */
   Vocab();
+
+  /** Load vocabulary from mtt-build .tdx format */
+  Vocab(const std::string &filename);
 
   /** Returns the surface form of `token`. */
   std::string operator[](const Token token) const;
@@ -35,6 +39,9 @@ private:
   std::unordered_map<Vid, std::string> id2surface_;
   std::unordered_map<std::string, Vid> surface2id_;
   Vid size_;
+
+  /** Load vocabulary from mtt-build .tdx format */
+  void load_ugsapt_tdx(const std::string &filename);
 };
 
 } // namespace sto

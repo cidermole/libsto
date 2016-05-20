@@ -22,3 +22,18 @@ TEST(Vocab, insertion) {
 
   ASSERT_THROW(sv.at("banana"), std::out_of_range) << "out-of-range access must throw an exception";
 }
+
+TEST(Vocab, load) {
+  // file built like this:
+  // $ echo "apple orange and pear" | mtt-build -i -o vocab.tdx
+  Vocab<SrcToken> sv("res/vocab.tdx");
+
+  EXPECT_EQ(sv.at("NULL").vid, 0);
+  EXPECT_EQ(sv.at("UNK").vid, 1);
+  EXPECT_TRUE(sv.at("apple").vid > 0);
+  EXPECT_TRUE(sv.at("orange").vid > 0);
+  EXPECT_TRUE(sv.at("and").vid > 0);
+  EXPECT_TRUE(sv.at("pear").vid > 0);
+
+  ASSERT_THROW(sv.at("banana"), std::out_of_range) << "out-of-range access must throw an exception";
+}
