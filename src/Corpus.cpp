@@ -30,7 +30,7 @@ Corpus<Token>::Corpus(const std::string &filename, const Vocab<Token> &vocab) : 
   } else if(header.versionMagic == tpt::INDEX_V3_MAGIC) {
     // there is a separate sentence index file
     std::string prefix = filename.substr(0, filename.find(".trk"));
-    sentIndex_.reset(new MappedFile(filename, header.legacy_startIdx));
+    sentIndex_.reset(new MappedFile(prefix + ".six", header.legacy_startIdx));
     SentIndexHeader &idxHeader = *reinterpret_cast<SentIndexHeader*>(sentIndex_->ptr);
     sentIndexHeader_ = idxHeader;
     sentIndex_->ptr += sizeof(SentIndexHeader);
