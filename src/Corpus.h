@@ -26,6 +26,7 @@ class Corpus {
 public:
   typedef uint32_t Sid; /** sentence ID type */
   typedef uint8_t Offset; /** type of token offset within sentence */
+  typedef typename Token::Vid Vid; /** vocabulary ID type */
 
   /** Create empty corpus */
   Corpus();
@@ -33,13 +34,50 @@ public:
   /** Load corpus from mtt-build .mtt format or from split corpus/sentidx. */
   Corpus(const std::string &filename, const Vocab<Token> &vocab);
 
+  /**
+   * begin of sentence (points into sequence of vocabulary IDs in corpus track)
+   * Has a trailing sentinel so you can query begin(sid+1) for the end) position
+   */
+  Vid *begin(Sid sid);
+  // should be friended to Sentence
+
+  // should be friended to Sentence
+  //Vocab<Token> *vocab() { return vocab_; }
+
 private:
   const Vocab<Token> *vocab_;
   std::unique_ptr<MappedFile> track_;     /** mapping starts from beginning of file, includes header */
   std::unique_ptr<MappedFile> sentIndex_; /** mapping starts from index start, *excludes* header */
+  Vid *trackTokens_;
+  SentIndexEntry *sentIndexEntries_;
 
   CorpusTrackHeader trackHeader_;
   SentIndexHeader sentIndexHeader_;
+};
+
+template<class Token> class Position;
+
+template<class Token>
+class Sentence {
+public:
+  typedef typename Corpus<Token>::Sid Sid;
+  friend class Position<Token>;
+
+  Sentence(Corpus<Token> &corpus, Sid sid);
+
+  /** get Token `i` of this Sentence */
+  Token operator[](size_t i) const;
+
+  /** number of tokens */
+  size_t size() { return size_; }
+
+private:
+  typedef typename Token::Vid Vid;
+
+  Corpus<Token> *corpus_;
+  Sid sid_;     /** sentence ID */
+  Vid *begin_;  /** corpus track begin of sentence */
+  size_t size_; /** number of tokens */
 };
 
 /**

@@ -23,6 +23,7 @@ public:
 
   bool operator==(const SrcToken &other) const { return vid == other.vid; }
   bool operator!=(const SrcToken &other) const { return vid != other.vid; }
+  bool operator<(const SrcToken &other) const { return vid < other.vid; }
 };
 struct TrgToken {
   typedef vid_t Vid; /** vocabulary ID type */
@@ -30,8 +31,9 @@ struct TrgToken {
 public:
   Vid vid; /** vocabulary ID */
 
-  bool operator==(const SrcToken &other) const { return vid == other.vid; }
-  bool operator!=(const SrcToken &other) const { return vid != other.vid; }
+  bool operator==(const TrgToken &other) const { return vid == other.vid; }
+  bool operator!=(const TrgToken &other) const { return vid != other.vid; }
+  bool operator<(const TrgToken &other) const { return vid < other.vid; }
 };
 
 } // namespace sto

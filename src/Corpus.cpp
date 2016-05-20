@@ -4,6 +4,8 @@
  * Licensed under GNU LGPL Version 2.1, see COPYING *
  ****************************************************/
 
+#include <cassert>
+#include <algorithm>
 #include "Corpus.h"
 #include "Types.h"
 
@@ -11,7 +13,7 @@ namespace sto {
 
 /* Create empty corpus */
 template<class Token>
-Corpus<Token>::Corpus() : vocab_(nullptr)
+Corpus<Token>::Corpus() : vocab_(nullptr), sentIndexEntries_(nullptr)
 {}
 
 /* Load corpus from mtt-build .mtt format or from split corpus/sentidx. */
@@ -37,7 +39,15 @@ Corpus<Token>::Corpus(const std::string &filename, const Vocab<Token> &vocab) : 
   } else {
     throw std::runtime_error(std::string("unknown version magic in ") + filename);
   }
+  trackTokens_ = reinterpret_cast<Vid*>(track_->ptr + sizeof(CorpusTrackHeader));
+  sentIndexEntries_ = reinterpret_cast<SentIndexEntry*>(sentIndex_->ptr);
   // maybe it would be nicer if the headers read themselves, without mmap usage.
+}
+
+template<class Token>
+typename Corpus<Token>::Vid* Corpus<Token>::begin(Sid sid) {
+  assert(sid < sentIndexHeader_.idxSize + 1); // idxSize excludes the trailing sentinel
+  return trackTokens_ + sentIndexEntries_[sid];
 }
 
 // explicit template instantiation
@@ -47,12 +57,37 @@ template class Corpus<TrgToken>;
 // --------------------------------------------------------
 
 template<class Token>
+Sentence<Token>::Sentence(Corpus<Token> &corpus, Sid sid) : corpus_(&corpus), sid_(sid) {
+  begin_ = corpus.begin(sid);
+  size_ = corpus.begin(sid + 1) - begin_;
+}
+
+template<class Token>
+Token Sentence<Token>::operator[](size_t i) const {
+  assert(i < size_);
+  return Token{begin_[i]};
+}
+
+// explicit template instantiation
+template class Sentence<SrcToken>;
+template class Sentence<TrgToken>;
+
+// --------------------------------------------------------
+
+template<class Token>
 Position<Token>::Position(Corpus<Token> &corpus, Sid sid, Offset offset) : corpus_(&corpus), sid_(sid), offset_(offset)
 {}
 
 template<class Token>
 bool Position<Token>::operator<(const Position<Token> &other) {
-  return false; // TODO
+  assert(corpus_ == other.corpus_);
+
+  Sentence<Token> sentThis(*corpus_, sid_);
+  Sentence<Token> sentOther(*corpus_, other.sid_);
+
+  // this uses Token::operator<(), which sorts by vid (not by surface form)
+  return std::lexicographical_compare(sentThis.begin_, sentThis.begin_ + sentThis.size_,
+                                      sentOther.begin_, sentOther.begin_ + sentOther.size_);
 }
 
 // explicit template instantiation
