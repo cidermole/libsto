@@ -5,7 +5,7 @@
 #configure_file(res/vocab.tdx COPYONLY)
 
 set(RESOURCES res/vocab.tdx res/corpus.mct)
-set(TEST_SOURCES VocabTests.cpp CorpusTests.cpp)
+set(TEST_SOURCES VocabTests.cpp CorpusTests.cpp TokenIndexTests.cpp)
 
 file(COPY ${RESOURCES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/res/)
 

@@ -20,8 +20,6 @@ TEST(Corpus, load_v2) {
 }
 
 TEST(Corpus, empty_add) {
-  // files built like this:
-  // $ echo "apple and orange and pear and apple and orange" | mtt-build -i -o corpus
   Vocab<SrcToken> sv("res/vocab.tdx");
   Corpus<SrcToken> sc(sv);
 

@@ -85,6 +85,10 @@ template class Corpus<TrgToken>;
 // --------------------------------------------------------
 
 template<class Token>
+Sentence<Token>::Sentence() : corpus_(nullptr), sid_(0), begin_(nullptr), size_(0)
+{}
+
+template<class Token>
 Sentence<Token>::Sentence(const Corpus<Token> &corpus, Sid sid) : corpus_(&corpus), sid_(sid) {
   begin_ = corpus.begin(sid);
   size_ = corpus.begin(sid + 1) - begin_;

@@ -88,6 +88,7 @@ public:
   friend class IndexSpan<Token>;
   typedef typename Corpus<Token>::Offset Offset;
 
+  /** Constructs an empty TokenIndex, i.e. this does not index the Corpus by itself. */
   TokenIndex(Corpus<Token> &corpus);
   ~TokenIndex();
 

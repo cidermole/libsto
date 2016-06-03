@@ -75,11 +75,15 @@ public:
   typedef typename Corpus<Token>::Sid Sid;
   friend class Position<Token>;
 
+  /** use Corpus::sentence(sid) instead */
   Sentence(const Corpus<Token> &corpus, Sid sid);
+
+  /** Create invalid Sentence. */
+  Sentence();
 
   Sentence(const Sentence<Token> &other);
   Sentence(const Sentence<Token> &&other);
-  // to do: move assignment operator
+  Sentence &operator=(const Sentence<Token> &other) = default;
 
   /** get Token `i` of this Sentence */
   Token operator[](size_t i) const;
