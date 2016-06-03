@@ -11,7 +11,7 @@
 
 using namespace sto;
 
-TEST(Vocab, insertion) {
+TEST(VocabTests, insertion) {
   Vocab<SrcToken> sv;
 
   SrcToken apple = sv["apple"];   // insert apple
@@ -25,7 +25,7 @@ TEST(Vocab, insertion) {
   ASSERT_THROW(sv.at("banana"), std::out_of_range) << "out-of-range access must throw an exception";
 }
 
-TEST(Vocab, load) {
+TEST(VocabTests, load) {
   // file built like this:
   // $ echo "apple and orange and pear and apple and orange" | mtt-build -i -o vocab
   Vocab<SrcToken> sv("res/vocab.tdx");

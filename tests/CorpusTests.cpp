@@ -12,14 +12,14 @@
 
 using namespace sto;
 
-TEST(Corpus, load_v2) {
+TEST(CorpusTests, load_v2) {
   // files built like this:
   // $ echo "apple and orange and pear and apple and orange" | mtt-build -i -o corpus
   Vocab<SrcToken> sv("res/vocab.tdx");
   Corpus<SrcToken> sc("res/corpus.mct", sv);
 }
 
-TEST(Corpus, empty_add) {
+TEST(CorpusTests, empty_add) {
   Vocab<SrcToken> sv("res/vocab.tdx");
   Corpus<SrcToken> sc(sv);
 
@@ -35,7 +35,7 @@ TEST(Corpus, empty_add) {
   EXPECT_EQ(sent.surface(), "orange apple and pear") << "ability to retrieve a dyn stored Sentence";
 }
 
-TEST(Corpus, sentence_index_operator) {
+TEST(CorpusTests, sentence_index_operator) {
   Vocab<SrcToken> sv;
   Corpus<SrcToken> sc(sv);
 
