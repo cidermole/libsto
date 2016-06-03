@@ -219,6 +219,7 @@ void TokenIndex<Token>::AddSubsequence_(const Sentence<Token> &sent, Offset star
   for(auto node : cur_span.tree_path_)
     node->size_++;
   // note: if subsequence ends at an internal tree node -> tree node's count is larger than the sum of its children
+  // TODO: internal tree node implicit symbol </s> must be at the very beginning of all vocab symbols (sort order matters)!!!
 
   // update partial sums of cumulative counts
   PartialSumUpdater<Token> updater(*this);
