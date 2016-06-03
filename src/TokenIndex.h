@@ -89,6 +89,7 @@ public:
   typedef typename Corpus<Token>::Offset Offset;
 
   TokenIndex(Corpus<Token> &corpus);
+  ~TokenIndex();
 
   /** Returns the whole span of the entire index (empty lookup sequence). */
   IndexSpan<Token> span();
@@ -140,20 +141,20 @@ public:
   /** Number of token positions in the index. */
   size_t size() const { return size_; }
 
+private:
+  std::unordered_map<Vid, TreeNode *> children_; /** node children, empty if leaf node */
+  std::vector<Position<Token>> array_; /** suffix array, only if children_.empty() */
+  size_t size_; /** Number of token positions. cumulative length in inner nodes, array_.size() in leaf nodes */
+
   /**
    * Insert the existing Corpus Position into this index.
    * This potentially splits existing suffix array leaves into individual TreeNodes,
    * and inserts Position entries into the suffix array. Hence, it is an
    * O(k + log(n)) operation, with k = TreeNode<Token>::kMaxArraySize
    *
-   * Exclusively for adding to a SA (leaf node).
+   * Exclusively for adding to a SA (leaf node). Does NOT increment size_.
    */
-  void AddPosition(const Sentence<Token> &sent, Offset start);
-
-private:
-  std::unordered_map<Vid, TreeNode *> children_; /** node children, empty if leaf node */
-  std::vector<Position<Token>> array_; /** suffix array, only if children_.empty() */
-  size_t size_; /** Number of token positions. cumulative length in inner nodes, array_.size() in leaf nodes */
+  void AddPosition_(const Sentence<Token> &sent, Offset start);
 };
 
 } // namespace sto

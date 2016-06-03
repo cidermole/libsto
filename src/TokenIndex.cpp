@@ -127,8 +127,13 @@ bool IndexSpan<Token>::in_array_() const {
 // --------------------------------------------------------
 
 template<class Token>
-TokenIndex<Token>::TokenIndex(Corpus<Token> &corpus) : corpus_(&corpus), root_(nullptr) // TODO root_
+TokenIndex<Token>::TokenIndex(Corpus<Token> &corpus) : corpus_(&corpus), root_(new TreeNode<Token>())
 {}
+
+template<class Token>
+TokenIndex<Token>::~TokenIndex() {
+  delete root_;
+}
 
 template<class Token>
 IndexSpan<Token> TokenIndex<Token>::span() {
@@ -153,12 +158,7 @@ void TokenIndex<Token>::AddSubsequence_(const Sentence<Token> &sent, Offset star
   for(Offset i = start; !finished && i < sent.size(); i++) {
     span_size = cur_span.narrow(sent[i]);
 
-    if(span_size != 0 && !cur_span.in_array_()) {
-      // add to a count (in tree). to be precise:
-      // add to cumulative counts all the way up to the tree root
-      //for(auto node : cur_span.tree_path_)
-      //  node->size_++;
-    } else {
+    if(span_size == 0 || cur_span.in_array_()) {
       // create an entry (whether in tree or SA)
       if(!cur_span.in_array_()) {
         // create tree entry (leaf)
@@ -170,11 +170,13 @@ void TokenIndex<Token>::AddSubsequence_(const Sentence<Token> &sent, Offset star
         finished = true;
       }
       // create SA entry
-      cur_span.tree_path_.back()->AddPosition(sent, start);
+      cur_span.tree_path_.back()->AddPosition_(sent, start);
     }
     // add to cumulative counts all the way up to the tree root
     for(auto node : cur_span.tree_path_)
       node->size_++;
+
+    // note: if subsequence ends at an internal tree node -> tree node's count is larger than the sum of its children
   }
 }
 
@@ -187,11 +189,11 @@ TreeNode<Token>::TreeNode() : size_(0)
 template<class Token>
 TreeNode<Token>::~TreeNode() {
   for(auto entry : children_)
-    delete entry->second;
+    delete entry.second;
 }
 
 template<class Token>
-void TreeNode<Token>::AddPosition(const Sentence<Token> &sent, Offset start) {
+void TreeNode<Token>::AddPosition_(const Sentence<Token> &sent, Offset start) {
   assert(is_leaf()); // Exclusively for adding to a SA (leaf node).
 
   Position<Token> corpus_pos{sent.sid(), start};
@@ -207,7 +209,7 @@ void TreeNode<Token>::AddPosition(const Sentence<Token> &sent, Offset start) {
   );
 
   array_.insert(insert_pos, corpus_pos);
-  //size_++; // done outside!
+  //size_++; // done outside! see TokenIndex<Token>::AddSubsequence_()
 }
 
 // explicit template instantiation
