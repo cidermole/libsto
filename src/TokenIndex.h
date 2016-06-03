@@ -143,6 +143,7 @@ public:
   size_t size() const { return size_; }
 
 private:
+  // TODO: for updating partial sums, we need a tree with sorted children (not in a hash map).
   std::unordered_map<Vid, TreeNode *> children_; /** node children, empty if leaf node */
   std::vector<Position<Token>> array_; /** suffix array, only if children_.empty() */
   size_t size_; /** Number of token positions. cumulative length in inner nodes, array_.size() in leaf nodes */

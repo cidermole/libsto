@@ -15,7 +15,16 @@ namespace sto {
 template<class Token>
 IndexSpan<Token>::IndexSpan(TokenIndex<Token> &index) : index_(&index)
 {
+  // starting sentinel
   tree_path_.push_back(index_->root_);
+
+  // this sentinel should be handled in narrow(),
+  // but for a leaf-only tree (rooted in a suffix array) we cannot do better:
+  if(index_->root_->is_leaf())
+    array_path_.push_back(Range{0, index_->root_->size()});
+
+  // TODO: who invalidates IndexSpan when TokenIndex is updated?
+  // ideally, we should track that, and provide errors to the user.
 }
 
 template<class Token>
@@ -27,8 +36,15 @@ size_t IndexSpan<Token>::narrow(Token t) {
   else
     new_span = narrow_tree_(t);
 
-  if(new_span != 0)
-    sequence_.push_back(t); // only modify the IndexSpan if no failure
+  if(new_span != 0) {
+    // only modify the IndexSpan if no failure
+    sequence_.push_back(t);
+
+    // TODO: fix range (should apply an offset to both begin,end of range)
+    // if we just descended into the suffix array, add sentinel: spanning full array range
+    if(in_array_() && array_path_.size() == 0)
+      array_path_.push_back(Range{0, tree_path_.back()->size()});
+  }
 
   return new_span;
 }
@@ -113,16 +129,23 @@ Position<Token> IndexSpan<Token>::operator[](size_t rel) {
 
 template<class Token>
 size_t IndexSpan<Token>::size() const {
-  if(in_array_())
+  if(in_array_()) {
+    assert(array_path_.size() > 0);
     return array_path_.back().size();
-  else
+  } else {
+    assert(tree_path_.size() > 0);
     return tree_path_.back()->size();
+  }
 }
 
 template<class Token>
 bool IndexSpan<Token>::in_array_() const {
   return tree_path_.back()->is_leaf();
 }
+
+// explicit template instantiation
+template class IndexSpan<SrcToken>;
+template class IndexSpan<TrgToken>;
 
 // --------------------------------------------------------
 
@@ -180,6 +203,10 @@ void TokenIndex<Token>::AddSubsequence_(const Sentence<Token> &sent, Offset star
   }
 }
 
+// explicit template instantiation
+template class TokenIndex<SrcToken>;
+template class TokenIndex<TrgToken>;
+
 // --------------------------------------------------------
 
 template<class Token>
@@ -212,8 +239,5 @@ void TreeNode<Token>::AddPosition_(const Sentence<Token> &sent, Offset start) {
   //size_++; // done outside! see TokenIndex<Token>::AddSubsequence_()
 }
 
-// explicit template instantiation
-template class TokenIndex<SrcToken>;
-template class TokenIndex<TrgToken>;
 
 } // namespace sto

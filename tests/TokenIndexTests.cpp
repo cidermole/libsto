@@ -20,8 +20,9 @@ struct TokenIndexTests : testing::Test {
   Vocab<SrcToken> vocab;
   Corpus<SrcToken> corpus;
   Sentence<SrcToken> sentence;
+  TokenIndex<SrcToken> tokenIndex;
 
-  TokenIndexTests() : corpus(vocab) {
+  TokenIndexTests() : corpus(vocab), tokenIndex(corpus) {
     std::vector<std::string> surface = {"this", "is", "an", "example"};
     std::vector<SrcToken> sent;
     for(auto s : surface)
@@ -40,6 +41,8 @@ TEST_F(TokenIndexTests, get_word) {
   EXPECT_EQ(vocab[sentence[0]], "this") << "retrieving a word from Sentence";
 }
 
-TEST_F(TokenIndexTests, asdf) {
-  EXPECT_EQ(vocab[sentence[0]], "this") << "retrieving a word from Sentence";
+TEST_F(TokenIndexTests, add_sentence) {
+  tokenIndex.AddSentence(sentence);
+  IndexSpan<SrcToken> span = tokenIndex.span();
+  EXPECT_EQ(span.size(), 4) << "the Sentence should have added 4 tokens to the IndexSpan";
 }
