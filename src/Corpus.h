@@ -61,7 +61,7 @@ private:
   CorpusTrackHeader trackHeader_;
   SentIndexHeader sentIndexHeader_;
 
-  std::vector<Token> dyn_track_; /** dynamic corpus track, located after the last static sentence ID. */
+  std::vector<Vid> dyn_track_; /** dynamic corpus track, located after the last static sentence ID. */
   std::vector<SentIndexEntry> dyn_sentIndex_; /** indexes sentence start positions in dyn_track_, includes trailing sentinel */
 };
 

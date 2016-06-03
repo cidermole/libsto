@@ -59,7 +59,7 @@ const typename Corpus<Token>::Vid* Corpus<Token>::begin(Sid sid) const {
   // dynamic track
   sid -= sentIndexHeader_.idxSize + 1;
   assert(sid < dyn_sentIndex_.size()); // dyn_sentIndex_ includes the trailing sentinel
-  return reinterpret_cast<const Vid*>(dyn_track_.data() + dyn_sentIndex_[sid]);
+  return dyn_track_.data() + dyn_sentIndex_[sid];
 }
 
 template<class Token>
@@ -69,9 +69,10 @@ Sentence<Token> Corpus<Token>::sentence(Sid sid) const {
 
 template<class Token>
 void Corpus<Token>::AddSentence(const std::vector<Token> &sent) {
-  // note: relies on the binary format of Token containing just vid.
-  // maybe we should iterate all and specifically insert just vid.
-  dyn_track_.insert(dyn_track_.end(), sent.begin(), sent.end());
+  for(auto token : sent) {
+    vocab_->at(token); // access the Token to ensure it is contained in vocabulary (throws exception otherwise)
+    dyn_track_.push_back(token.vid);
+  }
   dyn_sentIndex_.push_back(static_cast<SentIndexEntry>(dyn_track_.size()));
 }
 
