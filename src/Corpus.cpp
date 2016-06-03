@@ -68,6 +68,14 @@ Sentence<Token>::Sentence(const Corpus<Token> &corpus, Sid sid) : corpus_(&corpu
 }
 
 template<class Token>
+Sentence<Token>::Sentence(const Sentence<Token> &o) : corpus_(o.corpus_), sid_(o.sid_), begin_(o.begin_), size_(o.size_)
+{}
+
+template<class Token>
+Sentence<Token>::Sentence(const Sentence<Token> &&o) : corpus_(o.corpus_), sid_(o.sid_), begin_(o.begin_), size_(o.size_)
+{}
+
+template<class Token>
 Token Sentence<Token>::operator[](size_t i) const {
   assert(i < size_);
   return Token{begin_[i]};
@@ -79,10 +87,7 @@ template class Sentence<TrgToken>;
 
 // --------------------------------------------------------
 
-template<class Token>
-Position<Token>::Position(Corpus<Token> &corpus, Sid sid, Offset offset) : corpus_(&corpus), sid_(sid), offset_(offset)
-{}
-
+/*
 template<class Token>
 bool Position<Token>::operator<(const Position<Token> &other) const {
   assert(corpus_ == other.corpus_);
@@ -95,18 +100,7 @@ bool Position<Token>::operator<(const Position<Token> &other) const {
   return std::lexicographical_compare(sentThis.begin_, sentThis.begin_ + sentThis.size_,
                                       sentOther.begin_, sentOther.begin_ + sentOther.size_);
 }
-
-template<class Token>
-size_t Position<Token>::remaining_size() const {
-  // should request Sentence object from Corpus instead
-  Sentence<Token> sentThis(*corpus_, sid_);
-  return sentThis.size_ - offset_;
-}
-
-template<class Token>
-Sentence<Token> Position<Token>::sentence() const {
-  return corpus_->sentence(sid_);
-}
+*/
 
 // explicit template instantiation
 template class Position<SrcToken>;

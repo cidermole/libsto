@@ -44,21 +44,22 @@ size_t IndexSpan<Token>::narrow_array_(Token t) {
 
   // Compare(Position, vector<Token>)
 
-  auto& array = tree_path_.back()->array_;
+  auto &array = tree_path_.back()->array_;
   Range new_range;
 
-  Corpus<Token>& corpus = *index_->corpus_;
+  Corpus<Token> &corpus = *index_->corpus_;
 
   //auto compare = [&corpus, old_sequence_size](const Position<Token> &pos, const std::vector<Token> &seq) {
   auto compare = [&corpus, old_sequence_size](const Position<Token> &pos, const Token &t) {
-    // lexicographic sort order means shorter stuff is always at the beginning
-    if(pos.remaining_size() < old_sequence_size + 1)
+    Sentence<Token> sent = corpus.sentence(pos.sid);
+    // lexicographic sort order means shorter sequences always come first
+    if(sent.size() - pos.offset < old_sequence_size + 1)
       return true;
     // we only need to compare at the depth of new_sequence_size, since all tokens before should be equal
 
     // note: Token::operator<(Token&) compares by vid (not surface form)
     //return pos.sentence()[old_sequence_size] < seq.back();
-    return pos.sentence()[pos.offset() + old_sequence_size] < t;
+    return sent[pos.offset + old_sequence_size] < t;
     // Sentence access should maybe be more efficient?
   };
 
@@ -98,7 +99,7 @@ size_t IndexSpan<Token>::narrow_tree_(Token t) {
 
 template<class Token>
 Position<Token> IndexSpan<Token>::operator[](size_t rel) {
-  return Position<Token>(*index_->corpus(), 0, 0); // TODO
+  return Position<Token>{0, 0}; // TODO
 }
 
 template<class Token>

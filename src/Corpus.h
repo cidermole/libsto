@@ -67,9 +67,10 @@ public:
   typedef typename Corpus<Token>::Sid Sid;
   friend class Position<Token>;
 
-  // should add move ctor here.
-
   Sentence(const Corpus<Token> &corpus, Sid sid);
+
+  Sentence(const Sentence<Token> &other);
+  Sentence(const Sentence<Token> &&other);
 
   /** get Token `i` of this Sentence */
   Token operator[](size_t i) const;
@@ -87,30 +88,16 @@ private:
 };
 
 /**
- * Position of a Token within a Corpus. Compares in lexicographic order
- * until the end of sentence.
+ * Position of a Token within a Corpus.
  */
 template<class Token>
-class Position {
+struct Position {
 public:
   typedef typename Corpus<Token>::Sid Sid;
   typedef typename Corpus<Token>::Offset Offset;
 
-  Position(Corpus<Token> &corpus, Sid sid, Offset offset);
-
-  bool operator<(const Position<Token> &other) const;
-
-  /** the remaining size from here until the end of sentence. */
-  size_t remaining_size() const;
-
-  Sentence<Token> sentence() const;
-
-  size_t offset() const { return offset_; }
-
-private:
-  Corpus<Token> *corpus_; // TODO: takes up space without being useful! (pass Compare to sort instead)
-  Sid sid_; /** sentence ID */
-  Offset offset_; /** offset within sentence */
+  Sid sid; /** sentence ID */
+  Offset offset; /** offset within sentence */
 };
 
 } // namespace sto
