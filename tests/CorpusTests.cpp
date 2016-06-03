@@ -17,5 +17,38 @@ TEST(Corpus, load_v2) {
   // $ echo "apple and orange and pear and apple and orange" | mtt-build -i -o corpus
   Vocab<SrcToken> sv("res/vocab.tdx");
   Corpus<SrcToken> sc("res/corpus.mct", sv);
-  // TODO: test Sentence::operator[]
+}
+
+TEST(Corpus, empty_add) {
+  // files built like this:
+  // $ echo "apple and orange and pear and apple and orange" | mtt-build -i -o corpus
+  Vocab<SrcToken> sv("res/vocab.tdx");
+  Corpus<SrcToken> sc(sv);
+
+  std::vector<std::string> surface = {"orange", "apple", "and", "pear"};
+  std::vector<SrcToken> sentence;
+  for(auto s : surface)
+    sentence.push_back(sv.at(s)); // vocabulary lookup
+
+  sc.AddSentence(sentence);
+
+  // retrieve Sentence from Corpus
+  Sentence<SrcToken> sent = sc.sentence(0);
+  EXPECT_EQ(sent.surface(), "orange apple and pear") << "ability to retrieve a dyn stored Sentence";
+}
+
+TEST(Corpus, sentence_index_operator) {
+  Vocab<SrcToken> sv;
+  Corpus<SrcToken> sc(sv);
+
+  std::vector<std::string> surface = {"this", "is", "an", "example"};
+  std::vector<SrcToken> sentence;
+  for(auto s : surface)
+    sentence.push_back(sv[s]); // vocabulary insert/lookup
+
+  sc.AddSentence(sentence);
+
+  // retrieve Sentence from Corpus
+  Sentence<SrcToken> sent = sc.sentence(0);
+  EXPECT_EQ(sv[sent[1]], "is") << "proper working of Sentence::operator[]()";
 }

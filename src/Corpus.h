@@ -31,7 +31,7 @@ public:
   typedef typename Token::Vid Vid; /** vocabulary ID type */
 
   /** Create empty corpus */
-  Corpus();
+  Corpus(const Vocab<Token> &vocab);
 
   /** Load corpus from mtt-build .mtt format or from split corpus/sentidx. */
   Corpus(const std::string &filename, const Vocab<Token> &vocab);
@@ -50,6 +50,8 @@ public:
 
   /** add a sentence to the dynamic part. */
   void AddSentence(const std::vector<Token> &sent);
+
+  const Vocab<Token> &vocab() const { return *vocab_; }
 
 private:
   const Vocab<Token> *vocab_;
@@ -89,6 +91,9 @@ public:
   Sid sid() const { return sid_; }
 
   const Corpus<Token> &corpus() const { return *corpus_; }
+
+  /** surface form for debugging. */
+  std::string surface() const;
 
 private:
   typedef typename Token::Vid Vid;

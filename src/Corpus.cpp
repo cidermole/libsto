@@ -6,6 +6,8 @@
 
 #include <cassert>
 #include <algorithm>
+#include <sstream>
+
 #include "Corpus.h"
 #include "Types.h"
 
@@ -13,7 +15,7 @@ namespace sto {
 
 /* Create empty corpus */
 template<class Token>
-Corpus<Token>::Corpus() : vocab_(nullptr), sentIndexEntries_(nullptr)
+Corpus<Token>::Corpus(const Vocab<Token> &vocab) : vocab_(&vocab), sentIndexEntries_(nullptr)
 {
   dyn_sentIndex_.push_back(0);
   sentIndexHeader_.idxSize = static_cast<decltype(sentIndexHeader_.idxSize)>(-1); // denotes no static entries, see begin()
@@ -100,6 +102,16 @@ template<class Token>
 Token Sentence<Token>::operator[](size_t i) const {
   assert(i < size_);
   return Token{begin_[i]};
+}
+
+template<class Token>
+std::string Sentence<Token>::surface() const {
+  std::stringstream ss;
+  if(size() > 0)
+    ss << corpus_->vocab()[Token{begin_[0]}];
+  for(size_t i = 1; i < size(); i++)
+    ss << " " << corpus_->vocab()[Token{begin_[i]}];
+  return ss.str();
 }
 
 // explicit template instantiation
