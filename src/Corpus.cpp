@@ -45,9 +45,14 @@ Corpus<Token>::Corpus(const std::string &filename, const Vocab<Token> &vocab) : 
 }
 
 template<class Token>
-typename Corpus<Token>::Vid* Corpus<Token>::begin(Sid sid) {
+typename Corpus<Token>::Vid* Corpus<Token>::begin(Sid sid) const {
   assert(sid < sentIndexHeader_.idxSize + 1); // idxSize excludes the trailing sentinel
   return trackTokens_ + sentIndexEntries_[sid];
+}
+
+template<class Token>
+Sentence<Token> Corpus<Token>::sentence(Sid sid) const {
+  return Sentence<Token>(*this, sid);
 }
 
 // explicit template instantiation
@@ -57,7 +62,7 @@ template class Corpus<TrgToken>;
 // --------------------------------------------------------
 
 template<class Token>
-Sentence<Token>::Sentence(Corpus<Token> &corpus, Sid sid) : corpus_(&corpus), sid_(sid) {
+Sentence<Token>::Sentence(const Corpus<Token> &corpus, Sid sid) : corpus_(&corpus), sid_(sid) {
   begin_ = corpus.begin(sid);
   size_ = corpus.begin(sid + 1) - begin_;
 }
@@ -79,15 +84,28 @@ Position<Token>::Position(Corpus<Token> &corpus, Sid sid, Offset offset) : corpu
 {}
 
 template<class Token>
-bool Position<Token>::operator<(const Position<Token> &other) {
+bool Position<Token>::operator<(const Position<Token> &other) const {
   assert(corpus_ == other.corpus_);
 
+  // should request Sentence object from Corpus instead
   Sentence<Token> sentThis(*corpus_, sid_);
   Sentence<Token> sentOther(*corpus_, other.sid_);
 
   // this uses Token::operator<(), which sorts by vid (not by surface form)
   return std::lexicographical_compare(sentThis.begin_, sentThis.begin_ + sentThis.size_,
                                       sentOther.begin_, sentOther.begin_ + sentOther.size_);
+}
+
+template<class Token>
+size_t Position<Token>::remaining_size() const {
+  // should request Sentence object from Corpus instead
+  Sentence<Token> sentThis(*corpus_, sid_);
+  return sentThis.size_ - offset_;
+}
+
+template<class Token>
+Sentence<Token> Position<Token>::sentence() const {
+  return corpus_->sentence(sid_);
 }
 
 // explicit template instantiation

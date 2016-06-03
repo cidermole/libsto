@@ -17,4 +17,5 @@ TEST(Corpus, load_v2) {
   // $ echo "apple and orange and pear and apple and orange" | mtt-build -i -o corpus
   Vocab<SrcToken> sv("res/vocab.tdx");
   Corpus<SrcToken> sc("res/corpus.mct", sv);
+  // TODO: test Sentence::operator[]
 }

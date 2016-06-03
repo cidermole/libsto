@@ -16,6 +16,8 @@
 
 namespace sto {
 
+template<class Token> class Sentence;
+
 /**
  * Memory-mapped corpus.
  *
@@ -38,11 +40,13 @@ public:
    * begin of sentence (points into sequence of vocabulary IDs in corpus track)
    * Has a trailing sentinel so you can query begin(sid+1) for the end) position
    */
-  Vid *begin(Sid sid);
+  Vid *begin(Sid sid) const;
   // should be friended to Sentence
 
   // should be friended to Sentence
   //Vocab<Token> *vocab() { return vocab_; }
+
+  Sentence<Token> sentence(Sid sid) const;
 
 private:
   const Vocab<Token> *vocab_;
@@ -63,18 +67,20 @@ public:
   typedef typename Corpus<Token>::Sid Sid;
   friend class Position<Token>;
 
-  Sentence(Corpus<Token> &corpus, Sid sid);
+  // should add move ctor here.
+
+  Sentence(const Corpus<Token> &corpus, Sid sid);
 
   /** get Token `i` of this Sentence */
   Token operator[](size_t i) const;
 
   /** number of tokens */
-  size_t size() { return size_; }
+  size_t size() const { return size_; }
 
 private:
   typedef typename Token::Vid Vid;
 
-  Corpus<Token> *corpus_;
+  const Corpus<Token> *corpus_;
   Sid sid_;     /** sentence ID */
   Vid *begin_;  /** corpus track begin of sentence */
   size_t size_; /** number of tokens */
@@ -92,10 +98,17 @@ public:
 
   Position(Corpus<Token> &corpus, Sid sid, Offset offset);
 
-  bool operator<(const Position<Token> &other);
+  bool operator<(const Position<Token> &other) const;
+
+  /** the remaining size from here until the end of sentence. */
+  size_t remaining_size() const;
+
+  Sentence<Token> sentence() const;
+
+  size_t offset() const { return offset_; }
 
 private:
-  Corpus<Token> *corpus_;
+  Corpus<Token> *corpus_; // TODO: takes up space without being useful! (pass Compare to sort instead)
   Sid sid_; /** sentence ID */
   Offset offset_; /** offset within sentence */
 };
