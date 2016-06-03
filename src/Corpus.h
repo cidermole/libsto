@@ -40,13 +40,16 @@ public:
    * begin of sentence (points into sequence of vocabulary IDs in corpus track)
    * Has a trailing sentinel so you can query begin(sid+1) for the end) position
    */
-  Vid *begin(Sid sid) const;
+  const Vid *begin(Sid sid) const;
   // should be friended to Sentence
 
   // should be friended to Sentence
   //Vocab<Token> *vocab() { return vocab_; }
 
   Sentence<Token> sentence(Sid sid) const;
+
+  /** add a sentence to the dynamic part. */
+  void AddSentence(const std::vector<Token> &sent);
 
 private:
   const Vocab<Token> *vocab_;
@@ -57,6 +60,9 @@ private:
 
   CorpusTrackHeader trackHeader_;
   SentIndexHeader sentIndexHeader_;
+
+  std::vector<Token> dyn_track_; /** dynamic corpus track, located after the last static sentence ID. */
+  std::vector<SentIndexEntry> dyn_sentIndex_; /** indexes sentence start positions in dyn_track_, includes trailing sentinel */
 };
 
 template<class Token> class Position;
@@ -89,7 +95,7 @@ private:
 
   const Corpus<Token> *corpus_;
   Sid sid_;     /** sentence ID */
-  Vid *begin_;  /** corpus track begin of sentence */
+  const Vid *begin_;  /** corpus track begin of sentence */
   size_t size_; /** number of tokens */
 };
 

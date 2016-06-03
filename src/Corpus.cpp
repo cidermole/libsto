@@ -14,7 +14,10 @@ namespace sto {
 /* Create empty corpus */
 template<class Token>
 Corpus<Token>::Corpus() : vocab_(nullptr), sentIndexEntries_(nullptr)
-{}
+{
+  dyn_sentIndex_.push_back(0);
+  sentIndexHeader_.idxSize = static_cast<decltype(sentIndexHeader_.idxSize)>(-1); // denotes no static entries, see begin()
+}
 
 /* Load corpus from mtt-build .mtt format or from split corpus/sentidx. */
 template<class Token>
@@ -42,17 +45,34 @@ Corpus<Token>::Corpus(const std::string &filename, const Vocab<Token> &vocab) : 
   trackTokens_ = reinterpret_cast<Vid*>(track_->ptr + sizeof(CorpusTrackHeader));
   sentIndexEntries_ = reinterpret_cast<SentIndexEntry*>(sentIndex_->ptr);
   // maybe it would be nicer if the headers read themselves, without mmap usage.
+
+  dyn_sentIndex_.push_back(0);
 }
 
 template<class Token>
-typename Corpus<Token>::Vid* Corpus<Token>::begin(Sid sid) const {
-  assert(sid < sentIndexHeader_.idxSize + 1); // idxSize excludes the trailing sentinel
-  return trackTokens_ + sentIndexEntries_[sid];
+const typename Corpus<Token>::Vid* Corpus<Token>::begin(Sid sid) const {
+  // static track
+  if(sid < sentIndexHeader_.idxSize + 1) { // idxSize excludes the trailing sentinel
+    return trackTokens_ + sentIndexEntries_[sid];
+  }
+
+  // dynamic track
+  sid -= sentIndexHeader_.idxSize + 1;
+  assert(sid < dyn_sentIndex_.size()); // dyn_sentIndex_ includes the trailing sentinel
+  return reinterpret_cast<const Vid*>(dyn_track_.data() + dyn_sentIndex_[sid]);
 }
 
 template<class Token>
 Sentence<Token> Corpus<Token>::sentence(Sid sid) const {
   return Sentence<Token>(*this, sid);
+}
+
+template<class Token>
+void Corpus<Token>::AddSentence(const std::vector<Token> &sent) {
+  // note: relies on the binary format of Token containing just vid.
+  // maybe we should iterate all and specifically insert just vid.
+  dyn_track_.insert(dyn_track_.end(), sent.begin(), sent.end());
+  dyn_sentIndex_.push_back(static_cast<SentIndexEntry>(dyn_track_.size()));
 }
 
 // explicit template instantiation
