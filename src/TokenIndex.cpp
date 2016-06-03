@@ -40,8 +40,8 @@ size_t IndexSpan<Token>::narrow(Token t) {
     // only modify the IndexSpan if no failure
     sequence_.push_back(t);
 
-    // TODO: fix range (should apply an offset to both begin,end of range)
     // if we just descended into the suffix array, add sentinel: spanning full array range
+    // array_path_: entries always index relative to the specific suffix array
     if(in_array_() && array_path_.size() == 0)
       array_path_.push_back(Range{0, tree_path_.back()->size()});
   }
@@ -113,10 +113,12 @@ size_t IndexSpan<Token>::narrow_array_(Token t) {
 template<class Token>
 size_t IndexSpan<Token>::narrow_tree_(Token t) {
   auto& children = tree_path_.back()->children_;
-  auto child_iter = children.find(t.vid);
+  TreeNodeChildMapIter child_iter = children.find(t.vid);
 
   if(child_iter == children.end())
     return 0; // do not modify the IndexSpan and signal failure
+
+  this->tree_node_visit_(*tree_path_.back(), child_iter);
 
   tree_path_.push_back(child_iter->second);
   return tree_path_.back()->size();
@@ -146,6 +148,23 @@ bool IndexSpan<Token>::in_array_() const {
 // explicit template instantiation
 template class IndexSpan<SrcToken>;
 template class IndexSpan<TrgToken>;
+
+// --------------------------------------------------------
+
+template<class Token>
+void PartialSumUpdater<Token>::tree_node_visit_(TreeNode<Token> &node, TreeNodeChildMapIter child) {
+  // update partial sums to our right (assuming an insertion happened which changed sizes)
+  size_t partial_sum = child->second->partial_size_sum_;
+  for(; child != node.children_.end(); child++) {
+    child->second->partial_size_sum_ = partial_sum;
+    partial_sum += child->second->size();
+  }
+}
+
+// explicit template instantiation
+template class PartialSumUpdater<SrcToken>;
+template class PartialSumUpdater<TrgToken>;
+
 
 // --------------------------------------------------------
 
@@ -188,19 +207,24 @@ void TokenIndex<Token>::AddSubsequence_(const Sentence<Token> &sent, Offset star
         cur_span.tree_path_.back()->children_[sent[i].vid] = new TreeNode<Token>(); // to do: should be implemented as a method on TreeNode
         cur_span.narrow(sent[i]); // step IndexSpan into the node just created (which contains an empty SA)
         assert(cur_span.in_array_());
-      } else {
-        // stop after adding to a SA (entry there represents all the remaining depth)
-        finished = true;
       }
+      // stop after adding to a SA (entry there represents all the remaining depth)
+      finished = true;
       // create SA entry
       cur_span.tree_path_.back()->AddPosition_(sent, start);
     }
-    // add to cumulative counts all the way up to the tree root
-    for(auto node : cur_span.tree_path_)
-      node->size_++;
-
-    // note: if subsequence ends at an internal tree node -> tree node's count is larger than the sum of its children
   }
+
+  // add to cumulative counts all the way up to the tree root
+  for(auto node : cur_span.tree_path_)
+    node->size_++;
+  // note: if subsequence ends at an internal tree node -> tree node's count is larger than the sum of its children
+
+  // update partial sums of cumulative counts
+  PartialSumUpdater<Token> updater(*this);
+  for(Offset i = start; i < sent.size(); i++)
+    if(updater.narrow(sent[i]) == 0)
+      break;
 }
 
 // explicit template instantiation
@@ -210,7 +234,7 @@ template class TokenIndex<TrgToken>;
 // --------------------------------------------------------
 
 template<class Token>
-TreeNode<Token>::TreeNode() : size_(0)
+TreeNode<Token>::TreeNode() : size_(0), partial_size_sum_(0)
 {}
 
 template<class Token>

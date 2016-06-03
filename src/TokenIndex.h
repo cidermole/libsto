@@ -7,7 +7,7 @@
 #ifndef STO_TOKENINDEX_H
 #define STO_TOKENINDEX_H
 
-#include <unordered_map>
+#include <map>
 #include <vector>
 
 #include "Corpus.h"
@@ -35,6 +35,7 @@ template<class Token>
 class IndexSpan {
   // TODO: c++11 move constructor, move assignment
 public:
+  typedef typename TreeNode<Token>::ChildMap::iterator TreeNodeChildMapIter;
   friend class TokenIndex<Token>;
 
   // use TokenIndex::span() instead
@@ -60,7 +61,10 @@ private:
   // these 3 are only kept for debugging; for bookkeeping, we only need tree_path_.back()
   std::vector<Token> sequence_; /** partial lookup sequence so far, as appended by narrow() */
   std::vector<TreeNode<Token> *> tree_path_; /** first part of path from root through the tree */
-  std::vector<Range> array_path_; /** second part of path from leaf through the suffix array */
+  std::vector<Range> array_path_; /** second part of path from leaf through the suffix array. These Ranges always index relative to the specific suffix array. */
+
+  /** called by narrow() for each TreeNode visited. Override as needed. */
+  virtual void tree_node_visit_(TreeNode<Token> &node, TreeNodeChildMapIter child) {}
 
   /** narrow() in suffix array. */
   size_t narrow_array_(Token t);
@@ -73,6 +77,16 @@ private:
 
   /** true if span reaches into a suffix array leaf. */
   bool in_array_() const;
+};
+
+template<class Token>
+class PartialSumUpdater : public IndexSpan<Token> {
+public:
+  typedef typename TreeNode<Token>::ChildMap::iterator TreeNodeChildMapIter;
+
+  PartialSumUpdater(TokenIndex<Token> &index) : IndexSpan<Token>(index) {}
+private:
+  virtual void tree_node_visit_(TreeNode<Token> &node, TreeNodeChildMapIter child) override;
 };
 
 /**
@@ -127,8 +141,11 @@ class TreeNode {
 public:
   friend class IndexSpan<Token>;
   friend class TokenIndex<Token>;
+  friend class PartialSumUpdater<Token>;
+
   typedef typename Corpus<Token>::Vid Vid;
   typedef typename Corpus<Token>::Offset Offset;
+  typedef std::map<Vid, TreeNode *> ChildMap;
 
   static constexpr size_t kMaxArraySize = 100000; /** maximum size of suffix array leaf, larger sizes are split up into TreeNodes. */
 
@@ -143,10 +160,10 @@ public:
   size_t size() const { return size_; }
 
 private:
-  // TODO: for updating partial sums, we need a tree with sorted children (not in a hash map).
-  std::unordered_map<Vid, TreeNode *> children_; /** node children, empty if leaf node */
+  ChildMap children_; /** node children, empty if leaf node */
   std::vector<Position<Token>> array_; /** suffix array, only if children_.empty() */
   size_t size_; /** Number of token positions. cumulative length in inner nodes, array_.size() in leaf nodes */
+  size_t partial_size_sum_; /** partial sum of all sizes on this tree level to our left (so leftmost child has 0 here) */
 
   /**
    * Insert the existing Corpus Position into this index.
