@@ -82,6 +82,8 @@ public:
   /** sentence ID */
   Sid sid() const { return sid_; }
 
+  const Corpus<Token> &corpus() const { return *corpus_; }
+
 private:
   typedef typename Token::Vid Vid;
 
@@ -102,6 +104,9 @@ public:
 
   Sid sid; /** sentence ID */
   Offset offset; /** offset within sentence */
+
+  /** like operator<(this, other) */
+  bool compare(const Position<Token> &other, const Corpus<Token> &corpus) const;
 };
 
 } // namespace sto

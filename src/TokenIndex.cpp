@@ -5,6 +5,7 @@
  ****************************************************/
 
 #include <algorithm>
+#include <cassert>
 
 #include "TokenIndex.h"
 #include "Types.h"
@@ -146,32 +147,34 @@ template<class Token>
 void TokenIndex<Token>::AddSubsequence_(const Sentence<Token> &sent, Offset start) {
   // track the position to insert at
   IndexSpan<Token> cur_span = span();
-  size_t size;
+  size_t span_size;
+  bool finished = false;
 
-  for(Offset i = 0; i < sent.size(); i++) {
-    size = cur_span.narrow(sent[i]);
+  for(Offset i = start; !finished && i < sent.size(); i++) {
+    span_size = cur_span.narrow(sent[i]);
 
-    if(size == 0)
-      /* need to create an entry (whether in tree or SA) */;
-    else
-      /* need to add a count (if in tree) or create an entry (if in SA) */;
-
-    if(size != 0 && !cur_span.in_array_()) {
+    if(span_size != 0 && !cur_span.in_array_()) {
       // add to a count (in tree). to be precise:
       // add to cumulative counts all the way up to the tree root
-      for(auto node : cur_span.tree_path_)
-        node->size_++;
+      //for(auto node : cur_span.tree_path_)
+      //  node->size_++;
     } else {
       // create an entry (whether in tree or SA)
-      if(cur_span.in_array_()) {
-        // insert SA entry
+      if(!cur_span.in_array_()) {
+        // create tree entry (leaf)
+        cur_span.tree_path_.back()->children_[sent[i].vid] = new TreeNode<Token>(); // to do: should be implemented as a method on TreeNode
+        cur_span.narrow(sent[i]); // step IndexSpan into the node just created (which contains an empty SA)
+        assert(cur_span.in_array_());
       } else {
-        // insert tree entry
+        // stop after adding to a SA (entry there represents all the remaining depth)
+        finished = true;
       }
+      // create SA entry
+      cur_span.tree_path_.back()->AddPosition(sent, start);
     }
-
-    // note: inserting into SA requires position (since we need to compare with upcoming tokens)
-    //root_->AddPosition(Position<Token>{sent.sid(), i}, *this);
+    // add to cumulative counts all the way up to the tree root
+    for(auto node : cur_span.tree_path_)
+      node->size_++;
   }
 }
 
@@ -188,8 +191,23 @@ TreeNode<Token>::~TreeNode() {
 }
 
 template<class Token>
-void TreeNode<Token>::AddPosition(Position<Token> pos, TokenIndex<Token> &index) {
-  // TODO
+void TreeNode<Token>::AddPosition(const Sentence<Token> &sent, Offset start) {
+  assert(is_leaf()); // Exclusively for adding to a SA (leaf node).
+
+  Position<Token> corpus_pos{sent.sid(), start};
+  const Corpus<Token> &corpus = sent.corpus();
+
+  // find insert position in sorted suffix array
+  auto insert_pos = std::upper_bound(
+      array_.begin(), array_.end(),
+      corpus_pos,
+      [&corpus](const Position<Token> &new_pos, const Position<Token> &arr_pos) {
+        return arr_pos.compare(new_pos, corpus);
+      }
+  );
+
+  array_.insert(insert_pos, corpus_pos);
+  //size_++; // done outside!
 }
 
 // explicit template instantiation

@@ -87,20 +87,16 @@ template class Sentence<TrgToken>;
 
 // --------------------------------------------------------
 
-/*
 template<class Token>
-bool Position<Token>::operator<(const Position<Token> &other) const {
-  assert(corpus_ == other.corpus_);
-
+bool Position<Token>::compare(const Position<Token> &other, const Corpus<Token> &corpus) const {
   // should request Sentence object from Corpus instead
-  Sentence<Token> sentThis(*corpus_, sid_);
-  Sentence<Token> sentOther(*corpus_, other.sid_);
+  Sentence<Token> sentThis(corpus, sid);
+  Sentence<Token> sentOther(corpus, other.sid);
 
   // this uses Token::operator<(), which sorts by vid (not by surface form)
   return std::lexicographical_compare(sentThis.begin_, sentThis.begin_ + sentThis.size_,
                                       sentOther.begin_, sentOther.begin_ + sentOther.size_);
 }
-*/
 
 // explicit template instantiation
 template class Position<SrcToken>;

@@ -126,6 +126,7 @@ public:
   friend class IndexSpan<Token>;
   friend class TokenIndex<Token>;
   typedef typename Corpus<Token>::Vid Vid;
+  typedef typename Corpus<Token>::Offset Offset;
 
   static constexpr size_t kMaxArraySize = 100000; /** maximum size of suffix array leaf, larger sizes are split up into TreeNodes. */
 
@@ -144,8 +145,10 @@ public:
    * This potentially splits existing suffix array leaves into individual TreeNodes,
    * and inserts Position entries into the suffix array. Hence, it is an
    * O(k + log(n)) operation, with k = TreeNode<Token>::kMaxArraySize
+   *
+   * Exclusively for adding to a SA (leaf node).
    */
-  void AddPosition(Position<Token> pos, TokenIndex<Token> &index);
+  void AddPosition(const Sentence<Token> &sent, Offset start);
 
 private:
   std::unordered_map<Vid, TreeNode *> children_; /** node children, empty if leaf node */
