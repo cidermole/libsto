@@ -7,6 +7,7 @@
 #include <algorithm>
 
 #include "TokenIndex.h"
+#include "Types.h"
 
 namespace sto {
 
@@ -20,7 +21,7 @@ template<class Token>
 size_t IndexSpan<Token>::narrow(Token t) {
   size_t new_span;
 
-  if(tree_path_.back()->is_leaf())
+  if(in_array_())
     new_span = narrow_array_(t);
   else
     new_span = narrow_tree_(t);
@@ -32,7 +33,7 @@ size_t IndexSpan<Token>::narrow(Token t) {
 }
 
 template<class Token>
-size_t IndexSpan<Token>::narrow_array_(Token t) {
+Range IndexSpan<Token>::find_bounds_array_(Token t) {
   // TODO
   // for each token position, we need to check if it's long enough to extend as far as we do
   // (note: lexicographic sort order means shorter stuff is always at the beginning - so if Pos is too short, then Pos < Tok.)
@@ -45,7 +46,7 @@ size_t IndexSpan<Token>::narrow_array_(Token t) {
   // Compare(Position, vector<Token>)
 
   auto &array = tree_path_.back()->array_;
-  Range new_range;
+  Range bounds;
 
   Corpus<Token> &corpus = *index_->corpus_;
 
@@ -53,7 +54,7 @@ size_t IndexSpan<Token>::narrow_array_(Token t) {
   auto compare = [&corpus, old_sequence_size](const Position<Token> &pos, const Token &t) {
     Sentence<Token> sent = corpus.sentence(pos.sid);
     // lexicographic sort order means shorter sequences always come first
-    if(sent.size() - pos.offset < old_sequence_size + 1)
+    if (sent.size() - pos.offset < old_sequence_size + 1)
       return true;
     // we only need to compare at the depth of new_sequence_size, since all tokens before should be equal
 
@@ -64,19 +65,26 @@ size_t IndexSpan<Token>::narrow_array_(Token t) {
   };
 
   // binary search for the range containing Token t
-  new_range.begin = std::lower_bound(
+  bounds.begin = std::lower_bound(
       array.begin(), array.end(),
       //new_sequence,
       t,
       compare
   ) - array.begin();
 
-  new_range.end = std::upper_bound(
+  bounds.end = std::upper_bound(
       array.begin(), array.end(),
       //new_sequence,
       t,
-      compare
+      [&compare](const Token &t, const Position<Token> &pos) { return compare(pos, t); } // whoever designed C++11, please tell me why arguments flip vs. lower_bound() -- in fact, why compare is not just a [](const Position<Token> &)
   ) - array.begin();
+
+  return bounds;
+}
+
+template<class Token>
+size_t IndexSpan<Token>::narrow_array_(Token t) {
+  Range new_range = find_bounds_array_(t);
 
   if(new_range.size() == 0)
     return 0; // do not modify the IndexSpan and signal failure
@@ -104,10 +112,15 @@ Position<Token> IndexSpan<Token>::operator[](size_t rel) {
 
 template<class Token>
 size_t IndexSpan<Token>::size() const {
-  if(tree_path_.back()->is_leaf())
+  if(in_array_())
     return array_path_.back().size();
   else
     return tree_path_.back()->size();
+}
+
+template<class Token>
+bool IndexSpan<Token>::in_array_() const {
+  return tree_path_.back()->is_leaf();
 }
 
 // --------------------------------------------------------
@@ -121,10 +134,66 @@ IndexSpan<Token> TokenIndex<Token>::span() {
   return IndexSpan<Token>(*this);
 }
 
+template<class Token>
+void TokenIndex<Token>::AddSentence(const Sentence<Token> &sent) {
+  // start a subsequence at each sentence position
+  // each subsequence only goes as deep as necessary to hit a SA
+  for(Offset i = 0; i < sent.size(); i++)
+    AddSubsequence_(sent, i);
+}
+
+template<class Token>
+void TokenIndex<Token>::AddSubsequence_(const Sentence<Token> &sent, Offset start) {
+  // track the position to insert at
+  IndexSpan<Token> cur_span = span();
+  size_t size;
+
+  for(Offset i = 0; i < sent.size(); i++) {
+    size = cur_span.narrow(sent[i]);
+
+    if(size == 0)
+      /* need to create an entry (whether in tree or SA) */;
+    else
+      /* need to add a count (if in tree) or create an entry (if in SA) */;
+
+    if(size != 0 && !cur_span.in_array_()) {
+      // add to a count (in tree). to be precise:
+      // add to cumulative counts all the way up to the tree root
+      for(auto node : cur_span.tree_path_)
+        node->size_++;
+    } else {
+      // create an entry (whether in tree or SA)
+      if(cur_span.in_array_()) {
+        // insert SA entry
+      } else {
+        // insert tree entry
+      }
+    }
+
+    // note: inserting into SA requires position (since we need to compare with upcoming tokens)
+    //root_->AddPosition(Position<Token>{sent.sid(), i}, *this);
+  }
+}
+
 // --------------------------------------------------------
 
 template<class Token>
 TreeNode<Token>::TreeNode() : size_(0)
 {}
+
+template<class Token>
+TreeNode<Token>::~TreeNode() {
+  for(auto entry : children_)
+    delete entry->second;
+}
+
+template<class Token>
+void TreeNode<Token>::AddPosition(Position<Token> pos, TokenIndex<Token> &index) {
+  // TODO
+}
+
+// explicit template instantiation
+template class TokenIndex<SrcToken>;
+template class TokenIndex<TrgToken>;
 
 } // namespace sto

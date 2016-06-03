@@ -71,12 +71,16 @@ public:
 
   Sentence(const Sentence<Token> &other);
   Sentence(const Sentence<Token> &&other);
+  // to do: move assignment operator
 
   /** get Token `i` of this Sentence */
   Token operator[](size_t i) const;
 
   /** number of tokens */
   size_t size() const { return size_; }
+
+  /** sentence ID */
+  Sid sid() const { return sid_; }
 
 private:
   typedef typename Token::Vid Vid;

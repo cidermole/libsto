@@ -33,8 +33,11 @@ struct Range {
  */
 template<class Token>
 class IndexSpan {
-  // TODO: c++11 move constructor
+  // TODO: c++11 move constructor, move assignment
 public:
+  friend class TokenIndex<Token>;
+
+  // use TokenIndex::span() instead
   IndexSpan(TokenIndex<Token> &index);
 
   /**
@@ -62,17 +65,28 @@ private:
   /** narrow() in suffix array. */
   size_t narrow_array_(Token t);
 
+  /** find the bounds of an existing Token or insertion point of a new one */
+  Range find_bounds_array_(Token t);
+
   /** narrow() in tree. */
   size_t narrow_tree_(Token t);
+
+  /** true if span reaches into a suffix array leaf. */
+  bool in_array_() const;
 };
 
 /**
  * Indexes a Corpus. The index is implemented as a hybrid suffix tree/array.
+ *
+ * How does a subsequence end at an internal tree node?
+ * (implicit: if tree node's count is larger than the sum of its children)
+ * should we add explicit </s> sentinel values?
  */
 template<class Token>
 class TokenIndex {
 public:
   friend class IndexSpan<Token>;
+  typedef typename Corpus<Token>::Offset Offset;
 
   TokenIndex(Corpus<Token> &corpus);
 
@@ -81,9 +95,21 @@ public:
 
   Corpus<Token> *corpus() { return corpus_; }
 
+  /**
+   * Insert the existing Corpus Sentence into this index.
+   * This potentially splits existing suffix array leaves into individual TreeNodes,
+   * and inserts Position entries into the suffix array. Hence, it is an
+   * O(k + log(n)) operation, with k = TreeNode<Token>::kMaxArraySize
+   * (TODO) fix the formula
+   */
+  void AddSentence(const Sentence<Token> &sent);
+
 private:
   Corpus<Token> *corpus_;
   TreeNode<Token> *root_; /** root of the index tree */
+
+  /** Insert the subsequence from start into this index. Potentially splits. */
+  void AddSubsequence_(const Sentence<Token> &sent, Offset start);
 };
 
 /**
@@ -98,10 +124,14 @@ template<class Token>
 class TreeNode {
 public:
   friend class IndexSpan<Token>;
+  friend class TokenIndex<Token>;
   typedef typename Corpus<Token>::Vid Vid;
+
+  static constexpr size_t kMaxArraySize = 100000; /** maximum size of suffix array leaf, larger sizes are split up into TreeNodes. */
 
   /** Constructs an empty TreeNode, i.e. a leaf with a SuffixArray. */
   TreeNode();
+  ~TreeNode();
 
   /** true if this is a leaf, i.e. a suffix array. */
   bool is_leaf() const { return children_.empty(); }
@@ -109,10 +139,18 @@ public:
   /** Number of token positions in the index. */
   size_t size() const { return size_; }
 
+  /**
+   * Insert the existing Corpus Position into this index.
+   * This potentially splits existing suffix array leaves into individual TreeNodes,
+   * and inserts Position entries into the suffix array. Hence, it is an
+   * O(k + log(n)) operation, with k = TreeNode<Token>::kMaxArraySize
+   */
+  void AddPosition(Position<Token> pos, TokenIndex<Token> &index);
+
 private:
   std::unordered_map<Vid, TreeNode *> children_; /** node children, empty if leaf node */
   std::vector<Position<Token>> array_; /** suffix array, only if children_.empty() */
-  size_t size_;
+  size_t size_; /** Number of token positions. cumulative length in inner nodes, array_.size() in leaf nodes */
 };
 
 } // namespace sto
