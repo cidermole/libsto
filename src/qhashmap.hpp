@@ -39,10 +39,10 @@ struct QHashMapDefaultAlloc {
   static void Delete(void* p) { operator delete(p); }
 };
 
-template<typename KeyType, typename ValueType, class KeyTraits, class Allocator = QHashMapDefaultAlloc>
+template<typename KeyType, typename ValueType, typename AuxType, class KeyTraits, class Allocator = QHashMapDefaultAlloc>
 class QHashMap {
   QHashMap& operator=(const QHashMap&) = delete;
- public:
+public:
   // The default capacity.  This is used by the call sites which want
   // to pass in a non-default AllocationPolicy but want to use the
   // default value of capacity specified by the implementation.
@@ -61,6 +61,10 @@ class QHashMap {
   struct Entry {
     KeyType first;
     ValueType second;
+    //AuxType size;
+    AuxType partial_sum; // these are in the order of entries in map_
+
+    AuxType size() const { return second->size(); }
   };
 
   // If an entry with matching key is found, Lookup()
@@ -70,11 +74,12 @@ class QHashMap {
   // Otherwise, NULL is returned.
   Entry* Lookup(KeyType key, bool insert, Allocator allocator = Allocator())
 #if defined(__GNUC__) || defined(__llvm__) || defined(__clang__)
-  __attribute__((always_inline)) // inline the function even if -Os is used
+      __attribute__((always_inline)) // inline the function even if -Os is used
 #endif
   ;
 
   // Removes the entry with matching key.
+  // XXX no support for partial sums yet!
   void Remove(Entry* p);
   bool Remove(KeyType key);
 
@@ -106,7 +111,10 @@ class QHashMap {
     std::swap(occupancy_, other.occupancy_);
   }
 
- private:
+  /** update partial sums after the entry 'from' just modified/inserted. */
+  void UpdatePartialSums(Entry* from);
+
+private:
   Entry* map_;
   size_t capacity_;
   size_t occupancy_;
@@ -116,10 +124,16 @@ class QHashMap {
   void Initialize(size_t capacity, Allocator allocator = Allocator());
   void Resize(Allocator allocator = Allocator());
 
- public:
+  /**
+   * like upper_bound() search on a hash-ordered array of partial_sums.
+   * note: return value may include map_end()
+   */
+  Entry* PartialSumUpperBound(Entry* first, Entry* last, const AuxType& val);
+
+public:
   class iterator {
     iterator operator++(int); // disabled
-   public:
+  public:
     iterator& operator++() {
       entry_ = map_->Next(entry_);
       return *this;
@@ -130,14 +144,14 @@ class QHashMap {
     bool operator==(const iterator& other) { return entry_ == other.entry_; }
     bool operator!=(const iterator& other) { return entry_ != other.entry_; }
 
-   private:
+  private:
     iterator(const QHashMap* map, Entry* entry)
-      : map_(map), entry_(entry) {}
+        : map_(map), entry_(entry) {}
 
     const QHashMap* map_;
     Entry* entry_;
 
-    friend class QHashMap<KeyType, ValueType, KeyTraits, Allocator>;
+    friend class QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>;
   };
 
   iterator begin() const { return iterator(this, this->Start()); }
@@ -146,7 +160,7 @@ class QHashMap {
 #if defined(__GNUC__) || defined(__llvm__) || defined(__clang__)
   __attribute__((always_inline)) // inline the function even if -Os is used
 #endif
-{
+  {
     return iterator(this, this->Lookup(key, false));
   }
   void erase(const iterator& i) {
@@ -154,15 +168,15 @@ class QHashMap {
   }
 };
 
-template<typename KeyType, typename ValueType, class KeyTraits, class Allocator>
-inline QHashMap<KeyType, ValueType, KeyTraits, Allocator>::QHashMap(
+template<typename KeyType, typename ValueType, typename AuxType, class KeyTraits, class Allocator>
+inline QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::QHashMap(
     size_t initial_capacity, Allocator allocator) {
   Initialize(initial_capacity, allocator);
 }
 
 
-template<typename KeyType, typename ValueType, class KeyTraits, class Allocator>
-inline QHashMap<KeyType, ValueType, KeyTraits, Allocator>::QHashMap(
+template<typename KeyType, typename ValueType, typename AuxType, class KeyTraits, class Allocator>
+inline QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::QHashMap(
     const QHashMap& x, Allocator allocator) {
   map_ = static_cast<Entry*>(allocator.New(x.capacity_ * sizeof(Entry)));
   capacity_ = x.capacity_;
@@ -171,15 +185,15 @@ inline QHashMap<KeyType, ValueType, KeyTraits, Allocator>::QHashMap(
 }
 
 
-template<typename KeyType, typename ValueType, class KeyTraits, class Allocator>
-inline QHashMap<KeyType, ValueType, KeyTraits, Allocator>::~QHashMap() {
+template<typename KeyType, typename ValueType, typename AuxType, class KeyTraits, class Allocator>
+inline QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::~QHashMap() {
   Allocator::Delete(map_);
 }
 
 
-template<typename KeyType, typename ValueType, class KeyTraits, class Allocator>
-inline typename QHashMap<KeyType, ValueType, KeyTraits, Allocator>::Entry*
-QHashMap<KeyType, ValueType, KeyTraits, Allocator>::Lookup(
+template<typename KeyType, typename ValueType, typename AuxType, class KeyTraits, class Allocator>
+inline typename QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::Entry*
+QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::Lookup(
     KeyType key, bool insert, Allocator allocator) {
   // Find a matching entry.
   Entry* p = Probe(key);
@@ -199,6 +213,8 @@ QHashMap<KeyType, ValueType, KeyTraits, Allocator>::Lookup(
       p = Probe(key);
     }
 
+    UpdatePartialSums(p);
+
     return p;
   }
 
@@ -207,8 +223,8 @@ QHashMap<KeyType, ValueType, KeyTraits, Allocator>::Lookup(
 }
 
 
-template<typename KeyType, typename ValueType, class KeyTraits, class Allocator>
-inline void QHashMap<KeyType, ValueType, KeyTraits, Allocator>::Remove(
+template<typename KeyType, typename ValueType, typename AuxType, class KeyTraits, class Allocator>
+inline void QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::Remove(
     Entry* p) {
   // To remove an entry we need to ensure that it does not create an empty
   // entry that will cause the search for another entry to stop too soon. If all
@@ -243,7 +259,7 @@ inline void QHashMap<KeyType, ValueType, KeyTraits, Allocator>::Remove(
     }
 
     // Find the initial position for the entry at position q.
-    Entry* r = map_ + (KeyTraits::hash(q->first) & (capacity_ - 1));
+    Entry* r = map_ + (KeyTraits::hash(q->first, capacity_) & (capacity_ - 1));
 
     // If the entry at position q has its initial position outside the range
     // between p and q it can be moved forward to position p and will still be
@@ -261,8 +277,8 @@ inline void QHashMap<KeyType, ValueType, KeyTraits, Allocator>::Remove(
 }
 
 
-template<typename KeyType, typename ValueType, class KeyTraits, class Allocator>
-inline bool QHashMap<KeyType, ValueType, KeyTraits, Allocator>::Remove(
+template<typename KeyType, typename ValueType, typename AuxType, class KeyTraits, class Allocator>
+inline bool QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::Remove(
     KeyType key) {
   // Lookup the entry for the key to remove.
   Entry* p = Probe(key);
@@ -275,8 +291,8 @@ inline bool QHashMap<KeyType, ValueType, KeyTraits, Allocator>::Remove(
 }
 
 
-template<typename KeyType, typename ValueType, class KeyTraits, class Allocator>
-inline void QHashMap<KeyType, ValueType, KeyTraits, Allocator>::Clear() {
+template<typename KeyType, typename ValueType, typename AuxType, class KeyTraits, class Allocator>
+inline void QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::Clear() {
   // Mark all entries as empty.
   const Entry* end = map_end();
   for (Entry* p = map_; p < end; p++) {
@@ -286,16 +302,16 @@ inline void QHashMap<KeyType, ValueType, KeyTraits, Allocator>::Clear() {
 }
 
 
-template<typename KeyType, typename ValueType, class KeyTraits, class Allocator>
-inline typename QHashMap<KeyType, ValueType, KeyTraits, Allocator>::Entry*
-QHashMap<KeyType, ValueType, KeyTraits, Allocator>::Start() const {
+template<typename KeyType, typename ValueType, typename AuxType, class KeyTraits, class Allocator>
+inline typename QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::Entry*
+QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::Start() const {
   return Next(map_ - 1);
 }
 
 
-template<typename KeyType, typename ValueType, class KeyTraits, class Allocator>
-inline typename QHashMap<KeyType, ValueType, KeyTraits, Allocator>::Entry*
-QHashMap<KeyType, ValueType, KeyTraits, Allocator>::Next(Entry* p) const {
+template<typename KeyType, typename ValueType, typename AuxType, class KeyTraits, class Allocator>
+inline typename QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::Entry*
+QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::Next(Entry* p) const {
   const Entry* end = map_end();
   assert(map_ - 1 <= p && p < end);
   for (p++; p < end; p++) {
@@ -307,19 +323,19 @@ QHashMap<KeyType, ValueType, KeyTraits, Allocator>::Next(Entry* p) const {
 }
 
 
-template<typename KeyType, typename ValueType, class KeyTraits, class Allocator>
-inline typename QHashMap<KeyType, ValueType, KeyTraits, Allocator>::Entry*
-QHashMap<KeyType, ValueType, KeyTraits, Allocator>::Probe(KeyType key) {
+template<typename KeyType, typename ValueType, typename AuxType, class KeyTraits, class Allocator>
+inline typename QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::Entry*
+QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::Probe(KeyType key) {
   assert(key != KeyTraits::null());
 
   assert((capacity_ & (capacity_ - 1)) == 0);
-  Entry* p = map_ + (KeyTraits::hash(key) & (capacity_ - 1));
+  Entry* p = map_ + (KeyTraits::hash(key, capacity_) & (capacity_ - 1));
   const Entry* end = map_end();
   assert(map_ <= p && p < end);
 
   assert(occupancy_ < capacity_);  // Guarantees loop termination.
   while (p->first != KeyTraits::null()
-         && (KeyTraits::hash(key) != KeyTraits::hash(p->first) ||
+         && (KeyTraits::hash(key, capacity_) != KeyTraits::hash(p->first, capacity_) ||
              ! KeyTraits::equals(key, p->first))) {
     p++;
     if (p >= end) {
@@ -331,8 +347,8 @@ QHashMap<KeyType, ValueType, KeyTraits, Allocator>::Probe(KeyType key) {
 }
 
 
-template<typename KeyType, typename ValueType, class KeyTraits, class Allocator>
-inline void QHashMap<KeyType, ValueType, KeyTraits, Allocator>::Initialize(
+template<typename KeyType, typename ValueType, typename AuxType, class KeyTraits, class Allocator>
+inline void QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::Initialize(
     size_t capacity, Allocator allocator) {
   assert((capacity & (capacity - 1)) == 0);
   map_ = reinterpret_cast<Entry*>(allocator.New(capacity * sizeof(Entry)));
@@ -341,8 +357,8 @@ inline void QHashMap<KeyType, ValueType, KeyTraits, Allocator>::Initialize(
 }
 
 
-template<typename KeyType, typename ValueType, class KeyTraits, class Allocator>
-inline void QHashMap<KeyType, ValueType, KeyTraits, Allocator>::Resize(
+template<typename KeyType, typename ValueType, typename AuxType, class KeyTraits, class Allocator>
+inline void QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::Resize(
     Allocator allocator) {
   Entry* map = map_;
   size_t n = occupancy_;
@@ -360,6 +376,49 @@ inline void QHashMap<KeyType, ValueType, KeyTraits, Allocator>::Resize(
 
   // Delete old map.
   Allocator::Delete(map);
+}
+
+/** update partial sums after the entry 'from' just modified/inserted. */
+template<typename KeyType, typename ValueType, typename AuxType, class KeyTraits, class Allocator>
+void QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::UpdatePartialSums(Entry* from) {
+  size_t partial_sum = from->partial_sum;
+
+  for(Entry* p = from; p != nullptr; p = Next(p)) {
+    p->partial_sum = partial_sum;
+    partial_sum += p->size();
+  }
+}
+
+/** like upper_bound() search on a hash-ordered array of partial_sums. */
+template<typename KeyType, typename ValueType, typename AuxType, class KeyTraits, class Allocator>
+typename QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::Entry*
+QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::PartialSumUpperBound(Entry* first, Entry* last, const AuxType& val) {
+  Entry *it, *it_old;
+  size_t count, step;
+
+  // all positioning in capacity units (all map_ slots, not just occupied entries)
+  count = last - first; // rough estimate
+
+  // see reference impl of upper_bound() at http://www.cplusplus.com/reference/algorithm/upper_bound/
+  while(count > 0) {
+    it = first;
+    step = count / 2;
+    it_old = it;
+    it += step; it = Next(it-1); // rough advance(it, step)
+
+    //it = (it == nullptr) ? map_end() : it; // guard against Next()'s implementation of end??
+    assert(it != nullptr);
+
+    step = it - it_old; // actually taken step size
+    if(!(val < it->partial_sum)) {
+      first = ++it;
+      count -= step + 1;
+    } else {
+      count = step;
+    }
+  }
+  assert(map_ <= first && first <= map_end()); // note: may include map_end()
+  return first;
 }
 
 #endif  // QHASHMAP_HPP
