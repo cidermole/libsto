@@ -36,7 +36,7 @@ template<class Token>
 class IndexSpan {
   // TODO: c++11 move constructor, move assignment
 public:
-  typedef typename TreeNode<Token>::ChildMap::iterator TreeNodeChildMapIter;
+  typedef typename TreeNode<Token>::ChildMap::Iterator TreeNodeChildMapIter;
   friend class TokenIndex<Token>;
 
   // use TokenIndex::span() instead
@@ -50,7 +50,10 @@ public:
    */
   size_t narrow(Token t);
 
-  /** Random access to a position within the selected span. */
+  /**
+   * Random access to a position within the selected span.
+   * O(log n). WARNING: order depends on underlying hash map.
+   */
   Position<Token> operator[](size_t rel);
 
   /** Number of token positions spanned in the index. */
@@ -78,34 +81,6 @@ private:
 
   /** true if span reaches into a suffix array leaf. */
   bool in_array_() const;
-};
-
-template<class Token>
-class PartialSumUpdater : public IndexSpan<Token> {
-public:
-  typedef typename TreeNode<Token>::ChildMap::iterator TreeNodeChildMapIter;
-
-  PartialSumUpdater(TokenIndex<Token> &index) : IndexSpan<Token>(index) {}
-private:
-  virtual void tree_node_visit_(TreeNode<Token> &node, TreeNodeChildMapIter child) override;
-};
-
-template<class Token> class TreeChildMap;
-
-template<class Token, class Entry>
-class TreeChildMapIterator {
-public:
-  TreeChildMapIterator &operator++() { entry_++; return *this; }
-  const Token &operator*() { return entry_->second; }
-  size_t operator-(const TreeChildMapIterator &other) { return other.entry_ - this->entry_; }
-  TreeChildMapIterator operator+(size_t offset) { return TreeChildMapIterator(entry_ + offset); }
-
-private:
-  friend class TreeChildMap<Token>;
-  // others have no business constructing us
-  TreeChildMapIterator(Entry *e): entry_(e) {}
-
-  Entry *entry_;
 };
 
 template<class Token>
@@ -137,20 +112,41 @@ public:
   //typedef TreeChildMapIterator<Token, typename ChildMap::Entry> Iterator;
   typedef typename ChildMap::iterator Iterator;
 
-
   TreeChildMap();
 
   Iterator begin() { return children_.begin(); }
   Iterator end() { return children_.end(); }
 
-  TreeNode<Token> *operator[](Vid vid);
+  bool empty() const { return children_.size() == 0; }
+
+  TreeNode<Token> *&operator[](Vid vid);
 
   /** returns iterator to specified element, or end() if not found. */
   Iterator find(Vid vid);
 
+  /** Update the size partial sums of our children after vid. */
+  void UpdateChildSizeSums(Vid vid);
+
+  /**
+   * random access into the spanned range.
+   * WARNING: the order of our children depends on the population order
+   * of the underlying hash map.
+   */
+  Position<Token> AtUnordered(size_t offset);
+
 private:
+  typedef typename ChildMap::Entry Entry;
+
   ChildMap children_;
-  std::vector<size_t> partial_size_sums_; /** partial sums of all sizes on this tree level to our left (so leftmost child has 0 here) */
+
+  /**
+   * Obtains the child containing the position at 'offset' and the
+   * relative offset into that child.
+   * WARNING: the order of our children depends on the population order
+   * of the underlying hash map.
+   * Returns values in (vid, child_offset).   // if child_offset == offset, then we're at a leaf and vid was not written.
+   */
+  void FindBoundUnordered(size_t offset, Vid &vid, size_t &child_offset);
 };
 
 /**
@@ -205,11 +201,11 @@ class TreeNode {
 public:
   friend class IndexSpan<Token>;
   friend class TokenIndex<Token>;
-  friend class PartialSumUpdater<Token>;
 
   typedef typename Corpus<Token>::Vid Vid;
   typedef typename Corpus<Token>::Offset Offset;
-  typedef std::map<Vid, TreeNode *> ChildMap;
+  //typedef std::map<Vid, TreeNode *> ChildMap;
+  typedef TreeChildMap<Token> ChildMap;
 
   static constexpr size_t kMaxArraySize = 100000; /** maximum size of suffix array leaf, larger sizes are split up into TreeNodes. */
 
@@ -222,6 +218,9 @@ public:
 
   /** Number of token positions in the index. */
   size_t size() const { return size_; }
+
+  /** random access in O(log n). WARNING: order depends on underlying hash map. */
+  Position<Token> AtUnordered(size_t offset);
 
 private:
   ChildMap children_; /** node children, empty if leaf node */

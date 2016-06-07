@@ -105,6 +105,8 @@ public:
   Entry* Start() const;
   Entry* Next(Entry* p) const;
 
+  Entry* Prev(Entry* p) const;
+
   void swap(QHashMap& other) {
     std::swap(map_, other.map_);
     std::swap(capacity_, other.capacity_);
@@ -113,6 +115,11 @@ public:
 
   /** update partial sums after the entry 'from' just modified/inserted. */
   void UpdatePartialSums(Entry* from);
+
+  /**
+   * like upper_bound()-1 search on a hash-ordered array of partial_sums.
+   */
+  Entry* FindPartialSumBound(const AuxType& val);
 
 private:
   Entry* map_;
@@ -322,6 +329,19 @@ QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::Next(Entry* p) cons
   return NULL;
 }
 
+template<typename KeyType, typename ValueType, typename AuxType, class KeyTraits, class Allocator>
+inline typename QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::Entry*
+QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::Prev(Entry* p) const {
+  const Entry* end = map_end();
+  assert(map_ < p && p <= end);
+  for (p--; p >= map_; p--) {
+    if (p->first != KeyTraits::null()) {
+      return p;
+    }
+  }
+  return NULL;
+}
+
 
 template<typename KeyType, typename ValueType, typename AuxType, class KeyTraits, class Allocator>
 inline typename QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::Entry*
@@ -387,6 +407,14 @@ void QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::UpdatePartialS
     p->partial_sum = partial_sum;
     partial_sum += p->size();
   }
+}
+
+template<typename KeyType, typename ValueType, typename AuxType, class KeyTraits, class Allocator>
+typename QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::Entry*
+QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::FindPartialSumBound(const AuxType& val) {
+  Entry* entry = Prev(PartialSumUpperBound(map_, map_end(), val));
+  assert(entry >= map_ && entry < map_end());
+  return entry;
 }
 
 /** like upper_bound() search on a hash-ordered array of partial_sums. */

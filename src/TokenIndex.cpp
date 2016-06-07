@@ -133,10 +133,8 @@ Position<Token> IndexSpan<Token>::operator[](size_t rel) {
   } else {
     // may need to traverse the tree down, using bin search on the cumulative counts
     // upper_bound()-1 of rel inside the list of our children
-
+    return tree_path_.back()->AtUnordered(rel);
   }
-
-  return Position<Token>{0, 0}; // TODO
 }
 
 template<class Token>
@@ -162,38 +160,47 @@ template class IndexSpan<TrgToken>;
 // --------------------------------------------------------
 
 template<class Token>
-void PartialSumUpdater<Token>::tree_node_visit_(TreeNode<Token> &node, TreeNodeChildMapIter child) {
-  // update partial sums to our right (assuming an insertion happened which changed sizes)
-  size_t partial_sum = child->second->partial_size_sum_;
-  for(; child != node.children_.end(); child++) {
-    child->second->partial_size_sum_ = partial_sum;
-    partial_sum += child->second->size();
-  }
-}
-
-// explicit template instantiation
-template class PartialSumUpdater<SrcToken>;
-template class PartialSumUpdater<TrgToken>;
-
-// --------------------------------------------------------
-
-template<class Token>
 TreeChildMap<Token>::TreeChildMap() {}
 
 template<class Token>
-TreeNode<Token> *TreeChildMap<Token>::operator[](Vid vid) {
-  typename ChildMap::Entry *entry = children_.Lookup(vid, /* insert = */ true);
+TreeNode<Token> *&TreeChildMap<Token>::operator[](Vid vid) {
+  Entry *entry = children_.Lookup(vid, /* insert = */ true);
   return entry->second;
 }
 
 template<class Token>
 typename TreeChildMap<Token>::Iterator TreeChildMap<Token>::find(Vid vid) {
-  typename ChildMap::Entry *entry = children_.Lookup(vid, /* insert = */ false);
-  if(entry != nullptr)
-    //return Iterator(entry); // TODO
-    return end();
-  else
-    return end();
+  return children_.find(vid);
+}
+
+/** Update the size partial sums of our children after vid. */
+template<class Token>
+void TreeChildMap<Token>::UpdateChildSizeSums(Vid vid) {
+  // note: we could instead sweep the whole hashtable, has the same order.
+  Entry *entry = children_.Lookup(vid, /* insert = */ false);
+  assert(entry != nullptr); // assert found
+  children_.UpdatePartialSums(entry);
+}
+
+template<class Token>
+Position<Token> TreeChildMap<Token>::AtUnordered(size_t offset) {
+  Vid vid;
+  size_t child_offset;
+  FindBoundUnordered(offset, vid, child_offset);
+  TreeNode<Token> *child = operator[](vid);
+  return child->AtUnordered(child_offset);
+}
+
+template<class Token>
+void TreeChildMap<Token>::FindBoundUnordered(size_t offset, Vid &vid, size_t &child_offset) {
+  Entry *entry = children_.FindPartialSumBound(offset);
+  vid = entry->first;
+  child_offset = offset - entry->partial_sum;
+
+  // implicit trailing </s> entries? (if upper is beyond the last child's size)
+  // but wait. that should be included in vocab as sentinel. period.
+  //if(child_offset > )
+  assert(child_offset < entry->size());
 }
 
 // explicit template instantiation
@@ -256,10 +263,11 @@ void TokenIndex<Token>::AddSubsequence_(const Sentence<Token> &sent, Offset star
   // TODO: internal tree node implicit symbol </s> must be at the very beginning of all vocab symbols (sort order matters)!!!
 
   // update partial sums of cumulative counts
-  PartialSumUpdater<Token> updater(*this);
-  for(Offset i = start; i < sent.size(); i++)
-    if(updater.narrow(sent[i]) == 0)
-      break;
+  Offset i = start;
+  auto tp = cur_span.tree_path_.begin();
+  for(++tp; i < sent.size() && tp != cur_span.tree_path_.end(); ++i, ++tp)
+    if(!(*tp)->is_leaf())
+      (*tp)->children_.UpdateChildSizeSums(sent[i].vid);
 }
 
 // explicit template instantiation
@@ -275,7 +283,7 @@ TreeNode<Token>::TreeNode() : size_(0), partial_size_sum_(0)
 template<class Token>
 TreeNode<Token>::~TreeNode() {
   for(auto entry : children_)
-    delete entry.second;
+    delete entry->second;
 }
 
 template<class Token>
@@ -298,5 +306,12 @@ void TreeNode<Token>::AddPosition_(const Sentence<Token> &sent, Offset start) {
   //size_++; // done outside! see TokenIndex<Token>::AddSubsequence_()
 }
 
+template<class Token>
+Position<Token> TreeNode<Token>::AtUnordered(size_t offset) {
+  if(is_leaf())
+    return array_[offset];
+  else
+    return children_.AtUnordered(offset);
+}
 
 } // namespace sto
