@@ -15,7 +15,7 @@
 namespace sto {
 
 template<class Token>
-Vocab<Token>::Vocab() : size_(0) { }
+Vocab<Token>::Vocab() : size_(1) { }
 
 template<class Token>
 Vocab<Token>::Vocab(const std::string &filename) : size_(0) /* set later */ {

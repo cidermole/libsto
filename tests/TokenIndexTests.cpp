@@ -55,7 +55,7 @@ TEST_F(TokenIndexTests, paper_example_sentence) {
   for(auto s : vocab_id_order)
     vocab[s]; // vocabulary insert (in this ID order, so sort by vid is intuitive)
 
-  EXPECT_EQ(vocab["</s>"].vid, 0);
+  EXPECT_EQ(vocab["</s>"].vid, 1);
   EXPECT_LT(vocab["dog"].vid, vocab["the"].vid);
 
   // '", "'.join(['"'] + 'the dog bit the cat on the mat </s>'.split() + ['"'])
