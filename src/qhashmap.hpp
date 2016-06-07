@@ -441,8 +441,9 @@ QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::PartialSumUpperBoun
     assert(it != nullptr);
 
     step = it - it_old; // actually taken step size
-    if(step == -1)
+    if(step == static_cast<size_t>(-1))
       return last; // if the range shrunk due to a consecutive hole at the end (reached into via ++it), we need to return
+
     if(!(val < it->partial_sum)) {
       first = ++it;
       count -= step + 1;
