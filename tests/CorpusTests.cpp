@@ -32,7 +32,7 @@ TEST(CorpusTests, empty_add) {
 
   // retrieve Sentence from Corpus
   Sentence<SrcToken> sent = sc.sentence(0);
-  EXPECT_EQ(sent.surface(), "orange apple and pear") << "ability to retrieve a dyn stored Sentence";
+  EXPECT_EQ("orange apple and pear", sent.surface()) << "ability to retrieve a dyn stored Sentence";
 }
 
 TEST(CorpusTests, sentence_index_operator) {
@@ -48,5 +48,5 @@ TEST(CorpusTests, sentence_index_operator) {
 
   // retrieve Sentence from Corpus
   Sentence<SrcToken> sent = sc.sentence(0);
-  EXPECT_EQ(sv[sent[1]], "is") << "proper working of Sentence::operator[]()";
+  EXPECT_EQ("is", sv[sent[1]]) << "proper working of Sentence::operator[]()";
 }

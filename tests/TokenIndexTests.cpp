@@ -40,14 +40,14 @@ struct TokenIndexTests : testing::Test {
 // demo Test Fixture
 TEST_F(TokenIndexTests, get_word) {
   sentence = AddSentence({"this", "is", "an", "example"});
-  EXPECT_EQ(vocab[sentence[0]], "this") << "retrieving a word from Sentence";
+  EXPECT_EQ("this", vocab[sentence[0]]) << "retrieving a word from Sentence";
 }
 
 TEST_F(TokenIndexTests, add_sentence) {
   sentence = AddSentence({"this", "is", "an", "example"});
   tokenIndex.AddSentence(sentence);
   IndexSpan<SrcToken> span = tokenIndex.span();
-  EXPECT_EQ(span.size(), 4) << "the Sentence should have added 4 tokens to the IndexSpan";
+  EXPECT_EQ(4, span.size()) << "the Sentence should have added 4 tokens to the IndexSpan";
 }
 
 TEST_F(TokenIndexTests, paper_example_suffix_array) {
@@ -55,7 +55,7 @@ TEST_F(TokenIndexTests, paper_example_suffix_array) {
   for(auto s : vocab_id_order)
     vocab[s]; // vocabulary insert (in this ID order, so sort by vid is intuitive)
 
-  EXPECT_EQ(vocab["</s>"].vid, 1);
+  EXPECT_EQ(1, vocab["</s>"].vid);
   EXPECT_LT(vocab["dog"].vid, vocab["the"].vid);
 
   // '", "'.join(['"'] + 'the dog bit the cat on the mat </s>'.split() + ['"'])
@@ -64,7 +64,7 @@ TEST_F(TokenIndexTests, paper_example_suffix_array) {
   sentence = AddSentence(sent_words);
   tokenIndex.AddSentence(sentence);
   IndexSpan<SrcToken> span = tokenIndex.span();
-  EXPECT_EQ(span.size(), sent_words.size()) << "the Sentence should have added its tokens to the IndexSpan";
+  EXPECT_EQ(sent_words.size(), span.size()) << "the Sentence should have added its tokens to the IndexSpan";
 
   // ideas:
   // * add sanity check function for verifying partial sums
@@ -75,15 +75,15 @@ TEST_F(TokenIndexTests, paper_example_suffix_array) {
   //assert(tokenIndex.root_->is_leaf()); // private member...
 
   Position<SrcToken> pos{/* sid = */ 0, /* offset = */ 2};
-  EXPECT_EQ(span[1], pos) << "verifying token position for 'bit'";
-  EXPECT_EQ(span[1], (Position<SrcToken>{/* sid = */ 0, /* offset = */ 2})) << "verifying token position for 'bit'";
+  EXPECT_EQ(pos, span[1]) << "verifying token position for 'bit'";
+  EXPECT_EQ((Position<SrcToken>{/* sid = */ 0, /* offset = */ 2}), span[1]) << "verifying token position for 'bit'";
 
   std::vector<size_t>      expect_suffix_array_offset  = { 8,      2,     4,     1,     7,     5,    3,     0,     6 };
   std::vector<std::string> expect_suffix_array_surface = {"</s>", "bit", "cat", "dog", "mat", "on", "the", "the", "the"};
 
   for(size_t i = 0; i < expect_suffix_array_surface.size(); i++) {
-    EXPECT_EQ(span[i].surface(corpus), expect_suffix_array_surface[i]) << "verifying surface @ SA position " << i;
-    EXPECT_EQ(span[i].offset, expect_suffix_array_offset[i]) << "verifying offset @ SA position " << i;
+    EXPECT_EQ(expect_suffix_array_surface[i], span[i].surface(corpus)) << "verifying surface @ SA position " << i;
+    EXPECT_EQ(expect_suffix_array_offset[i], span[i].offset) << "verifying offset @ SA position " << i;
   }
 }
 
@@ -106,13 +106,13 @@ TEST_F(TokenIndexTests, suffix_array_split) {
   // so this is not a good test.
 
   IndexSpan<SrcToken> span = tokenIndex.span();
-  EXPECT_EQ(span.size(), sent_words.size()) << "the Sentence should have added its tokens to the IndexSpan";
+  EXPECT_EQ(sent_words.size(), span.size()) << "the Sentence should have added its tokens to the IndexSpan";
 
   std::vector<size_t>      expect_suffix_array_offset  = { 8,      2,     4,     1,     7,     5,    3,     0,     6 };
   std::vector<std::string> expect_suffix_array_surface = {"</s>", "bit", "cat", "dog", "mat", "on", "the", "the", "the"};
 
   for(size_t i = 0; i < expect_suffix_array_surface.size(); i++) {
-    EXPECT_EQ(span[i].surface(corpus), expect_suffix_array_surface[i]) << "verifying surface @ SA position " << i;
-    EXPECT_EQ(span[i].offset, expect_suffix_array_offset[i]) << "verifying offset @ SA position " << i;
+    EXPECT_EQ(expect_suffix_array_surface[i], span[i].surface(corpus)) << "verifying surface @ SA position " << i;
+    EXPECT_EQ(expect_suffix_array_offset[i], span[i].offset) << "verifying offset @ SA position " << i;
   }
 }

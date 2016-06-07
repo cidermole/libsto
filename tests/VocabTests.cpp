@@ -20,7 +20,7 @@ TEST(VocabTests, insertion) {
   EXPECT_EQ(apple, sv.at("apple")) << "comparing apple and apple";
   EXPECT_NE(apple, orange) << "comparing apple and orange";
 
-  EXPECT_EQ(sv.at(apple), "apple") << "first Token must be apple";
+  EXPECT_EQ("apple", sv.at(apple)) << "first Token must be apple";
 
   ASSERT_THROW(sv.at("banana"), std::out_of_range) << "out-of-range access must throw an exception";
 }
@@ -30,8 +30,8 @@ TEST(VocabTests, load) {
   // $ echo "apple and orange and pear and apple and orange" | mtt-build -i -o vocab
   Vocab<SrcToken> sv("res/vocab.tdx");
 
-  EXPECT_EQ(sv.at("NULL").vid, 0);
-  EXPECT_EQ(sv.at("UNK").vid, 1);
+  EXPECT_EQ(0, sv.at("NULL").vid);
+  EXPECT_EQ(1, sv.at("UNK").vid);
   EXPECT_TRUE(sv.at("apple").vid > 0);
   EXPECT_TRUE(sv.at("orange").vid > 0);
   EXPECT_TRUE(sv.at("and").vid > 0);
