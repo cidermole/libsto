@@ -52,7 +52,8 @@ public:
 
   /**
    * Random access to a position within the selected span.
-   * O(log n). WARNING: order depends on underlying hash map.
+   * O(log(n/k)) with with k = TreeNode<Token>::kMaxArraySize.
+   * WARNING: order depends on underlying hash maps.
    */
   Position<Token> operator[](size_t rel);
 
@@ -219,7 +220,9 @@ public:
   /** Number of token positions in the index. */
   size_t size() const { return size_; }
 
-  /** random access in O(log n). WARNING: order depends on underlying hash map. */
+  /** random access
+   * in O(log(n/k)) with with k = TreeNode<Token>::kMaxArraySize.
+   * WARNING: order depends on underlying hash map. */
   Position<Token> AtUnordered(size_t offset);
 
 private:
