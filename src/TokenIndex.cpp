@@ -4,6 +4,9 @@
  * Licensed under GNU LGPL Version 2.1, see COPYING *
  ****************************************************/
 
+// for debug
+#include <iostream>
+
 #include <algorithm>
 #include <cassert>
 
@@ -301,6 +304,8 @@ void TreeNode<Token>::AddPosition_(const Sentence<Token> &sent, Offset start) {
         return arr_pos.compare(new_pos, corpus);
       }
   );
+
+  //std::cerr << "TreeNode::AddPosition_(sent, start=" << ((int) start) << ") token=" << corpus.vocab()[sent[start]] << " (vid=" << sent[start].vid << ") insert_pos=" << (insert_pos - array_.begin()) << std::endl;
 
   array_.insert(insert_pos, corpus_pos);
   //size_++; // done outside! see TokenIndex<Token>::AddSubsequence_()

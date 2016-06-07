@@ -126,6 +126,11 @@ public:
 
   /** like operator<(this, other) */
   bool compare(const Position<Token> &other, const Corpus<Token> &corpus) const;
+
+  /** directly compares (sid,offset) pair */
+  bool operator==(const Position& other) const;
+
+  std::string surface(const Corpus<Token> &corpus) const;
 };
 
 } // namespace sto

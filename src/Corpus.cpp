@@ -136,8 +136,18 @@ bool Position<Token>::compare(const Position<Token> &other, const Corpus<Token> 
   Sentence<Token> sentOther(corpus, other.sid);
 
   // this uses Token::operator<(), which sorts by vid (not by surface form)
-  return std::lexicographical_compare(sentThis.begin_, sentThis.begin_ + sentThis.size_,
-                                      sentOther.begin_, sentOther.begin_ + sentOther.size_);
+  return !std::lexicographical_compare(sentThis.begin_ + offset, sentThis.begin_ + sentThis.size_,
+                                      sentOther.begin_ + other.offset, sentOther.begin_ + sentOther.size_);
+}
+
+template<class Token>
+bool Position<Token>::operator==(const Position& other) const {
+  return this->sid == other.sid && this->offset == other.offset;
+}
+
+template<class Token>
+std::string Position<Token>::surface(const Corpus<Token> &corpus) const {
+  return corpus.vocab()[corpus.sentence(sid)[offset]];
 }
 
 // explicit template instantiation
