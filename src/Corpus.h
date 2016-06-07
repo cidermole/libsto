@@ -7,6 +7,7 @@
 #ifndef STO_CORPUS_H
 #define STO_CORPUS_H
 
+#include <vector>
 #include <string>
 #include <memory>
 
@@ -52,6 +53,9 @@ public:
   void AddSentence(const std::vector<Token> &sent);
 
   const Vocab<Token> &vocab() const { return *vocab_; }
+
+  /** number of sentences */
+  Sid size() const;
 
 private:
   const Vocab<Token> *vocab_;

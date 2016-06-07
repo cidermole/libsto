@@ -78,6 +78,11 @@ void Corpus<Token>::AddSentence(const std::vector<Token> &sent) {
   dyn_sentIndex_.push_back(static_cast<SentIndexEntry>(dyn_track_.size()));
 }
 
+template<class Token>
+typename Corpus<Token>::Sid Corpus<Token>::size() const {
+  return sentIndexHeader_.idxSize + static_cast<Sid>(dyn_sentIndex_.size());
+}
+
 // explicit template instantiation
 template class Corpus<SrcToken>;
 template class Corpus<TrgToken>;
