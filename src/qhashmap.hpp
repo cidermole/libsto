@@ -220,7 +220,7 @@ QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::Lookup(
       p = Probe(key);
     }
 
-    UpdatePartialSums(p);
+    //UpdatePartialSums(p); // TODO: we cannot immediately call back into size(), since we just inserted an Entry with nullptr TreeNode. Needs to be done externally.
 
     return p;
   }
@@ -304,6 +304,7 @@ inline void QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::Clear()
   const Entry* end = map_end();
   for (Entry* p = map_; p < end; p++) {
     p->first = KeyTraits::null();
+    p->partial_sum = 0; // only necessary for map_[0], but nice to have everywhere
   }
   occupancy_ = 0;
 }
@@ -424,6 +425,8 @@ QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::PartialSumUpperBoun
   Entry *it, *it_old;
   size_t count, step;
 
+  assert((map_ <= first && first < map_end()) && (map_ <= last && last <= map_end()) && (first < last)); // valid ends, non-zero size range
+
   // all positioning in capacity units (all map_ slots, not just occupied entries)
   count = last - first; // rough estimate
 
@@ -432,12 +435,14 @@ QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::PartialSumUpperBoun
     it = first;
     step = count / 2;
     it_old = it;
-    it += step; it = Next(it-1); // rough advance(it, step)
+    it += step; it = Prev(it+1); // rough advance(it, step)
 
     //it = (it == nullptr) ? map_end() : it; // guard against Next()'s implementation of end??
     assert(it != nullptr);
 
     step = it - it_old; // actually taken step size
+    if(step == -1)
+      return last; // if the range shrunk due to a consecutive hole at the end (reached into via ++it), we need to return
     if(!(val < it->partial_sum)) {
       first = ++it;
       count -= step + 1;

@@ -17,6 +17,7 @@ typedef uint32_t vid_t;
 
 struct SrcToken {
   typedef vid_t Vid; /** vocabulary ID type */
+  static constexpr Vid kInvalidVid = 0;
 
 public:
   Vid vid; /** vocabulary ID */
@@ -32,6 +33,7 @@ public:
 };
 struct TrgToken {
   typedef vid_t Vid; /** vocabulary ID type */
+  static constexpr Vid kInvalidVid = 0;
 
 public:
   Vid vid; /** vocabulary ID */

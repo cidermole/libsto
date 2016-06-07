@@ -118,6 +118,7 @@ private:
 template<class Token>
 struct Position {
 public:
+  typedef typename Corpus<Token>::Vid Vid;
   typedef typename Corpus<Token>::Sid Sid;
   typedef typename Corpus<Token>::Offset Offset;
 
@@ -131,6 +132,7 @@ public:
   bool operator==(const Position& other) const;
 
   std::string surface(const Corpus<Token> &corpus) const;
+  Vid vid(const Corpus<Token> &corpus) const;
 };
 
 } // namespace sto

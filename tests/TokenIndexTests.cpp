@@ -86,3 +86,33 @@ TEST_F(TokenIndexTests, paper_example_suffix_array) {
     EXPECT_EQ(span[i].offset, expect_suffix_array_offset[i]) << "verifying offset @ SA position " << i;
   }
 }
+
+TEST_F(TokenIndexTests, suffix_array_split) {
+  std::vector<std::string> vocab_id_order{"</s>", "bit", "cat", "dog", "mat", "on", "the"};
+  for(auto s : vocab_id_order)
+    vocab[s]; // vocabulary insert (in this ID order, so sort by vid is intuitive)
+
+
+  TokenIndex<SrcToken> tokenIndex(corpus, /* maxLeafSize = */ 8);
+
+  //                                      0      1      2      3      4      5     6      7      8
+  std::vector<std::string> sent_words = {"the", "dog", "bit", "the", "cat", "on", "the", "mat", "</s>"};
+
+  sentence = AddSentence(sent_words);
+  tokenIndex.AddSentence(sentence);
+
+  // because of maxLeafSize=8, these accesses go via a first TreeNode level.
+  // however, the hash function % ensures that our vids are still in order, even though the API doesn't guarantee this.
+  // so this is not a good test.
+
+  IndexSpan<SrcToken> span = tokenIndex.span();
+  EXPECT_EQ(span.size(), sent_words.size()) << "the Sentence should have added its tokens to the IndexSpan";
+
+  std::vector<size_t>      expect_suffix_array_offset  = { 8,      2,     4,     1,     7,     5,    3,     0,     6 };
+  std::vector<std::string> expect_suffix_array_surface = {"</s>", "bit", "cat", "dog", "mat", "on", "the", "the", "the"};
+
+  for(size_t i = 0; i < expect_suffix_array_surface.size(); i++) {
+    EXPECT_EQ(span[i].surface(corpus), expect_suffix_array_surface[i]) << "verifying surface @ SA position " << i;
+    EXPECT_EQ(span[i].offset, expect_suffix_array_offset[i]) << "verifying offset @ SA position " << i;
+  }
+}

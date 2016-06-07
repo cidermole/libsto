@@ -150,6 +150,11 @@ std::string Position<Token>::surface(const Corpus<Token> &corpus) const {
   return corpus.vocab()[corpus.sentence(sid)[offset]];
 }
 
+template<class Token>
+typename Position<Token>::Vid Position<Token>::vid(const Corpus<Token> &corpus) const {
+  return corpus.sentence(sid)[offset].vid;
+}
+
 // explicit template instantiation
 template class Position<SrcToken>;
 template class Position<TrgToken>;

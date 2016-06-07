@@ -125,8 +125,8 @@ public:
   /** returns iterator to specified element, or end() if not found. */
   Iterator find(Vid vid);
 
-  /** Update the size partial sums of our children after vid. */
-  void UpdateChildSizeSums(Vid vid);
+  /** Update the size partial sums of our children after vid. Default is update everything. */
+  void UpdateChildSizeSums(Vid vid = Token::kInvalidVid);
 
   /**
    * random access into the spanned range.
@@ -164,7 +164,7 @@ public:
   typedef typename Corpus<Token>::Offset Offset;
 
   /** Constructs an empty TokenIndex, i.e. this does not index the Corpus by itself. */
-  TokenIndex(Corpus<Token> &corpus);
+  TokenIndex(Corpus<Token> &corpus, size_t maxLeafSize = 100000);
   ~TokenIndex();
 
   /** Returns the whole span of the entire index (empty lookup sequence). */
@@ -208,10 +208,8 @@ public:
   //typedef std::map<Vid, TreeNode *> ChildMap;
   typedef TreeChildMap<Token> ChildMap;
 
-  static constexpr size_t kMaxArraySize = 100000; /** maximum size of suffix array leaf, larger sizes are split up into TreeNodes. */
-
   /** Constructs an empty TreeNode, i.e. a leaf with a SuffixArray. */
-  TreeNode();
+  TreeNode(size_t maxArraySize = 100000);
   ~TreeNode();
 
   /** true if this is a leaf, i.e. a suffix array. */
@@ -231,6 +229,8 @@ private:
   size_t size_; /** Number of token positions. cumulative length in inner nodes, array_.size() in leaf nodes */
   size_t partial_size_sum_; /** partial sum of all sizes on this tree level to our left (so leftmost child has 0 here) */
 
+  const size_t kMaxArraySize; /** maximum size of suffix array leaf, larger sizes are split up into TreeNodes. */
+
   /**
    * Insert the existing Corpus Position into this index.
    * This potentially splits existing suffix array leaves into individual TreeNodes,
@@ -240,6 +240,9 @@ private:
    * Exclusively for adding to a SA (leaf node). Does NOT increment size_.
    */
   void AddPosition_(const Sentence<Token> &sent, Offset start);
+
+  /** Split this leaf node (suffix array) into a proper TreeNode with children. */
+  void SplitNode(const Corpus<Token> &corpus);
 };
 
 } // namespace sto

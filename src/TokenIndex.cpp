@@ -132,6 +132,7 @@ Position<Token> IndexSpan<Token>::operator[](size_t rel) {
   assert(rel < size());
 
   if(in_array_()) {
+    // to do: unnecessary, just call AtUnordered() in any case
     return tree_path_.back()->array_[rel];
   } else {
     // may need to traverse the tree down, using bin search on the cumulative counts
@@ -179,10 +180,22 @@ typename TreeChildMap<Token>::Iterator TreeChildMap<Token>::find(Vid vid) {
 /** Update the size partial sums of our children after vid. */
 template<class Token>
 void TreeChildMap<Token>::UpdateChildSizeSums(Vid vid) {
-  // note: we could instead sweep the whole hashtable, has the same order.
-  Entry *entry = children_.Lookup(vid, /* insert = */ false);
+  Entry *entry = (vid != Token::kInvalidVid) ? children_.Lookup(vid, /* insert = */ false) : children_.Start();
   assert(entry != nullptr); // assert found
+
   children_.UpdatePartialSums(entry);
+
+  /*
+   * we could replace UpdatePartialSums() with member code here:
+   *
+  size_t partial_sum = entry->partial_sum;
+
+  // could have been done with iterators as well...
+  for(; entry != nullptr; entry = children_.Next(entry)) {
+    entry->partial_sum = partial_sum;
+    partial_sum += entry->size();
+  }
+   */
 }
 
 template<class Token>
@@ -196,7 +209,7 @@ Position<Token> TreeChildMap<Token>::AtUnordered(size_t offset) {
 
 template<class Token>
 void TreeChildMap<Token>::FindBoundUnordered(size_t offset, Vid &vid, size_t &child_offset) {
-  Entry *entry = children_.FindPartialSumBound(offset);
+  Entry *entry = children_.FindPartialSumBound(offset); // TODO: this should move to TreeChildMap (doesn't use any private members of QHashMap)
   vid = entry->first;
   child_offset = offset - entry->partial_sum;
 
@@ -213,7 +226,7 @@ template class TreeChildMap<TrgToken>;
 // --------------------------------------------------------
 
 template<class Token>
-TokenIndex<Token>::TokenIndex(Corpus<Token> &corpus) : corpus_(&corpus), root_(new TreeNode<Token>())
+TokenIndex<Token>::TokenIndex(Corpus<Token> &corpus, size_t maxLeafSize) : corpus_(&corpus), root_(new TreeNode<Token>(maxLeafSize))
 {}
 
 template<class Token>
@@ -280,7 +293,7 @@ template class TokenIndex<TrgToken>;
 // --------------------------------------------------------
 
 template<class Token>
-TreeNode<Token>::TreeNode() : size_(0), partial_size_sum_(0)
+TreeNode<Token>::TreeNode(size_t maxArraySize) : size_(0), partial_size_sum_(0), kMaxArraySize(maxArraySize)
 {}
 
 template<class Token>
@@ -309,6 +322,44 @@ void TreeNode<Token>::AddPosition_(const Sentence<Token> &sent, Offset start) {
 
   array_.insert(insert_pos, corpus_pos);
   //size_++; // done outside! see TokenIndex<Token>::AddSubsequence_()
+
+  if(array_.size() > kMaxArraySize)
+    SplitNode(corpus); // suffix array grown too large, split into TreeNode
+}
+
+/** Split this leaf node (suffix array) into a proper TreeNode with children. */
+template<class Token>
+void TreeNode<Token>::SplitNode(const Corpus<Token> &corpus) {
+  typedef typename std::vector<Position<Token>>::iterator iter;
+  //typedef typename decltype(array_)::iterator iter;
+
+  assert(is_leaf()); // works only on suffix arrays
+  // TODO
+  // collect counts on top-level words, and populate suffix arrays. This can be done via AddPosition_() on fresh datastructures
+
+  auto comp = [&corpus](const Position<Token> &a, const Position<Token> &b) {
+    return a.vid(corpus) < b.vid(corpus);
+  };
+
+  // find the end of each section?
+  assert(size() > 0);
+  std::pair<iter, iter> vid_range;
+  Position<Token> pos = array_[0];
+  while(true) {
+    vid_range = std::equal_range(array_.begin(), array_.end(), pos, comp);
+
+    // copy each range into its own suffix array
+    TreeNode<Token> *new_child = new TreeNode<Token>(kMaxArraySize);
+    new_child->array_.insert(new_child->array_.begin(), vid_range.first, vid_range.second);
+    new_child->size_ = new_child->array_.size();
+    children_[pos.vid(corpus)] = new_child;
+
+    if(vid_range.second != array_.end())
+      pos = *vid_range.second; // first position with next vid
+    else
+      break;
+  }
+  children_.UpdateChildSizeSums(); // compute partial sums  (could've done this in above loop as well)
 }
 
 template<class Token>
