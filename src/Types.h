@@ -21,6 +21,11 @@ struct SrcToken {
 public:
   Vid vid; /** vocabulary ID */
 
+  /** construct invalid token */
+  SrcToken(): vid(0) {}
+
+  SrcToken(Vid v): vid(v) {}
+
   bool operator==(const SrcToken &other) const { return vid == other.vid; }
   bool operator!=(const SrcToken &other) const { return vid != other.vid; }
   bool operator<(const SrcToken &other) const { return vid < other.vid; }
@@ -30,6 +35,11 @@ struct TrgToken {
 
 public:
   Vid vid; /** vocabulary ID */
+
+  /** construct invalid token */
+  TrgToken(): vid(0) {}
+
+  TrgToken(Vid v): vid(v) {}
 
   bool operator==(const TrgToken &other) const { return vid == other.vid; }
   bool operator!=(const TrgToken &other) const { return vid != other.vid; }

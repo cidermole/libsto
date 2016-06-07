@@ -126,6 +126,16 @@ size_t IndexSpan<Token>::narrow_tree_(Token t) {
 
 template<class Token>
 Position<Token> IndexSpan<Token>::operator[](size_t rel) {
+  assert(rel < size());
+
+  if(in_array_()) {
+    return tree_path_.back()->array_[rel];
+  } else {
+    // may need to traverse the tree down, using bin search on the cumulative counts
+    // upper_bound()-1 of rel inside the list of our children
+
+  }
+
   return Position<Token>{0, 0}; // TODO
 }
 
@@ -165,6 +175,30 @@ void PartialSumUpdater<Token>::tree_node_visit_(TreeNode<Token> &node, TreeNodeC
 template class PartialSumUpdater<SrcToken>;
 template class PartialSumUpdater<TrgToken>;
 
+// --------------------------------------------------------
+
+template<class Token>
+TreeChildMap<Token>::TreeChildMap() {}
+
+template<class Token>
+TreeNode<Token> *TreeChildMap<Token>::operator[](Vid vid) {
+  typename ChildMap::Entry *entry = children_.Lookup(vid, /* insert = */ true);
+  return entry->second;
+}
+
+template<class Token>
+typename TreeChildMap<Token>::Iterator TreeChildMap<Token>::find(Vid vid) {
+  typename ChildMap::Entry *entry = children_.Lookup(vid, /* insert = */ false);
+  if(entry != nullptr)
+    //return Iterator(entry); // TODO
+    return end();
+  else
+    return end();
+}
+
+// explicit template instantiation
+template class TreeChildMap<SrcToken>;
+template class TreeChildMap<TrgToken>;
 
 // --------------------------------------------------------
 

@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "Corpus.h"
+#include "qhashmap.hpp"
 
 namespace sto {
 
@@ -87,6 +88,69 @@ public:
   PartialSumUpdater(TokenIndex<Token> &index) : IndexSpan<Token>(index) {}
 private:
   virtual void tree_node_visit_(TreeNode<Token> &node, TreeNodeChildMapIter child) override;
+};
+
+template<class Token> class TreeChildMap;
+
+template<class Token, class Entry>
+class TreeChildMapIterator {
+public:
+  TreeChildMapIterator &operator++() { entry_++; return *this; }
+  const Token &operator*() { return entry_->second; }
+  size_t operator-(const TreeChildMapIterator &other) { return other.entry_ - this->entry_; }
+  TreeChildMapIterator operator+(size_t offset) { return TreeChildMapIterator(entry_ + offset); }
+
+private:
+  friend class TreeChildMap<Token>;
+  // others have no business constructing us
+  TreeChildMapIterator(Entry *e): entry_(e) {}
+
+  Entry *entry_;
+};
+
+template<class Token>
+struct TreeChildMapKeyTraits {
+  typedef typename Token::Vid Vid;
+
+  static unsigned hash(Vid vid, size_t capacity_) {
+    return vid % capacity_;
+  }
+
+  static bool equals(Vid a, Vid b) {
+    return a == b;
+  }
+
+  static Vid null() {
+    return Token().vid; // invalid Token VID
+  }
+};
+
+/**
+ * Map from vids to TreeNode children.
+ * Additionally carries along partial sums for child sizes.
+ */
+template<class Token>
+class TreeChildMap {
+public:
+  typedef typename Token::Vid Vid;
+  typedef QHashMap<Vid, TreeNode<Token> *, size_t, TreeChildMapKeyTraits<Token>> ChildMap;
+  //typedef TreeChildMapIterator<Token, typename ChildMap::Entry> Iterator;
+  typedef typename ChildMap::iterator Iterator;
+
+
+  TreeChildMap();
+
+  Iterator begin() { return children_.begin(); }
+  Iterator end() { return children_.end(); }
+
+  TreeNode<Token> *operator[](Vid vid);
+
+  /** returns iterator to specified element, or end() if not found. */
+  Iterator find(Vid vid);
+
+private:
+  ChildMap children_;
+  std::vector<size_t> partial_size_sums_; /** partial sums of all sizes on this tree level to our left (so leftmost child has 0 here) */
 };
 
 /**
