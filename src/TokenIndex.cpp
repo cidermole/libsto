@@ -364,6 +364,7 @@ void TreeNode<Token>::SplitNode(const Corpus<Token> &corpus) {
       break;
   }
   children_.UpdateChildSizeSums(); // compute partial sums  (could've done this in above loop as well)
+  array_.clear(); // destroy the suffix array
 }
 
 template<class Token>
