@@ -119,9 +119,17 @@ TEST_F(TokenIndexTests, suffix_array_split) {
   tokenIndex.DebugPrint();
 
   span.narrow(vocab["bit"]);
-  EXPECT_EQ(1, span.size()) << "'bit' must be size 1";
+  EXPECT_EQ(1, span.size()) << "'bit' range size check";
   span.narrow(vocab["the"]);
-  EXPECT_EQ(1, span.size()) << "'bit the' must be size 1";
+  EXPECT_EQ(1, span.size()) << "'bit the' range size check";
   size_t newsz = span.narrow(vocab["dog"]);
-  EXPECT_EQ(0, newsz) << "'bit the dog' must be size 0";
+  EXPECT_EQ(0, newsz) << "'bit the dog' must be size 0, i.e. not found";
+
+  EXPECT_EQ(1, span.size()) << "failed call must not narrow the span";
+  EXPECT_EQ(1, span.narrow(vocab["cat"])) << "IndexSpan must now behave as if the failed narrow() call had not happened";
+
+  span = tokenIndex.span();
+  EXPECT_EQ(3, span.narrow(vocab["the"])) << "'the' range size check";
+  EXPECT_EQ(1, span.narrow(vocab["cat"])) << "'the' range size check";
+  EXPECT_EQ(1, span.size()) << "span size";
 }
