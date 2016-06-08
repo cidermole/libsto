@@ -64,33 +64,37 @@ Range IndexSpan<Token>::find_bounds_array_(Token t) {
 
   Corpus<Token> &corpus = *index_->corpus_;
 
-  //auto compare = [&corpus, old_sequence_size](const Position<Token> &pos, const std::vector<Token> &seq) {
-  auto compare = [&corpus, old_sequence_size](const Position<Token> &pos, const Token &t) {
-    Sentence<Token> sent = corpus.sentence(pos.sid);
-    // lexicographic sort order means shorter sequences always come first
-    if (sent.size() - pos.offset < old_sequence_size + 1)
-      return true;
-    // we only need to compare at the depth of new_sequence_size, since all tokens before should be equal
-
-    // note: Token::operator<(Token&) compares by vid (not surface form)
-    //return pos.sentence()[old_sequence_size] < seq.back();
-    return sent[pos.offset + old_sequence_size] < t;
-    // Sentence access should maybe be more efficient?
-  };
-
   // binary search for the range containing Token t
   bounds.begin = std::lower_bound(
       array.begin() + prev_bounds.begin, array.begin() + prev_bounds.end,
       //new_sequence,
       t,
-      compare
+      [&corpus, old_sequence_size](const Position<Token> &pos, const Token &t) {
+        Sentence<Token> sent = corpus.sentence(pos.sid);
+        // lexicographic sort order means shorter sequences always come first in array
+        if (sent.size() - pos.offset < old_sequence_size + 1)
+          return true;
+        // we only need to compare at the depth of new_sequence_size, since all tokens before are equal
+
+        // note: Token::operator<(Token&) compares by vid (not surface form)
+        return sent[pos.offset + old_sequence_size] < t;
+      }
   ) - array.begin();
 
   bounds.end = std::upper_bound(
       array.begin() + prev_bounds.begin, array.begin() + prev_bounds.end,
       //new_sequence,
       t,
-      [&compare](const Token &t, const Position<Token> &pos) { return compare(pos, t); } // whoever designed C++11, please tell me why arguments flip vs. lower_bound() -- in fact, why compare is not just a [](const Position<Token> &)
+      [&corpus, old_sequence_size](const Token &t, const Position<Token> &pos) {
+        Sentence<Token> sent = corpus.sentence(pos.sid);
+        // lexicographic sort order means shorter sequences always come first in array
+        if (sent.size() - pos.offset < old_sequence_size + 1)
+          return false;
+        // we only need to compare at the depth of new_sequence_size, since all tokens before are equal
+
+        // note: Token::operator<(Token&) compares by vid (not surface form)
+        return t < sent[pos.offset + old_sequence_size];
+      }
   ) - array.begin();
 
   return bounds;

@@ -117,4 +117,11 @@ TEST_F(TokenIndexTests, suffix_array_split) {
   }
 
   tokenIndex.DebugPrint();
+
+  span.narrow(vocab["bit"]);
+  EXPECT_EQ(1, span.size()) << "'bit' must be size 1";
+  span.narrow(vocab["the"]);
+  EXPECT_EQ(1, span.size()) << "'bit the' must be size 1";
+  size_t newsz = span.narrow(vocab["dog"]);
+  EXPECT_EQ(0, newsz) << "'bit the dog' must be size 0";
 }
