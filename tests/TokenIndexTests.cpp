@@ -50,7 +50,7 @@ TEST_F(TokenIndexTests, add_sentence) {
   EXPECT_EQ(4, span.size()) << "the Sentence should have added 4 tokens to the IndexSpan";
 }
 
-TEST_F(TokenIndexTests, paper_example_suffix_array) {
+TEST_F(TokenIndexTests, suffix_array_paper_example) {
   std::vector<std::string> vocab_id_order{"</s>", "bit", "cat", "dog", "mat", "on", "the"};
   for(auto s : vocab_id_order)
     vocab[s]; // vocabulary insert (in this ID order, so sort by vid is intuitive)
@@ -115,4 +115,6 @@ TEST_F(TokenIndexTests, suffix_array_split) {
     EXPECT_EQ(expect_suffix_array_surface[i], span[i].surface(corpus)) << "verifying surface @ SA position " << i;
     EXPECT_EQ(expect_suffix_array_offset[i], span[i].offset) << "verifying offset @ SA position " << i;
   }
+
+  tokenIndex.DebugPrint();
 }

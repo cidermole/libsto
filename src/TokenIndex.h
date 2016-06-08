@@ -181,6 +181,8 @@ public:
    */
   void AddSentence(const Sentence<Token> &sent);
 
+  void DebugPrint();
+
 private:
   Corpus<Token> *corpus_;
   TreeNode<Token> *root_; /** root of the index tree */
@@ -222,6 +224,8 @@ public:
    * in O(log(n/k)) with with k = TreeNode<Token>::kMaxArraySize.
    * WARNING: order depends on underlying hash map. */
   Position<Token> AtUnordered(size_t offset);
+
+  void DebugPrint(const Corpus<Token> &corpus, size_t depth = 0);
 
 private:
   ChildMap children_; /** node children, empty if leaf node */
