@@ -53,18 +53,13 @@ size_t IndexSpan<Token>::narrow(Token t) {
 
 template<class Token>
 Range IndexSpan<Token>::find_bounds_array_(Token t) {
-  // TODO
   // for each token position, we need to check if it's long enough to extend as far as we do
   // (note: lexicographic sort order means shorter stuff is always at the beginning - so if Pos is too short, then Pos < Tok.)
   // then, we only need to compare at the depth of new_sequence_size, since all tokens before should be equal
-  //size_t new_sequence_size = sequence_.size() + 1;
-  //std::vector<Token> new_sequence = sequence_;
-  //new_sequence.push_back(t);
   size_t old_sequence_size = sequence_.size();
 
-  // Compare(Position, vector<Token>)
-
   auto &array = tree_path_.back()->array_;
+  Range prev_bounds = array_path_.back();
   Range bounds;
 
   Corpus<Token> &corpus = *index_->corpus_;
@@ -85,14 +80,14 @@ Range IndexSpan<Token>::find_bounds_array_(Token t) {
 
   // binary search for the range containing Token t
   bounds.begin = std::lower_bound(
-      array.begin(), array.end(),
+      array.begin() + prev_bounds.begin, array.begin() + prev_bounds.end,
       //new_sequence,
       t,
       compare
   ) - array.begin();
 
   bounds.end = std::upper_bound(
-      array.begin(), array.end(),
+      array.begin() + prev_bounds.begin, array.begin() + prev_bounds.end,
       //new_sequence,
       t,
       [&compare](const Token &t, const Position<Token> &pos) { return compare(pos, t); } // whoever designed C++11, please tell me why arguments flip vs. lower_bound() -- in fact, why compare is not just a [](const Position<Token> &)
