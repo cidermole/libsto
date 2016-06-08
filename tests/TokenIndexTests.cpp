@@ -146,16 +146,16 @@ TEST_F(TokenIndexTests, suffix_array_common_prefix) {
   TokenIndex<SrcToken> tokenIndex(corpus, /* maxLeafSize = */ 8);
 
   //                                      0      1      2      3      4      5     6      7      8
-  std::vector<std::string> sent1_words = {"the", "dog", "bit", "the", "cat", "on", "the", "mat", "</s>"};
+  std::vector<std::string> sent0_words = {"the", "dog", "bit", "the", "cat", "on", "the", "mat", "</s>"};
 
-  sentence = AddSentence(sent1_words);
+  sentence = AddSentence(sent0_words);
   tokenIndex.AddSentence(sentence);
 
   //                                      0      1      2      3
-  std::vector<std::string> sent2_words = {"the", "dog", "bit", "</s>"};
+  std::vector<std::string> sent1_words = {"the", "dog", "bit", "</s>"};
 
-  Sentence<SrcToken> sentence2 = AddSentence(sent2_words);
-  tokenIndex.AddSentence(sentence2);
+  Sentence<SrcToken> sentence1 = AddSentence(sent1_words);
+  tokenIndex.AddSentence(sentence1);
 
   tokenIndex.DebugPrint();
 }
@@ -167,27 +167,28 @@ TEST_F(TokenIndexTests, suffix_array_common_prefix_the) {
     vocab[s]; // vocabulary insert (in this ID order, so sort by vid is intuitive)
 
 
+  // to do: check invariance: maxLeafSize = 4 and maxLeafSize = 5 (without the 'the' split) should behave exactly the same (they do at this time.)
   TokenIndex<SrcToken> tokenIndex(corpus, /* maxLeafSize = */ 4);
 
   //                                      0      1      2      3      4      5     6      7      8
-  std::vector<std::string> sent1_words = {"the", "dog", "bit", "the", "cat", "on", "the", "mat", "</s>"};
+  std::vector<std::string> sent0_words = {"the", "dog", "bit", "the", "cat", "on", "the", "mat", "</s>"};
 
-  sentence = AddSentence(sent1_words);
+  sentence = AddSentence(sent0_words);
   tokenIndex.AddSentence(sentence);
 
   //                                      0      1      2      3
-  std::vector<std::string> sent2_words = {"the", "dog", "bit", "</s>"};
+  std::vector<std::string> sent1_words = {"the", "dog", "bit", "</s>"};
 
-  Sentence<SrcToken> sentence2 = AddSentence(sent2_words);
-  tokenIndex.AddSentence(sentence2);
+  Sentence<SrcToken> sentence1 = AddSentence(sent1_words);
+  tokenIndex.AddSentence(sentence1);
 
   // a leaf </s> attached to 'the' which itself should be split:
 
   //                                      0      1
-  std::vector<std::string> sent3_words = {"the", "</s>"};
+  std::vector<std::string> sent2_words = {"the", "</s>"};
 
-  Sentence<SrcToken> sentence3 = AddSentence(sent3_words);
-  tokenIndex.AddSentence(sentence3);
+  Sentence<SrcToken> sentence2 = AddSentence(sent2_words);
+  tokenIndex.AddSentence(sentence2);
 
 
   tokenIndex.DebugPrint();
