@@ -253,6 +253,10 @@ void TokenIndex<Token>::AddSubsequence_(const Sentence<Token> &sent, Offset star
   bool finished = false;
 
   for(Offset i = start; !finished && i < sent.size(); i++) {
+    // add to cumulative count for internal TreeNodes (excludes SA leaves which increment in AddPosition_()), including the root (if it's not a SA)
+    if(!cur_span.tree_path_.back()->is_leaf())
+      cur_span.tree_path_.back()->size_++; // we add this here, and not in the partial sum update loop below, because we may have split a SA, which increments on its own already (a bit ugly)
+
     span_size = cur_span.narrow(sent[i]);
 
     if(span_size == 0 || cur_span.in_array_()) {
@@ -270,15 +274,10 @@ void TokenIndex<Token>::AddSubsequence_(const Sentence<Token> &sent, Offset star
     }
   }
 
-  // add to cumulative counts all the way up to the tree root
-  for(auto node : cur_span.tree_path_)
-    node->size_++;
-  // internal tree node implicit symbol </s> must be at the very beginning of all vocab symbols (sort order matters)!!!
-
   // update partial sums of cumulative counts
   Offset i = start;
   auto tp = cur_span.tree_path_.begin();
-  for(++tp; i < sent.size() && tp != cur_span.tree_path_.end(); ++i, ++tp)
+  for(; i < sent.size() && tp != cur_span.tree_path_.end(); ++i, ++tp)
     if(!(*tp)->is_leaf())
       (*tp)->children_.UpdateChildSizeSums(sent[i].vid);
 }
@@ -318,7 +317,8 @@ void TreeNode<Token>::AddPosition_(const Sentence<Token> &sent, Offset start) {
   //std::cerr << "TreeNode::AddPosition_(sent, start=" << ((int) start) << ") token=" << corpus.vocab()[sent[start]] << " (vid=" << sent[start].vid << ") insert_pos=" << (insert_pos - array_.begin()) << std::endl;
 
   array_.insert(insert_pos, corpus_pos);
-  //size_++; // done outside! see TokenIndex<Token>::AddSubsequence_()
+  size_++;
+  assert(size_ == array_.size());
 
   if(array_.size() > kMaxArraySize)
     SplitNode(corpus); // suffix array grown too large, split into TreeNode

@@ -153,9 +153,7 @@ private:
 /**
  * Indexes a Corpus. The index is implemented as a hybrid suffix tree/array.
  *
- * How does a subsequence end at an internal tree node?
- * (implicit: if tree node's count is larger than the sum of its children)
- * should we add explicit </s> sentinel values?
+ * Vocab note: explicit sentence end delimiting symbol </s> must be indexed at the very beginning of all vocab symbols (sort order matters, shorter sequences must come first)!
  */
 template<class Token>
 class TokenIndex {

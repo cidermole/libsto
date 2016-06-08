@@ -133,3 +133,26 @@ TEST_F(TokenIndexTests, suffix_array_split) {
   EXPECT_EQ(1, span.narrow(vocab["cat"])) << "'the' range size check";
   EXPECT_EQ(1, span.size()) << "span size";
 }
+
+TEST_F(TokenIndexTests, suffix_array_common_prefix) {
+  std::vector<std::string> vocab_id_order{"</s>", "bit", "cat", "dog", "mat", "on", "the"};
+  for(auto s : vocab_id_order)
+    vocab[s]; // vocabulary insert (in this ID order, so sort by vid is intuitive)
+
+
+  TokenIndex<SrcToken> tokenIndex(corpus, /* maxLeafSize = */ 8);
+
+  //                                      0      1      2      3      4      5     6      7      8
+  std::vector<std::string> sent1_words = {"the", "dog", "bit", "the", "cat", "on", "the", "mat", "</s>"};
+
+  sentence = AddSentence(sent1_words);
+  tokenIndex.AddSentence(sentence);
+
+  //                                      0      1      2      3
+  std::vector<std::string> sent2_words = {"the", "dog", "bit", "</s>"};
+
+  Sentence<SrcToken> sentence2 = AddSentence(sent2_words);
+  tokenIndex.AddSentence(sentence2);
+
+  tokenIndex.DebugPrint();
+}
