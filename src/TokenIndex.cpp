@@ -25,7 +25,7 @@ IndexSpan<Token>::IndexSpan(TokenIndex<Token> &index) : index_(&index)
   if(index_->root_->is_leaf())
     array_path_.push_back(Range{0, index_->root_->size()});
 
-  // TODO: who invalidates IndexSpan when TokenIndex is updated?
+  // who invalidates IndexSpan when TokenIndex is updated?
   // ideally, we should track that, and provide errors to the user.
 }
 
@@ -129,14 +129,9 @@ template<class Token>
 Position<Token> IndexSpan<Token>::operator[](size_t rel) {
   assert(rel < size());
 
-  if(in_array_()) {
-    // to do: unnecessary, just call AtUnordered() in any case
-    return tree_path_.back()->array_[rel];
-  } else {
-    // may need to traverse the tree down, using bin search on the cumulative counts
-    // upper_bound()-1 of rel inside the list of our children
-    return tree_path_.back()->AtUnordered(rel);
-  }
+  // may need to traverse the tree down, using bin search on the cumulative counts
+  // upper_bound()-1 of rel inside the list of our children
+  return tree_path_.back()->AtUnordered(rel);
 }
 
 template<class Token>
@@ -278,8 +273,7 @@ void TokenIndex<Token>::AddSubsequence_(const Sentence<Token> &sent, Offset star
   // add to cumulative counts all the way up to the tree root
   for(auto node : cur_span.tree_path_)
     node->size_++;
-  // note: if subsequence ends at an internal tree node -> tree node's count is larger than the sum of its children
-  // TODO: internal tree node implicit symbol </s> must be at the very beginning of all vocab symbols (sort order matters)!!!
+  // internal tree node implicit symbol </s> must be at the very beginning of all vocab symbols (sort order matters)!!!
 
   // update partial sums of cumulative counts
   Offset i = start;
@@ -334,20 +328,18 @@ void TreeNode<Token>::AddPosition_(const Sentence<Token> &sent, Offset start) {
 template<class Token>
 void TreeNode<Token>::SplitNode(const Corpus<Token> &corpus) {
   typedef typename std::vector<Position<Token>>::iterator iter;
-  //typedef typename decltype(array_)::iterator iter;
 
-  assert(is_leaf()); // works only on suffix arrays
-  // TODO
-  // collect counts on top-level words, and populate suffix arrays. This can be done via AddPosition_() on fresh datastructures
+  assert(is_leaf()); // this method works only on suffix arrays
 
   auto comp = [&corpus](const Position<Token> &a, const Position<Token> &b) {
     return a.vid(corpus) < b.vid(corpus);
   };
 
-  // find the end of each section?
   assert(size() > 0);
   std::pair<iter, iter> vid_range;
-  Position<Token> pos = array_[0];
+  Position<Token> pos = array_[0]; // first position with first vid
+
+  // for each top-level word, find the suffix array range and populate individual split arrays
   while(true) {
     vid_range = std::equal_range(array_.begin(), array_.end(), pos, comp);
 
@@ -358,7 +350,7 @@ void TreeNode<Token>::SplitNode(const Corpus<Token> &corpus) {
     children_[pos.vid(corpus)] = new_child;
 
     if(vid_range.second != array_.end())
-      pos = *vid_range.second; // first position with next vid
+      pos = *vid_range.second; // position with next vid
     else
       break;
   }
@@ -394,9 +386,7 @@ void TreeNode<Token>::DebugPrint(const Corpus<Token> &corpus, size_t depth) {
 
   // for suffix arrays (is_leaf=true)
   for(auto p : array_) {
-    std::string surface = p.surface(corpus);
-    Vid vid = p.vid(corpus);
-    std::cerr << spaces << "* '" << surface << "' vid=" << static_cast<int>(vid) << " [sid=" << static_cast<int>(p.sid) << " offset=" << static_cast<int>(p.offset) << "]" << std::endl;
+    std::cerr << spaces << "* [sid=" << static_cast<int>(p.sid) << " offset=" << static_cast<int>(p.offset) << "]" << std::endl;
   }
 }
 
