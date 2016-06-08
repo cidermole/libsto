@@ -60,6 +60,9 @@ public:
   /** Number of token positions spanned in the index. */
   size_t size() const;
 
+  /** Length of lookup sequence, or the number of times narrow() has been called. */
+  size_t depth() const;
+
 private:
   TokenIndex<Token> *index_;
 
@@ -240,11 +243,15 @@ private:
    * O(k + log(n)) operation, with k = TreeNode<Token>::kMaxArraySize
    *
    * Exclusively for adding to a SA (leaf node). Does NOT increment size_.
+   *
+   * depth: distance of TreeNode from the root of this tree, used in splits
    */
-  void AddPosition_(const Sentence<Token> &sent, Offset start);
+  void AddPosition_(const Sentence<Token> &sent, Offset start, size_t depth);
 
-  /** Split this leaf node (suffix array) into a proper TreeNode with children. */
-  void SplitNode(const Corpus<Token> &corpus);
+  /** Split this leaf node (suffix array) into a proper TreeNode with children.
+   * depth: distance of TreeNode from the root of this tree
+   * */
+  void SplitNode(const Corpus<Token> &corpus, Offset depth);
 };
 
 } // namespace sto

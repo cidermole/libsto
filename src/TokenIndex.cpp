@@ -146,6 +146,11 @@ size_t IndexSpan<Token>::size() const {
 }
 
 template<class Token>
+size_t IndexSpan<Token>::depth() const {
+  return sequence_.size();
+}
+
+template<class Token>
 bool IndexSpan<Token>::in_array_() const {
   return tree_path_.back()->is_leaf();
 }
@@ -270,7 +275,8 @@ void TokenIndex<Token>::AddSubsequence_(const Sentence<Token> &sent, Offset star
       // stop after adding to a SA (entry there represents all the remaining depth)
       finished = true;
       // create SA entry
-      cur_span.tree_path_.back()->AddPosition_(sent, start);
+      cur_span.tree_path_.back()->AddPosition_(sent, start, cur_span.depth());
+      // note: cur_span is not entirely in a valid state after this, because a leaf node has been split, but array_path_ is lacking sentinel: spanning full array range
     }
   }
 
@@ -299,7 +305,7 @@ TreeNode<Token>::~TreeNode() {
 }
 
 template<class Token>
-void TreeNode<Token>::AddPosition_(const Sentence<Token> &sent, Offset start) {
+void TreeNode<Token>::AddPosition_(const Sentence<Token> &sent, Offset start, size_t depth) {
   assert(is_leaf()); // Exclusively for adding to a SA (leaf node).
 
   Position<Token> corpus_pos{sent.sid(), start};
@@ -321,18 +327,19 @@ void TreeNode<Token>::AddPosition_(const Sentence<Token> &sent, Offset start) {
   assert(size_ == array_.size());
 
   if(array_.size() > kMaxArraySize)
-    SplitNode(corpus); // suffix array grown too large, split into TreeNode
+    SplitNode(corpus, static_cast<Offset>(depth)); // suffix array grown too large, split into TreeNode
 }
 
 /** Split this leaf node (suffix array) into a proper TreeNode with children. */
 template<class Token>
-void TreeNode<Token>::SplitNode(const Corpus<Token> &corpus) {
+void TreeNode<Token>::SplitNode(const Corpus<Token> &corpus, Offset depth) {
   typedef typename std::vector<Position<Token>>::iterator iter;
 
   assert(is_leaf()); // this method works only on suffix arrays
 
-  auto comp = [&corpus](const Position<Token> &a, const Position<Token> &b) {
-    return a.vid(corpus) < b.vid(corpus);
+  auto comp = [&corpus, depth](const Position<Token> &a, const Position<Token> &b) {
+    // the suffix array at this depth should only contain positions that continue long enough without the sentence ending
+    return a.add(depth, corpus).vid(corpus) < b.add(depth, corpus).vid(corpus);
   };
 
   assert(size() > 0);
@@ -347,7 +354,7 @@ void TreeNode<Token>::SplitNode(const Corpus<Token> &corpus) {
     TreeNode<Token> *new_child = new TreeNode<Token>(kMaxArraySize);
     new_child->array_.insert(new_child->array_.begin(), vid_range.first, vid_range.second);
     new_child->size_ = new_child->array_.size();
-    children_[pos.vid(corpus)] = new_child;
+    children_[pos.add(depth, corpus).vid(corpus)] = new_child;
 
     if(vid_range.second != array_.end())
       pos = *vid_range.second; // position with next vid

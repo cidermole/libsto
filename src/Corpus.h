@@ -133,6 +133,9 @@ public:
 
   std::string surface(const Corpus<Token> &corpus) const;
   Vid vid(const Corpus<Token> &corpus) const;
+
+  /** add offset. */
+  Position add(Offset offset, const Corpus<Token> &corpus) const;
 };
 
 } // namespace sto

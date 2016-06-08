@@ -51,6 +51,7 @@ TEST_F(TokenIndexTests, add_sentence) {
 }
 
 TEST_F(TokenIndexTests, suffix_array_paper_example) {
+  //                                      1       2      3      4      5      6     7
   std::vector<std::string> vocab_id_order{"</s>", "bit", "cat", "dog", "mat", "on", "the"};
   for(auto s : vocab_id_order)
     vocab[s]; // vocabulary insert (in this ID order, so sort by vid is intuitive)
@@ -59,7 +60,7 @@ TEST_F(TokenIndexTests, suffix_array_paper_example) {
   EXPECT_LT(vocab["dog"].vid, vocab["the"].vid);
 
   // '", "'.join(['"'] + 'the dog bit the cat on the mat </s>'.split() + ['"'])
-  //                                      0      1      2      3      4      5     6      7      8
+  //                                     0      1      2      3      4      5     6      7      8
   std::vector<std::string> sent_words = {"the", "dog", "bit", "the", "cat", "on", "the", "mat", "</s>"};
   sentence = AddSentence(sent_words);
   tokenIndex.AddSentence(sentence);
@@ -78,7 +79,7 @@ TEST_F(TokenIndexTests, suffix_array_paper_example) {
   EXPECT_EQ(pos, span[1]) << "verifying token position for 'bit'";
   EXPECT_EQ((Position<SrcToken>{/* sid = */ 0, /* offset = */ 2}), span[1]) << "verifying token position for 'bit'";
 
-  std::vector<size_t>      expect_suffix_array_offset  = { 8,      2,     4,     1,     7,     5,    3,     0,     6 };
+  std::vector<size_t>      expect_suffix_array_offset  = {8,      2,     4,     1,     7,     5,    3,     0,     6 };
   std::vector<std::string> expect_suffix_array_surface = {"</s>", "bit", "cat", "dog", "mat", "on", "the", "the", "the"};
 
   for(size_t i = 0; i < expect_suffix_array_surface.size(); i++) {
@@ -88,6 +89,7 @@ TEST_F(TokenIndexTests, suffix_array_paper_example) {
 }
 
 TEST_F(TokenIndexTests, suffix_array_split) {
+  //                                      1       2      3      4      5      6     7
   std::vector<std::string> vocab_id_order{"</s>", "bit", "cat", "dog", "mat", "on", "the"};
   for(auto s : vocab_id_order)
     vocab[s]; // vocabulary insert (in this ID order, so sort by vid is intuitive)
@@ -95,7 +97,7 @@ TEST_F(TokenIndexTests, suffix_array_split) {
 
   TokenIndex<SrcToken> tokenIndex(corpus, /* maxLeafSize = */ 8);
 
-  //                                      0      1      2      3      4      5     6      7      8
+  //                                     0      1      2      3      4      5     6      7      8
   std::vector<std::string> sent_words = {"the", "dog", "bit", "the", "cat", "on", "the", "mat", "</s>"};
 
   sentence = AddSentence(sent_words);
@@ -108,7 +110,7 @@ TEST_F(TokenIndexTests, suffix_array_split) {
   IndexSpan<SrcToken> span = tokenIndex.span();
   EXPECT_EQ(sent_words.size(), span.size()) << "the Sentence should have added its tokens to the IndexSpan";
 
-  std::vector<size_t>      expect_suffix_array_offset  = { 8,      2,     4,     1,     7,     5,    3,     0,     6 };
+  std::vector<size_t>      expect_suffix_array_offset  = {8,      2,     4,     1,     7,     5,    3,     0,     6 };
   std::vector<std::string> expect_suffix_array_surface = {"</s>", "bit", "cat", "dog", "mat", "on", "the", "the", "the"};
 
   for(size_t i = 0; i < expect_suffix_array_surface.size(); i++) {
@@ -135,6 +137,7 @@ TEST_F(TokenIndexTests, suffix_array_split) {
 }
 
 TEST_F(TokenIndexTests, suffix_array_common_prefix) {
+  //                                      1       2      3      4      5      6     7
   std::vector<std::string> vocab_id_order{"</s>", "bit", "cat", "dog", "mat", "on", "the"};
   for(auto s : vocab_id_order)
     vocab[s]; // vocabulary insert (in this ID order, so sort by vid is intuitive)
@@ -153,6 +156,39 @@ TEST_F(TokenIndexTests, suffix_array_common_prefix) {
 
   Sentence<SrcToken> sentence2 = AddSentence(sent2_words);
   tokenIndex.AddSentence(sentence2);
+
+  tokenIndex.DebugPrint();
+}
+
+TEST_F(TokenIndexTests, suffix_array_common_prefix_the) {
+  //                                      1       2      3      4      5      6     7
+  std::vector<std::string> vocab_id_order{"</s>", "bit", "cat", "dog", "mat", "on", "the"};
+  for(auto s : vocab_id_order)
+    vocab[s]; // vocabulary insert (in this ID order, so sort by vid is intuitive)
+
+
+  TokenIndex<SrcToken> tokenIndex(corpus, /* maxLeafSize = */ 4);
+
+  //                                      0      1      2      3      4      5     6      7      8
+  std::vector<std::string> sent1_words = {"the", "dog", "bit", "the", "cat", "on", "the", "mat", "</s>"};
+
+  sentence = AddSentence(sent1_words);
+  tokenIndex.AddSentence(sentence);
+
+  //                                      0      1      2      3
+  std::vector<std::string> sent2_words = {"the", "dog", "bit", "</s>"};
+
+  Sentence<SrcToken> sentence2 = AddSentence(sent2_words);
+  tokenIndex.AddSentence(sentence2);
+
+  // a leaf </s> attached to 'the' which itself should be split:
+
+  //                                      0      1
+  std::vector<std::string> sent3_words = {"the", "</s>"};
+
+  Sentence<SrcToken> sentence3 = AddSentence(sent3_words);
+  tokenIndex.AddSentence(sentence3);
+
 
   tokenIndex.DebugPrint();
 }
