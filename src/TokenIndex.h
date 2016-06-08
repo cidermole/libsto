@@ -7,6 +7,7 @@
 #ifndef STO_TOKENINDEX_H
 #define STO_TOKENINDEX_H
 
+#include <iostream>
 #include <map>
 #include <vector>
 
@@ -182,7 +183,7 @@ public:
    */
   void AddSentence(const Sentence<Token> &sent);
 
-  void DebugPrint();
+  void DebugPrint(std::ostream &os);
 
 private:
   Corpus<Token> *corpus_;
@@ -226,7 +227,7 @@ public:
    * WARNING: order depends on underlying hash map. */
   Position<Token> AtUnordered(size_t offset);
 
-  void DebugPrint(const Corpus<Token> &corpus, size_t depth = 0);
+  void DebugPrint(std::ostream &os, const Corpus<Token> &corpus, size_t depth = 0);
 
 private:
   ChildMap children_; /** node children, empty if leaf node */

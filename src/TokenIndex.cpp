@@ -246,8 +246,8 @@ void TokenIndex<Token>::AddSentence(const Sentence<Token> &sent) {
 }
 
 template<class Token>
-void TokenIndex<Token>::DebugPrint() {
-  root_->DebugPrint(*corpus_);
+void TokenIndex<Token>::DebugPrint(std::ostream &os) {
+  root_->DebugPrint(os, *corpus_);
 }
 
 template<class Token>
@@ -380,20 +380,20 @@ std::string nspaces(size_t n) {
 }
 
 template<class Token>
-void TreeNode<Token>::DebugPrint(const Corpus<Token> &corpus, size_t depth) {
-  std::string spaces = nspaces(depth * 4);
-  std::cerr << spaces << "TreeNode size=" << size() << " is_leaf=" << (is_leaf() ? "true" : "false") << std::endl;
+void TreeNode<Token>::DebugPrint(std::ostream &os, const Corpus<Token> &corpus, size_t depth) {
+  std::string spaces = nspaces(depth * 2);
+  os << spaces << "TreeNode size=" << size() << " is_leaf=" << (is_leaf() ? "true" : "false") << std::endl;
 
   // for internal TreeNodes (is_leaf=false)
   for(auto e : children_) {
     std::string surface = corpus.vocab()[Token{e->first}];
-    std::cerr << spaces << "* '" << surface << "' vid=" << static_cast<int>(e->first) << " partial_sum=" << static_cast<int>(e->partial_sum) << std::endl;
-    e->second->DebugPrint(corpus, depth + 1);
+    os << spaces << "* '" << surface << "' vid=" << static_cast<int>(e->first) << " partial_sum=" << static_cast<int>(e->partial_sum) << std::endl;
+    e->second->DebugPrint(os, corpus, depth + 1);
   }
 
   // for suffix arrays (is_leaf=true)
   for(auto p : array_) {
-    std::cerr << spaces << "* [sid=" << static_cast<int>(p.sid) << " offset=" << static_cast<int>(p.offset) << "]" << std::endl;
+    os << spaces << "* [sid=" << static_cast<int>(p.sid) << " offset=" << static_cast<int>(p.offset) << "]" << std::endl;
   }
 }
 

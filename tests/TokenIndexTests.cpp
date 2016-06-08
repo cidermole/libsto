@@ -4,6 +4,7 @@
  * Licensed under GNU LGPL Version 2.1, see COPYING *
  ****************************************************/
 
+#include <sstream>
 #include <gtest/gtest.h>
 
 #include "Vocab.h"
@@ -118,7 +119,7 @@ TEST_F(TokenIndexTests, suffix_array_split) {
     EXPECT_EQ(expect_suffix_array_offset[i], span[i].offset) << "verifying offset @ SA position " << i;
   }
 
-  tokenIndex.DebugPrint();
+  //tokenIndex.DebugPrint(std::cerr);
 
   span.narrow(vocab["bit"]);
   EXPECT_EQ(1, span.size()) << "'bit' range size check";
@@ -136,7 +137,7 @@ TEST_F(TokenIndexTests, suffix_array_split) {
   EXPECT_EQ(1, span.size()) << "span size";
 }
 
-TEST_F(TokenIndexTests, suffix_array_common_prefix) {
+TEST_F(TokenIndexTests, tree_common_prefix) {
   //                                      1       2      3      4      5      6     7
   std::vector<std::string> vocab_id_order{"</s>", "bit", "cat", "dog", "mat", "on", "the"};
   for(auto s : vocab_id_order)
@@ -157,10 +158,45 @@ TEST_F(TokenIndexTests, suffix_array_common_prefix) {
   Sentence<SrcToken> sentence1 = AddSentence(sent1_words);
   tokenIndex.AddSentence(sentence1);
 
-  tokenIndex.DebugPrint();
+
+  std::stringstream actual_tree;
+  tokenIndex.DebugPrint(actual_tree);
+
+  // hardcoding the tree structure in ASCII is pretty crude, I know.
+  std::string expected_tree = R"(TreeNode size=13 is_leaf=false
+* '</s>' vid=1 partial_sum=0
+  TreeNode size=2 is_leaf=true
+  * [sid=0 offset=8]
+  * [sid=1 offset=3]
+* 'bit' vid=2 partial_sum=2
+  TreeNode size=2 is_leaf=true
+  * [sid=1 offset=2]
+  * [sid=0 offset=2]
+* 'cat' vid=3 partial_sum=4
+  TreeNode size=1 is_leaf=true
+  * [sid=0 offset=4]
+* 'dog' vid=4 partial_sum=5
+  TreeNode size=2 is_leaf=true
+  * [sid=1 offset=1]
+  * [sid=0 offset=1]
+* 'mat' vid=5 partial_sum=7
+  TreeNode size=1 is_leaf=true
+  * [sid=0 offset=7]
+* 'on' vid=6 partial_sum=8
+  TreeNode size=1 is_leaf=true
+  * [sid=0 offset=5]
+* 'the' vid=7 partial_sum=9
+  TreeNode size=4 is_leaf=true
+  * [sid=0 offset=3]
+  * [sid=1 offset=0]
+  * [sid=0 offset=0]
+  * [sid=0 offset=6]
+)";
+
+  EXPECT_EQ(expected_tree, actual_tree.str()) << "tree structure";
 }
 
-TEST_F(TokenIndexTests, suffix_array_common_prefix_the) {
+TEST_F(TokenIndexTests, tree_2level_common_prefix_the) {
   //                                      1       2      3      4      5      6     7
   std::vector<std::string> vocab_id_order{"</s>", "bit", "cat", "dog", "mat", "on", "the"};
   for(auto s : vocab_id_order)
@@ -191,5 +227,49 @@ TEST_F(TokenIndexTests, suffix_array_common_prefix_the) {
   tokenIndex.AddSentence(sentence2);
 
 
-  tokenIndex.DebugPrint();
+  std::stringstream actual_tree;
+  tokenIndex.DebugPrint(actual_tree);
+
+  // hardcoding the tree structure in ASCII is pretty crude, I know.
+  std::string expected_tree = R"(TreeNode size=15 is_leaf=false
+* '</s>' vid=1 partial_sum=0
+  TreeNode size=3 is_leaf=true
+  * [sid=0 offset=8]
+  * [sid=1 offset=3]
+  * [sid=2 offset=1]
+* 'bit' vid=2 partial_sum=3
+  TreeNode size=2 is_leaf=true
+  * [sid=1 offset=2]
+  * [sid=0 offset=2]
+* 'cat' vid=3 partial_sum=5
+  TreeNode size=1 is_leaf=true
+  * [sid=0 offset=4]
+* 'dog' vid=4 partial_sum=6
+  TreeNode size=2 is_leaf=true
+  * [sid=1 offset=1]
+  * [sid=0 offset=1]
+* 'mat' vid=5 partial_sum=8
+  TreeNode size=1 is_leaf=true
+  * [sid=0 offset=7]
+* 'on' vid=6 partial_sum=9
+  TreeNode size=1 is_leaf=true
+  * [sid=0 offset=5]
+* 'the' vid=7 partial_sum=10
+  TreeNode size=5 is_leaf=false
+  * '</s>' vid=1 partial_sum=0
+    TreeNode size=1 is_leaf=true
+    * [sid=2 offset=0]
+  * 'cat' vid=3 partial_sum=1
+    TreeNode size=1 is_leaf=true
+    * [sid=0 offset=3]
+  * 'dog' vid=4 partial_sum=2
+    TreeNode size=2 is_leaf=true
+    * [sid=1 offset=0]
+    * [sid=0 offset=0]
+  * 'mat' vid=5 partial_sum=4
+    TreeNode size=1 is_leaf=true
+    * [sid=0 offset=6]
+)";
+
+  EXPECT_EQ(expected_tree, actual_tree.str()) << "tree structure";
 }
