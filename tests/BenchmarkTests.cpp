@@ -12,6 +12,8 @@
 #include <sstream>
 #include <gtest/gtest.h>
 
+#include <map>
+
 #include "Vocab.h"
 #include "Corpus.h"
 #include "TokenIndex.h"
@@ -113,4 +115,12 @@ TEST_F(BenchmarkTests, index_100k) {
     }
   }, "build_index");
   util::PrintUsage(std::cerr);
+}
+
+TEST_F(BenchmarkTests, map_hack) {
+  std::map<int, int> m;
+  m[1] = 1;
+  auto it = m.find(1);
+  const_cast<int&>(it->first) = 2;
+  EXPECT_EQ(1, m[2]);
 }
