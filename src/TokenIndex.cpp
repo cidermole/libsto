@@ -306,7 +306,7 @@ void TokenIndex<Token>::AddSubsequence_(const Sentence<Token> &sent, Offset star
       // stop after adding to a SA (entry there represents all the remaining depth)
       finished = true;
       // create SA entry
-      cur_span.tree_path_.back()->AddPosition_(sent, start, cur_span.depth());
+      cur_span.tree_path_.back()->AddPosition_(sent, start, cur_span.tree_path_.size() - 1 /* why not equivalent? */ /* BAD: cur_span.depth() - (span_size ? 1 : 0)*/); // depth()-1: e.g. for the root level SA split, we've got depth()==1 (except if span_size==0) but need to look at first SA entry position (at offset 0)
       // note: cur_span is not entirely in a valid state after this, because a leaf node has been split, but array_path_ is lacking sentinel: spanning full array range
     }
   }
