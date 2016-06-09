@@ -48,6 +48,11 @@ std::string Vocab<Token>::at(const Token token) const {
 }
 
 template<class Token>
+std::string Vocab<Token>::at_vid(Vid vid) const {
+  return id2surface_.at(vid);
+}
+
+template<class Token>
 Token Vocab<Token>::at(const std::string &surface) const {
   return Token{surface2id_.at(surface)};
 }

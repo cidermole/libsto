@@ -11,5 +11,5 @@ set(SOURCES
         TokenIndex.cpp
         TokenIndex.h
         qhashmap.hpp
-)
+        util/Time.h util/usage.cpp util/usage.h)
 add_library(src_objs OBJECT ${SOURCES})  # no real lib, just collection of objs

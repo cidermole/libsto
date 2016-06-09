@@ -19,6 +19,8 @@ namespace sto {
 template<class Token>
 class Vocab {
 public:
+  typedef typename Token::Vid Vid;
+
   /** Create empty vocabulary */
   Vocab();
 
@@ -34,6 +36,9 @@ public:
   /** Returns the surface form of `token`. */
   std::string at(const Token token) const;
 
+  // for debug
+  std::string at_vid(const Vid vid) const;
+
   /** Returns the Token for the given `surface` form. */
   Token at(const std::string &surface) const;
 
@@ -41,8 +46,6 @@ public:
   Token end() const;
 
 private:
-  typedef typename Token::Vid Vid;
-
   std::unordered_map<Vid, std::string> id2surface_;
   std::unordered_map<std::string, Vid> surface2id_;
   Vid size_;
