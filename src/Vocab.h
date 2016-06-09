@@ -37,6 +37,9 @@ public:
   /** Returns the Token for the given `surface` form. */
   Token at(const std::string &surface) const;
 
+  Token begin() const;
+  Token end() const;
+
 private:
   typedef typename Token::Vid Vid;
 

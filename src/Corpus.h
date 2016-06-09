@@ -125,6 +125,8 @@ public:
   Sid sid; /** sentence ID */
   Offset offset; /** offset within sentence */
 
+  Position(Sid s, Offset o): sid(s), offset(o) {}
+
   /** like operator<(this, other) */
   bool compare(const Position<Token> &other, const Corpus<Token> &corpus) const;
 

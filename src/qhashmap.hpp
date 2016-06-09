@@ -422,35 +422,28 @@ QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::FindPartialSumBound
 template<typename KeyType, typename ValueType, typename AuxType, class KeyTraits, class Allocator>
 typename QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::Entry*
 QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::PartialSumUpperBound(Entry* first, Entry* last, const AuxType& val) {
-  Entry *it, *it_old;
-  size_t count, step;
+  size_t count;
 
   assert((map_ <= first && first < map_end()) && (map_ <= last && last <= map_end()) && (first < last)); // valid ends, non-zero size range
 
   // all positioning in capacity units (all map_ slots, not just occupied entries)
   count = last - first; // rough estimate
 
-  // see reference impl of upper_bound() at http://www.cplusplus.com/reference/algorithm/upper_bound/
+  Entry *mid;
   while(count > 0) {
-    it = first;
-    step = count / 2;
-    it_old = it;
-    it += step; it = Prev(it+1); // rough advance(it, step)
-
-    //it = (it == nullptr) ? map_end() : it; // guard against Next()'s implementation of end??
-    assert(it != nullptr);
-
-    step = it - it_old; // actually taken step size
-    if(step == static_cast<size_t>(-1))
-      return last; // if the range shrunk due to a consecutive hole at the end (reached into via ++it), we need to return
-
-    if(!(val < it->partial_sum)) {
-      first = ++it;
-      count -= step + 1;
+    count = last - first; // rough estimate
+    mid = first + count / 2;
+    mid = Prev(mid + 1); assert(mid != nullptr);
+    if(!(val < mid->partial_sum)) {
+      first = Next(mid);
+      first = (first != nullptr) ? first : map_end(); // really, Next() should return map_end(), not nullptr to be useful...
+      if(first >= last) // due to holes, we may have stepped over the end of the range.
+        return last;
     } else {
-      count = step;
+      last = mid;
     }
   }
+
   assert(map_ <= first && first <= map_end()); // note: may include map_end()
   return first;
 }

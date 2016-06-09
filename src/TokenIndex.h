@@ -58,6 +58,12 @@ public:
    */
   Position<Token> operator[](size_t rel);
 
+  /**
+   * Access to a position within the selected span. As opposed to operator[],
+   * this guarantees the order, but is O(V * log(n/k)) with vocabulary size V.
+   */
+  Position<Token> At(size_t rel);
+
   /** Number of token positions spanned in the index. */
   size_t size() const;
 
@@ -138,6 +144,12 @@ public:
    * of the underlying hash map.
    */
   Position<Token> AtUnordered(size_t offset);
+
+  /**
+   * Access to a position within the selected span. As opposed to AtUnordered(),
+   * this guarantees the order, but is O(V) with vocabulary size at each node.
+   */
+  Position<Token> At(size_t offset, const Vocab<Token> &vocab);
 
 private:
   typedef typename ChildMap::Entry Entry;
@@ -226,6 +238,12 @@ public:
    * in O(log(n/k)) with with k = TreeNode<Token>::kMaxArraySize.
    * WARNING: order depends on underlying hash map. */
   Position<Token> AtUnordered(size_t offset);
+
+  /**
+   * Access to a position within the selected span. As opposed to operator[],
+   * this guarantees the order, but is O(V) with vocabulary size.
+   */
+  Position<Token> At(size_t offset, const Vocab<Token> &vocab);
 
   void DebugPrint(std::ostream &os, const Corpus<Token> &corpus, size_t depth = 0);
 

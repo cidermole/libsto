@@ -34,6 +34,9 @@ struct TokenIndexTests : testing::Test {
     return corpus.sentence(corpus.size() - 1);
   }
 
+  void fill_tree_2level_common_prefix_the(TokenIndex<SrcToken> &tokenIndex);
+  void tree_2level_common_prefix_the_m(size_t maxLeafSize);
+
   TokenIndexTests() : corpus(vocab), tokenIndex(corpus) {}
   virtual ~TokenIndexTests() {}
 };
@@ -196,15 +199,12 @@ TEST_F(TokenIndexTests, tree_common_prefix) {
   EXPECT_EQ(expected_tree, actual_tree.str()) << "tree structure";
 }
 
-TEST_F(TokenIndexTests, tree_2level_common_prefix_the) {
+void TokenIndexTests::fill_tree_2level_common_prefix_the(TokenIndex<SrcToken> &tokenIndex) {
+
   //                                      1       2      3      4      5      6     7
   std::vector<std::string> vocab_id_order{"</s>", "bit", "cat", "dog", "mat", "on", "the"};
   for(auto s : vocab_id_order)
     vocab[s]; // vocabulary insert (in this ID order, so sort by vid is intuitive)
-
-
-  // to do: check invariance: maxLeafSize = 4 and maxLeafSize = 5 (without the 'the' split) should behave exactly the same (they do at this time.)
-  TokenIndex<SrcToken> tokenIndex(corpus, /* maxLeafSize = */ 4);
 
   //                                      0      1      2      3      4      5     6      7      8
   std::vector<std::string> sent0_words = {"the", "dog", "bit", "the", "cat", "on", "the", "mat", "</s>"};
@@ -225,7 +225,11 @@ TEST_F(TokenIndexTests, tree_2level_common_prefix_the) {
 
   Sentence<SrcToken> sentence2 = AddSentence(sent2_words);
   tokenIndex.AddSentence(sentence2);
+}
 
+TEST_F(TokenIndexTests, tree_2level_common_prefix_the) {
+  TokenIndex<SrcToken> tokenIndex(corpus, /* maxLeafSize = */ 4);
+  fill_tree_2level_common_prefix_the(tokenIndex);
 
   std::stringstream actual_tree;
   tokenIndex.DebugPrint(actual_tree);
@@ -272,4 +276,50 @@ TEST_F(TokenIndexTests, tree_2level_common_prefix_the) {
 )";
 
   EXPECT_EQ(expected_tree, actual_tree.str()) << "tree structure";
+}
+
+void TokenIndexTests::tree_2level_common_prefix_the_m(size_t maxLeafSize) {
+  TokenIndex<SrcToken> tokenIndex(corpus, maxLeafSize);
+  fill_tree_2level_common_prefix_the(tokenIndex);
+
+  std::vector<Position<SrcToken>> expected_pos = {
+      {0, 8},
+      {1, 3},
+      {2, 1},
+      {1, 2},
+      {0, 2},
+      {0, 4},
+      {1, 1},
+      {0, 1},
+      {0, 7},
+      {0, 5},
+      {2, 0},
+      {0, 3},
+      {1, 0},
+      {0, 0},
+      {0, 6}
+  };
+
+  std::vector<Position<SrcToken>> actual_pos;
+  IndexSpan<SrcToken> span = tokenIndex.span();
+  // IndexSpan could support iteration...
+  for(size_t i = 0; i < span.size(); i++)
+    actual_pos.push_back(span[i]);
+
+  EXPECT_EQ(expected_pos, actual_pos) << "flattened suffix array equality with maxLeafSize = " << maxLeafSize;
+}
+
+
+TEST_F(TokenIndexTests, tree_2level_common_prefix_the_4) {
+  tree_2level_common_prefix_the_m(/* maxLeafSize = */ 4);
+}
+
+TEST_F(TokenIndexTests, tree_2level_common_prefix_the_5) {
+  // check invariance: maxLeafSize = 4 and maxLeafSize = 5 (without the 'the' split) should behave exactly the same
+  tree_2level_common_prefix_the_m(/* maxLeafSize = */ 5);
+}
+
+TEST_F(TokenIndexTests, tree_2level_common_prefix_the_15) {
+  // check invariance: maxLeafSize = 15 (without any split; common SA) should behave exactly the same
+  tree_2level_common_prefix_the_m(/* maxLeafSize = */ 15);
 }

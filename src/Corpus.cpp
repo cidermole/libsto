@@ -158,7 +158,7 @@ typename Position<Token>::Vid Position<Token>::vid(const Corpus<Token> &corpus) 
 template<class Token>
 Position<Token> Position<Token>::add(Offset offset, const Corpus<Token> &corpus) const {
   assert(static_cast<Offset>(corpus.sentence(this->sid).size()) - this->offset >= offset + 1);
-  return Position{this->sid, this->offset + offset};
+  return Position(this->sid, this->offset + offset);
 }
 
 // explicit template instantiation

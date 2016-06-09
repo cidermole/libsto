@@ -30,6 +30,10 @@ public:
   bool operator==(const SrcToken &other) const { return vid == other.vid; }
   bool operator!=(const SrcToken &other) const { return vid != other.vid; }
   bool operator<(const SrcToken &other) const { return vid < other.vid; }
+
+  // these two make us iterable
+  SrcToken &operator++() { ++vid; return *this; }
+  Vid &operator*() { return vid; }
 };
 struct TrgToken {
   typedef vid_t Vid; /** vocabulary ID type */
@@ -46,6 +50,10 @@ public:
   bool operator==(const TrgToken &other) const { return vid == other.vid; }
   bool operator!=(const TrgToken &other) const { return vid != other.vid; }
   bool operator<(const TrgToken &other) const { return vid < other.vid; }
+
+  // these two make us iterable
+  TrgToken &operator++() { ++vid; return *this; }
+  Vid &operator*() { return vid; }
 };
 
 } // namespace sto

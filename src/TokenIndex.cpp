@@ -135,6 +135,15 @@ Position<Token> IndexSpan<Token>::operator[](size_t rel) {
 }
 
 template<class Token>
+Position<Token> IndexSpan<Token>::At(size_t rel) {
+  assert(rel < size());
+
+  // may need to traverse the tree down, using bin search on the cumulative counts
+  // upper_bound()-1 of rel inside the list of our children
+  return tree_path_.back()->At(rel, index_->corpus()->vocab());
+}
+
+template<class Token>
 size_t IndexSpan<Token>::size() const {
   if(in_array_()) {
     assert(array_path_.size() > 0);
@@ -203,6 +212,28 @@ Position<Token> TreeChildMap<Token>::AtUnordered(size_t offset) {
   FindBoundUnordered(offset, vid, child_offset);
   TreeNode<Token> *child = operator[](vid);
   return child->AtUnordered(child_offset);
+}
+
+template<class Token>
+Position<Token> TreeChildMap<Token>::At(size_t offset, const Vocab<Token> &vocab) {
+  Entry *prev = nullptr, *cur;
+
+  for(Token t : vocab) {
+    // iterate through contained vids in order
+    if((cur = children_.Lookup(t.vid, /* insert = */ false)) == nullptr)
+      continue;
+
+    // look for upper_bound position
+    if(cur->partial_sum > offset)
+      break;
+
+    prev = cur;
+  }
+
+  assert(prev != nullptr);
+  size_t child_offset = offset - prev->partial_sum;
+  assert(child_offset < prev->size());
+  return prev->second->At(child_offset, vocab);
 }
 
 template<class Token>
@@ -371,6 +402,14 @@ Position<Token> TreeNode<Token>::AtUnordered(size_t offset) {
     return array_[offset];
   else
     return children_.AtUnordered(offset);
+}
+
+template<class Token>
+Position<Token> TreeNode<Token>::At(size_t offset, const Vocab<Token> &vocab) {
+  if(is_leaf())
+    return array_[offset];
+  else
+    return children_.At(offset, vocab);
 }
 
 std::string nspaces(size_t n) {

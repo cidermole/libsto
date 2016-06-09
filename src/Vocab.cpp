@@ -52,6 +52,15 @@ Token Vocab<Token>::at(const std::string &surface) const {
   return Token{surface2id_.at(surface)};
 }
 
+template<class Token>
+Token Vocab<Token>::begin() const {
+  return Token{1};
+}
+
+template<class Token>
+Token Vocab<Token>::end() const {
+  return Token{size_};
+}
 
 struct UGVocabHeader {
   uint32_t size; /** size of vocabulary (and index) */
