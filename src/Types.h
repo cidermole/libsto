@@ -22,7 +22,7 @@ struct SrcToken {
   Vid vid; /** vocabulary ID */
 
   /** construct invalid token */
-  SrcToken(): vid(0) {}
+  constexpr SrcToken(): vid(0) {}
 
   SrcToken(Vid v): vid(v) {}
 
@@ -42,7 +42,7 @@ struct TrgToken {
   Vid vid; /** vocabulary ID */
 
   /** construct invalid token */
-  TrgToken(): vid(0) {}
+  constexpr TrgToken(): vid(0) {}
 
   TrgToken(Vid v): vid(v) {}
 

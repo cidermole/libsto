@@ -106,7 +106,7 @@ struct TreeChildMapKeyTraits {
     return a == b;
   }
 
-  static Vid null() {
+  static constexpr Vid null() {
     return Token().vid; // invalid Token VID
   }
 };
