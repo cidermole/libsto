@@ -19,7 +19,6 @@ struct SrcToken {
   typedef vid_t Vid; /** vocabulary ID type */
   static constexpr Vid kInvalidVid = 0;
 
-public:
   Vid vid; /** vocabulary ID */
 
   /** construct invalid token */
@@ -35,11 +34,11 @@ public:
   SrcToken &operator++() { ++vid; return *this; }
   Vid &operator*() { return vid; }
 };
+
 struct TrgToken {
   typedef vid_t Vid; /** vocabulary ID type */
   static constexpr Vid kInvalidVid = 0;
 
-public:
   Vid vid; /** vocabulary ID */
 
   /** construct invalid token */
