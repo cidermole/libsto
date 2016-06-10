@@ -73,7 +73,7 @@ class RBTree {
     KeyType key;
 
     size_t partial_sum; /** size sum of this node + its children */
-    size_t size; /** size of this node only */
+    size_t own_size; /** size of this node only */
     ValueType value;
 
   private:
@@ -82,9 +82,9 @@ class RBTree {
     Node *right;
     Color color;
 
-    Node(Node *p, Node *l, Node *r, Color c, KeyType k): partial_sum(0), size(0), value(), parent(p), left(l), right(r), color(c), key(k) {}
+    Node(Node *p, Node *l, Node *r, Color c, KeyType k): partial_sum(0), own_size(0), value(), parent(p), left(l), right(r), color(c), key(k) {}
 
-    Node(): partial_sum(0), size(0), value(), parent(nullptr), left(nullptr), right(nullptr) {}
+    Node(): partial_sum(0), own_size(0), value(), parent(nullptr), left(nullptr), right(nullptr) {}
 
     friend class RBTree<KeyType, ValueType>;
   };
@@ -94,7 +94,7 @@ class RBTree {
 
   /** update node's and ancestors' partial_sums */
   inline void AddSize(Node *node, size_t add_size) {
-    node->size += add_size;
+    node->own_size += add_size;
 
     Node *n = node;
     while(!IsNil(n)) {
@@ -114,11 +114,11 @@ class RBTree {
       // to do: to work with 0-sized nodes, this should be upper_bound style!
       if(offset < node->left->partial_sum) {
         node = node->left;
-      } else if(offset < node->left->partial_sum + node->size) {
+      } else if(offset < node->left->partial_sum + node->own_size) {
         offset -= node->left->partial_sum;
         return node;
-      } else { // offset < node->left->partial_sum + node->size + node->right->partial_sum == node->partial_sum
-        offset -= node->left->partial_sum + node->size;
+      } else { // offset < node->left->partial_sum + node->own_size + node->right->partial_sum == node->partial_sum
+        offset -= node->left->partial_sum + node->own_size;
         node = node->right;
       }
     }
@@ -190,7 +190,7 @@ class RBTree {
     ReplaceChild(node, child);
     SetRight(node, child->left);
     SetLeft(child, node);
-    node->partial_sum = node->size + node->left->partial_sum + node->right->partial_sum;
+    node->partial_sum = node->own_size + node->left->partial_sum + node->right->partial_sum;
     std::swap(node->color, child->color);
     return child;
   }
@@ -201,7 +201,7 @@ class RBTree {
     ReplaceChild(node, child);
     SetLeft(node, child->right);
     SetRight(child, node);
-    node->partial_sum = node->size + node->left->partial_sum + node->right->partial_sum;
+    node->partial_sum = node->own_size + node->left->partial_sum + node->right->partial_sum;
     std::swap(node->color, child->color);
     return child;
   }

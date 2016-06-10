@@ -188,10 +188,8 @@ TEST_F(BenchmarkTests, index_10k) {
   }, "query_index");
 }
 
-TEST_F(BenchmarkTests, map_hack) {
-  std::map<int, int> m;
-  m[1] = 1;
-  auto it = m.find(1);
-  const_cast<int&>(it->first) = 2;
-  EXPECT_EQ(1, m[2]);
+#include "util/rbtree.hpp"
+
+TEST_F(BenchmarkTests, tree_tests) {
+  RBTree<int, int> tree;
 }
