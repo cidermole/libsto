@@ -124,6 +124,7 @@ public:
 
   Sid sid; /** sentence ID */
   Offset offset; /** offset within sentence */
+  // TODO: size_t offset() {}, offset_ private. (saves us from casting all the time)
 
   Position(Sid s, Offset o): sid(s), offset(o) {}
 
@@ -135,6 +136,7 @@ public:
 
   std::string surface(const Corpus<Token> &corpus) const;
   Vid vid(const Corpus<Token> &corpus) const;
+  Token token(const Corpus<Token> &corpus) const;
 
   /** add offset. */
   Position add(Offset offset, const Corpus<Token> &corpus) const;

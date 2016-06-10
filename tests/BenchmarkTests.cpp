@@ -10,9 +10,9 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <gtest/gtest.h>
-
+#include <random>
 #include <map>
+#include <gtest/gtest.h>
 
 #include "Vocab.h"
 #include "Corpus.h"
@@ -27,7 +27,7 @@ using namespace sto;
  * Test Fixture.
  */
 struct BenchmarkTests : testing::Test {
-
+  void create_random_queries(TokenIndex<SrcToken> &tokenIndex, std::vector<std::vector<SrcToken>> &queries, size_t num = 100000);
 };
 
 /**
@@ -79,7 +79,28 @@ TEST_F(BenchmarkTests, asdf) {
   std::cerr << "[size=" << corpus.sentence(0).size() << "] " << corpus.sentence(0).surface() << std::endl;
 }
 
-TEST_F(BenchmarkTests, index_100k) {
+void BenchmarkTests::create_random_queries(TokenIndex<SrcToken> &tokenIndex, std::vector<std::vector<SrcToken>> &queries, size_t num) {
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  IndexSpan<SrcToken> span = tokenIndex.span();
+  std::uniform_int_distribution<size_t> dist(0, span.size()-1); // spans all corpus positions
+
+  for(size_t i = 0; i < num; i++) {
+    // pick corpus positions at random
+    Position<SrcToken> pos = span[dist(gen)];
+    Sentence<SrcToken> sent = tokenIndex.corpus()->sentence(pos.sid);
+
+    std::uniform_int_distribution<size_t> len_dist(1, std::min<size_t>(5, sent.size() - static_cast<size_t>(pos.offset)));
+    size_t len = len_dist(gen);
+    std::vector<SrcToken> query;
+    for(size_t j = 0; j < len; j++)
+      query.push_back(pos.add(j, *tokenIndex.corpus()).token(*tokenIndex.corpus()));
+
+    queries.push_back(query);
+  }
+}
+
+TEST_F(BenchmarkTests, index_10k) {
   Vocab<SrcToken> vocab;
   Corpus<SrcToken> corpus(vocab);
 
@@ -87,15 +108,18 @@ TEST_F(BenchmarkTests, index_100k) {
   const size_t nlines = 10000;
 
   /*
+   * $ wc /tmp/ep.10k
+   * 10000  278881 1543417 /tmp/ep.10k
+   *
    * $ wc /tmp/ep.100k
    * 100000  2795109 15470337 /tmp/ep.100k
    *
    * 100 k lines, 2.8 M tokens
    */
-  static_assert(sizeof(SrcToken) == 4); // -> ~ 10 MB Corpus track
+  static_assert(sizeof(SrcToken) == 4); // -> ~ 1 MB Corpus track (ep.10k)
 
   // Sid (4), Offset (1) is padded up in the struct.
-  static_assert(sizeof(Position<SrcToken>) == 8); // -> ~20 MB TokenIndex, if purely SA based.
+  static_assert(sizeof(Position<SrcToken>) == 8); // -> ~2 MB TokenIndex, if purely SA based (ep.10k)
 
   util::PrintUsage(std::cerr);
 
@@ -104,7 +128,7 @@ TEST_F(BenchmarkTests, index_100k) {
   }, "read");
   util::PrintUsage(std::cerr);
 
-  TokenIndex<SrcToken> tokenIndex(corpus, /* maxLeafSize = */ 100000);
+  TokenIndex<SrcToken> tokenIndex(corpus, /* maxLeafSize = */ 100000); // will lead to single split with ep.10k
 
   // TODO: </s> sentinels
   benchmark_time([&corpus, &tokenIndex](){
@@ -115,6 +139,17 @@ TEST_F(BenchmarkTests, index_100k) {
     }
   }, "build_index");
   util::PrintUsage(std::cerr);
+
+  std::vector<std::vector<SrcToken>> queries;
+  create_random_queries(tokenIndex, queries, /* num = */ 1000000);
+
+  benchmark_time([&corpus, &tokenIndex, &queries](){
+    for(auto query : queries) {
+      IndexSpan<SrcToken> span = tokenIndex.span();
+      for(auto token : query)
+        EXPECT_GT(span.narrow(token), 0) << "queries for existing locations must succeed"; // since we just randomly sampled them, they must be in the corpus.
+    }
+  }, "query_index");
 }
 
 TEST_F(BenchmarkTests, map_hack) {
