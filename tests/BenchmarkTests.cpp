@@ -167,12 +167,23 @@ TEST_F(BenchmarkTests, index_10k) {
 
   std::vector<std::vector<SrcToken>> queries;
   create_random_queries(tokenIndex, queries, /* num = */ 1000000);
+  size_t sample = 1000;
 
-  benchmark_time([&corpus, &tokenIndex, &queries](){
+  benchmark_time([&corpus, &tokenIndex, &queries, sample](){
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    size_t dummy = 0;
+
     for(auto query : queries) {
       IndexSpan<SrcToken> span = tokenIndex.span();
       for(auto token : query)
         EXPECT_GT(span.narrow(token), 0) << "queries for existing locations must succeed"; // since we just randomly sampled them, they must be in the corpus.
+
+      // at each query span, sample multiple occurrences from random locations
+      std::uniform_int_distribution<size_t> sample_dist(0, span.size());
+      size_t nsamples = std::min(sample, span.size());
+      for(size_t i = 0; i < nsamples; i++)
+        dummy += span[sample_dist(gen)].offset;
     }
   }, "query_index");
 }
