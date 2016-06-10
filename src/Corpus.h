@@ -21,6 +21,8 @@ template<class Token> class Sentence;
 
 /**
  * Memory-mapped corpus.
+ * Last token of each sentence must be the EOS symbol </s> for TokenIndex to work correctly.
+ * TODO: encode </s> as a static const member somewhere.
  *
  * Read-only for now.
  */
@@ -47,9 +49,10 @@ public:
   // should be friended to Sentence
   //Vocab<Token> *vocab() { return vocab_; }
 
+  /** retrieve Sentence, a lightweight reference to a sentence's location. Last token is the EOS symbol </s>. */
   Sentence<Token> sentence(Sid sid) const;
 
-  /** add a sentence to the dynamic part. */
+  /** add a sentence to the dynamic part. Last token must be the EOS symbol </s> */
   void AddSentence(const std::vector<Token> &sent);
 
   const Vocab<Token> &vocab() const { return *vocab_; }

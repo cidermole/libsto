@@ -184,13 +184,12 @@ typename TreeChildMap<Token>::Iterator TreeChildMap<Token>::find(Vid vid) {
   return children_.find(vid);
 }
 
-/** Update the size partial sums of our children after vid. */
 template<class Token>
-void TreeChildMap<Token>::UpdateChildSizeSums(Vid vid) {
+size_t TreeChildMap<Token>::UpdateChildSizeSums(Vid vid) {
   Entry *entry = (vid != Token::kInvalidVid) ? children_.Lookup(vid, /* insert = */ false) : children_.Start();
   assert(entry != nullptr); // assert found
 
-  children_.UpdatePartialSums(entry);
+  return children_.UpdatePartialSums(entry);
 
   /*
    * we could replace UpdatePartialSums() with member code here:
@@ -242,9 +241,18 @@ void TreeChildMap<Token>::FindBoundUnordered(size_t offset, Vid &vid, size_t &ch
   vid = entry->first;
   child_offset = offset - entry->partial_sum;
 
-  // implicit trailing </s> entries? (if upper is beyond the last child's size)
-  // but wait. that should be included in vocab as sentinel. period.
-  //if(child_offset > )
+  /*
+   * There is a Heisenbug, probably somewhere in UpdateChildSizeSums(), which may manifest itself here.
+   *
+   * IndexSpan::operator[](40866)
+   * failed in FindBoundUnordered().
+   *
+   * AtUnordered()
+   * [40866] -> vid 14, child_offset 18989 (size_ == 18990 so OK).
+   *   [18989] -> vid 8189, child_offset 1 (size_ == 1??? BAD).
+   *
+   * added an  assert(sum == (*tp)->size())  in AddSubsequence_() but I can't seem to reproduce it anymore.
+   */
   assert(child_offset < entry->size());
 }
 
@@ -314,9 +322,13 @@ void TokenIndex<Token>::AddSubsequence_(const Sentence<Token> &sent, Offset star
   // update partial sums of cumulative counts
   Offset i = start;
   auto tp = cur_span.tree_path_.begin();
-  for(; i < sent.size() && tp != cur_span.tree_path_.end(); ++i, ++tp)
-    if(!(*tp)->is_leaf())
-      (*tp)->children_.UpdateChildSizeSums(sent[i].vid);
+  for(; i < sent.size() && tp != cur_span.tree_path_.end(); ++i, ++tp) {
+    if(!(*tp)->is_leaf()) {
+      //size_t sum = (*tp)->children_.UpdateChildSizeSums(sent[i].vid);
+      size_t sum = (*tp)->children_.UpdateChildSizeSums(); // returns sum(size of children)
+      assert(sum == (*tp)->size()); // ensure sum(size of children) agrees with the size member at this level
+    }
+  }
 }
 
 // explicit template instantiation

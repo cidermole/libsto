@@ -135,8 +135,8 @@ public:
   /** returns iterator to specified element, or end() if not found. */
   Iterator find(Vid vid);
 
-  /** Update the size partial sums of our children after vid. Default is update everything. */
-  void UpdateChildSizeSums(Vid vid = Token::kInvalidVid);
+  /** Update the size partial sums of our children after vid. Default is update everything. Returns total sum of children. */
+  size_t UpdateChildSizeSums(Vid vid = Token::kInvalidVid);
 
   /**
    * random access into the spanned range.

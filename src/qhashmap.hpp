@@ -113,8 +113,8 @@ public:
     std::swap(occupancy_, other.occupancy_);
   }
 
-  /** update partial sums after the entry 'from' just modified/inserted. */
-  void UpdatePartialSums(Entry* from);
+  /** update partial sums after the entry 'from' just modified/inserted. returns total sum of children. */
+  size_t UpdatePartialSums(Entry* from);
 
   /**
    * like upper_bound()-1 search on a hash-ordered array of partial_sums.
@@ -401,13 +401,15 @@ inline void QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::Resize(
 
 /** update partial sums after the entry 'from' just modified/inserted. */
 template<typename KeyType, typename ValueType, typename AuxType, class KeyTraits, class Allocator>
-void QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::UpdatePartialSums(Entry* from) {
+size_t QHashMap<KeyType, ValueType, AuxType, KeyTraits, Allocator>::UpdatePartialSums(Entry* from) {
   size_t partial_sum = from->partial_sum;
 
   for(Entry* p = from; p != nullptr; p = Next(p)) {
     p->partial_sum = partial_sum;
     partial_sum += p->size();
   }
+
+  return partial_sum; // partial_sum of all == total sum here
 }
 
 template<typename KeyType, typename ValueType, typename AuxType, class KeyTraits, class Allocator>

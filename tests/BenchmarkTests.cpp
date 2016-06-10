@@ -60,11 +60,15 @@ void ReadTextFile(Corpus<SrcToken> &corpus, Vocab<SrcToken> &vocab, std::string 
 
   assert(ifs.good());
 
-  ProcessTextFileLines(ifs, [&corpus, &vocab](std::vector<std::string> &words) {
+  // ensure </s> exists in vocab, get its vid
+  SrcToken eos = vocab["</s>"];
+
+  ProcessTextFileLines(ifs, [&corpus, &vocab, eos](std::vector<std::string> &words) {
     assert(words.size() <= static_cast<size_t>(static_cast<Corpus<SrcToken>::Offset>(-1))); // ensure sentence length fits
     std::vector<SrcToken> sent;
     for(auto w : words)
       sent.push_back(vocab[w]);
+    sent.push_back(eos);
     corpus.AddSentence(sent);
   }, nlines);
 }
@@ -77,6 +81,12 @@ TEST_F(BenchmarkTests, asdf) {
   Corpus<SrcToken> corpus(vocab);
   ReadTextFile(corpus, vocab, kTextFile, /* nlines = */ 1);
   std::cerr << "[size=" << corpus.sentence(0).size() << "] " << corpus.sentence(0).surface() << std::endl;
+
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<size_t> len_dist(1,0);
+  size_t i = len_dist(gen);
+  std::cerr << "len_dist(1,0) sampled = " << i << std::endl;
 }
 
 void BenchmarkTests::create_random_queries(TokenIndex<SrcToken> &tokenIndex, std::vector<std::vector<SrcToken>> &queries, size_t num) {
@@ -90,7 +100,16 @@ void BenchmarkTests::create_random_queries(TokenIndex<SrcToken> &tokenIndex, std
     Position<SrcToken> pos = span[dist(gen)];
     Sentence<SrcToken> sent = tokenIndex.corpus()->sentence(pos.sid);
 
-    std::uniform_int_distribution<size_t> len_dist(1, std::min<size_t>(5, sent.size() - static_cast<size_t>(pos.offset)));
+    assert(sent.size() > 1); // because no empty sents, and </s>
+    assert(pos.offset < sent.size());
+    size_t max_len = std::min<size_t>(5, sent.size() - static_cast<size_t>(pos.offset) - 1); // -1: never query </s> by itself
+    if(max_len == 0) {
+      // sample another position/sentence instead (never query </s> by itself)
+      i--;
+      continue;
+    }
+
+    std::uniform_int_distribution<size_t> len_dist(1, max_len);
     size_t len = len_dist(gen);
     std::vector<SrcToken> query;
     for(size_t j = 0; j < len; j++)
@@ -128,9 +147,11 @@ TEST_F(BenchmarkTests, index_10k) {
   }, "read");
   util::PrintUsage(std::cerr);
 
-  TokenIndex<SrcToken> tokenIndex(corpus, /* maxLeafSize = */ 100000); // will lead to single split with ep.10k
+  ///////////////////////////
 
-  // TODO: </s> sentinels
+  TokenIndex<SrcToken> tokenIndex(corpus, /* maxLeafSize = */ 10000); // 100000
+  // TODO: test: currently, if maxLeafSize < nlines, then . </s> will fail, because we'll try to split </s>.
+
   benchmark_time([&corpus, &tokenIndex](){
     for(size_t i = 0; i < corpus.size(); i++) {
       if(i % 1000 == 0)
@@ -139,6 +160,10 @@ TEST_F(BenchmarkTests, index_10k) {
     }
   }, "build_index");
   util::PrintUsage(std::cerr);
+
+  ///////////////////////////
+  IndexSpan<SrcToken> spanb = tokenIndex.span();
+  spanb[40866]; // why U no trigger, Heisenbug?
 
   std::vector<std::vector<SrcToken>> queries;
   create_random_queries(tokenIndex, queries, /* num = */ 1000000);
