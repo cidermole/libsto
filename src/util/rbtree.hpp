@@ -15,13 +15,15 @@
 
 namespace sto {
 
-// A macro to disallow the copy constructor and operator= functions
-// This should be used in the private: declarations for a class
-#define DISALLOW_COPY_AND_ASSIGN(TypeName) \
-  TypeName(const TypeName&);               \
-  void operator=(const TypeName&)
 
-template <class Key>
+/**
+ * Red-black tree of vids that maintains an additional partial_sum on each node.
+ * Search is possible both through vids and through a size offset (binary searched for in partial_sums).
+ *
+ * KeyType must support these operators: !=, ==, <, >
+ * ValueType must currently have a default constructor
+ */
+template<typename KeyType, typename ValueType>
 class RBTree {
  public:
   typedef std::size_t size_type;
@@ -37,9 +39,8 @@ class RBTree {
     FreeSubtree(root_);
     delete nil_;
   }
-  bool Put(const Key& key);
-  bool Remove(const Key& key);
-  inline bool Contains(const Key& key) const {
+  bool Remove(const KeyType& key);
+  inline bool Contains(const KeyType& key) const {
     Node *node = FindNodeOrParent(key);
     return !IsNil(node) && node->key == key;
   }
@@ -50,15 +51,80 @@ class RBTree {
     return count_ == 0;
   }
 
+  ValueType& FindOrInsert(const KeyType& key, size_t add_size = 0) {
+    std::pair<typename RBTree<KeyType, ValueType>::Node *, bool> result = Put(key);
+    if(add_size != 0)
+      AddSize(result.first, add_size); // update node's and ancestors' partial_sums
+    return result.first->value;
+  }
+
+  /**
+   * Random access into this tree at a specific size offset.
+   * Changes 'offset' to be relative into the node returned.
+   * */
+  ValueType& At(size_t *offset) {
+    Node *node = At(root_, *offset);
+    return node->value;
+  }
+
  protected:
   enum Color { kRed, kBlack };
   struct Node {
+    KeyType key;
+
+    size_t partial_sum; /** size sum of this node + its children */
+    size_t size; /** size of this node only */
+    ValueType value;
+
+  private:
     Node *parent;
     Node *left;
     Node *right;
     Color color;
-    Key key;
+
+    Node(Node *p, Node *l, Node *r, Color c, KeyType k): partial_sum(0), size(0), value(), parent(p), left(l), right(r), color(c), key(k) {}
+
+    Node(): partial_sum(0), size(0), value(), parent(nullptr), left(nullptr), right(nullptr) {}
+
+    friend class RBTree<KeyType, ValueType>;
   };
+
+  /** find or insert */
+  std::pair<Node *, bool> Put(const KeyType& key);
+
+  /** update node's and ancestors' partial_sums */
+  inline void AddSize(Node *node, size_t add_size) {
+    node->size += add_size;
+
+    Node *n = node;
+    while(!IsNil(n)) {
+      n->partial_sum += add_size;
+      n = n->parent;
+    }
+  }
+
+  // note: changes offset to be relative into the node returned
+  inline Node *At(Node *node, size_t &offset) {
+    //Node *prev = node;
+    assert(offset < node->partial_sum);
+
+    // nodes in-order like this: (left, node, right)
+    while(node != nil_) {
+      //prev = node;
+      // to do: to work with 0-sized nodes, this should be upper_bound style!
+      if(offset < node->left->partial_sum) {
+        node = node->left;
+      } else if(offset < node->left->partial_sum + node->size) {
+        offset -= node->left->partial_sum;
+        return node;
+      } else { // offset < node->left->partial_sum + node->size + node->right->partial_sum == node->partial_sum
+        offset -= node->left->partial_sum + node->size;
+        node = node->right;
+      }
+    }
+    assert(false);
+    //return prev;
+  }
 
   inline const Node *GetRoot() const {
     return root_;
@@ -120,18 +186,22 @@ class RBTree {
   inline Node *LeftRotate(Node *node) {
     assert(node != nil_ && node->right != nil_);
     Node *child = node->right;
+    child->partial_sum = node->partial_sum;
     ReplaceChild(node, child);
     SetRight(node, child->left);
     SetLeft(child, node);
+    node->partial_sum = node->size + node->left->partial_sum + node->right->partial_sum;
     std::swap(node->color, child->color);
     return child;
   }
   inline Node *RightRotate(Node *node) {
     assert(node != nil_ && node->left != nil_);
     Node *child = node->left;
+    child->partial_sum = node->partial_sum;
     ReplaceChild(node, child);
     SetLeft(node, child->right);
     SetRight(child, node);
+    node->partial_sum = node->size + node->left->partial_sum + node->right->partial_sum;
     std::swap(node->color, child->color);
     return child;
   }
@@ -142,7 +212,7 @@ class RBTree {
       return LeftRotate(node->parent);
     assert(false);
   }
-  inline Node *FindNodeOrParent(const Key& key) const {
+  inline Node *FindNodeOrParent(const KeyType& key) const {
     Node *node = root_;
     Node *parent = nil_;
     while (!IsNil(node)) {
@@ -166,16 +236,19 @@ class RBTree {
   Node *nil_;
   size_type count_;
 
-  DISALLOW_COPY_AND_ASSIGN(RBTree<Key>);
+  // disallow copy and assign
+  RBTree(const RBTree<KeyType, ValueType>&);
+  void operator=(const RBTree<KeyType, ValueType>&);
 };
 
 /* Public */
 
-template <class Key>
-bool RBTree<Key>::Put(const Key& key) {
+template <typename KeyType, typename ValueType>
+std::pair<typename RBTree<KeyType, ValueType>::Node *, bool>
+RBTree<KeyType, ValueType>::Put(const KeyType& key) {
   Node *parent = FindNodeOrParent(key);
   if (!IsNil(parent) && parent->key == key)
-    return false;
+    return std::make_pair(parent, false); // no insertion; return existing node
   Node *node = new Node{nil_, nil_, nil_, kRed, key};
   if (IsNil(parent)) {
     root_ = node;
@@ -187,11 +260,11 @@ bool RBTree<Key>::Put(const Key& key) {
   }
   FixInsert(node);
   ++count_;
-  return true;
+  return std::make_pair(node, true);
 }
 
-template <class Key>
-bool RBTree<Key>::Remove(const Key& key) {
+template <typename KeyType, typename ValueType>
+bool RBTree<KeyType, ValueType>::Remove(const KeyType& key) {
   Node *node = FindNodeOrParent(key);
   Node *child;
   if (IsNil(node) || node->key != key)
@@ -220,8 +293,8 @@ bool RBTree<Key>::Remove(const Key& key) {
 
 /* Private */
 
-template <class Key>
-void RBTree<Key>::FixInsert(Node *node) {
+template <typename KeyType, typename ValueType>
+void RBTree<KeyType, ValueType>::FixInsert(Node *node) {
   while (!IsBlack(node) && !IsBlack(node->parent)) {
     Node *parent = node->parent;
     Node *uncle = GetSibling(parent);
@@ -240,8 +313,8 @@ void RBTree<Key>::FixInsert(Node *node) {
     SetBlack(node);
 }
 
-template <class Key>
-void RBTree<Key>::FixRemove(Node *node) {
+template <typename KeyType, typename ValueType>
+void RBTree<KeyType, ValueType>::FixRemove(Node *node) {
   while (!IsRed(node) && !IsNil(node->parent)) {
     Node *sibling = GetSibling(node);
     if (IsRed(sibling)) {
