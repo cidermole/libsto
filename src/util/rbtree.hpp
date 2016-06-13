@@ -1,9 +1,12 @@
 /**
  * Author: Xidorn Quan <github@upsuper.org>
+ * License: MIT License
  *
- * Kudos: https://gist.github.com/upsuper/6332576
+ * Quote email 2016-06-11 12:11 AM:
+ * "In general, I would apply MIT License to my random code, and I'd like to do so for this as well.  - Xidorn"
  *
- * It's a textbook algorithm. I am shamelessly copying this into an open source project.
+ * The original at https://gist.github.com/upsuper/6332576 was a textbook red-black tree algorithm.
+ *
  */
 
 #ifndef RBTREE_RBTREE_H_
