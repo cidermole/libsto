@@ -180,7 +180,7 @@ TEST_F(BenchmarkTests, index_10k) {
         EXPECT_GT(span.narrow(token), 0) << "queries for existing locations must succeed"; // since we just randomly sampled them, they must be in the corpus.
 
       // at each query span, sample multiple occurrences from random locations
-      std::uniform_int_distribution<size_t> sample_dist(0, span.size());
+      std::uniform_int_distribution<size_t> sample_dist(0, span.size()-1);
       size_t nsamples = std::min(sample, span.size());
       for(size_t i = 0; i < nsamples; i++)
         dummy += span[sample_dist(gen)].offset;

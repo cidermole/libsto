@@ -12,7 +12,7 @@
 #include <vector>
 
 #include "Corpus.h"
-#include "qhashmap.hpp"
+#include "util/rbtree.hpp"
 
 namespace sto {
 
@@ -37,7 +37,6 @@ template<class Token>
 class IndexSpan {
   // TODO: c++11 move constructor, move assignment
 public:
-  typedef typename TreeNode<Token>::ChildMap::Iterator TreeNodeChildMapIter;
   friend class TokenIndex<Token>;
 
   // use TokenIndex::span() instead
@@ -78,9 +77,6 @@ private:
   std::vector<TreeNode<Token> *> tree_path_; /** first part of path from root through the tree */
   std::vector<Range> array_path_; /** second part of path from leaf through the suffix array. These Ranges always index relative to the specific suffix array. */
 
-  /** called by narrow() for each TreeNode visited. Override as needed. */
-  virtual void tree_node_visit_(TreeNode<Token> &node, TreeNodeChildMapIter child) {}
-
   /** narrow() in suffix array. */
   size_t narrow_array_(Token t);
 
@@ -94,23 +90,6 @@ private:
   bool in_array_() const;
 };
 
-template<class Token>
-struct TreeChildMapKeyTraits {
-  typedef typename Token::Vid Vid;
-
-  static unsigned hash(Vid vid, size_t capacity_) {
-    return vid % capacity_;
-  }
-
-  static bool equals(Vid a, Vid b) {
-    return a == b;
-  }
-
-  static constexpr Vid null() {
-    return Token().vid; // invalid Token VID
-  }
-};
-
 /**
  * Map from vids to TreeNode children.
  * Additionally carries along partial sums for child sizes.
@@ -119,24 +98,52 @@ template<class Token>
 class TreeChildMap {
 public:
   typedef typename Token::Vid Vid;
-  typedef QHashMap<Vid, TreeNode<Token> *, size_t, TreeChildMapKeyTraits<Token>> ChildMap;
-  //typedef TreeChildMapIterator<Token, typename ChildMap::Entry> Iterator;
-  typedef typename ChildMap::iterator Iterator;
+  typedef RBTree<Vid, TreeNode<Token> *> ChildMap;
+  //typedef typename ChildMap::iterator Iterator;
 
   TreeChildMap();
 
-  Iterator begin() { return children_.begin(); }
-  Iterator end() { return children_.end(); }
+  //Iterator begin() { return children_.begin(); }
+  //Iterator end() { return children_.end(); }
 
-  bool empty() const { return children_.size() == 0; }
+  bool empty() const { return children_.Count() == 0; }
 
-  TreeNode<Token> *&operator[](Vid vid);
+  /** finds the TreeNode for vid, or inserts a new empty TreeNode. */
+  TreeNode<Token> *&operator[](Vid vid) {
+    return children_.FindOrInsert(vid, /* add_size = */ 0);
+  }
+
+  void AddSize(Vid vid, size_t add_size) {
+    children_.AddSize(vid, add_size);
+  }
+
+  TreeNode<Token> *&FindOrInsert(Vid vid, size_t add_size) {
+    return children_.FindOrInsert(vid, add_size);
+  }
+
+  bool Find(const Vid& key, TreeNode<Token> **val = nullptr) const {
+    return children_.Find(key, val);
+  }
+
+  size_t size() const {
+    return children_.Size();
+  }
+
+  size_t ChildSize(const Vid& key) const {
+    return children_.ChildSize(key);
+  }
+
+  /** Walk tree in-order and apply func(key, value) to each node. */
+  template<typename Func>
+  void Walk(Func func) {
+    children_.Walk(func);
+  }
 
   /** returns iterator to specified element, or end() if not found. */
-  Iterator find(Vid vid);
+  //Iterator find(Vid vid);
 
   /** Update the size partial sums of our children after vid. Default is update everything. Returns total sum of children. */
-  size_t UpdateChildSizeSums(Vid vid = Token::kInvalidVid);
+  //size_t UpdateChildSizeSums(Vid vid = Token::kInvalidVid);
 
   /**
    * random access into the spanned range.
@@ -152,7 +159,7 @@ public:
   Position<Token> At(size_t offset, const Vocab<Token> &vocab);
 
 private:
-  typedef typename ChildMap::Entry Entry;
+  //typedef typename ChildMap::Entry Entry;
 
   ChildMap children_;
 
@@ -232,7 +239,7 @@ public:
   bool is_leaf() const { return children_.empty(); }
 
   /** Number of token positions in the index. */
-  size_t size() const { return size_; }
+  size_t size() const { assert(is_leaf() || size_ == children_.size()); return size_; }
 
   /** random access
    * in O(log(n/k)) with with k = TreeNode<Token>::kMaxArraySize.

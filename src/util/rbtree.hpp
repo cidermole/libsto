@@ -16,6 +16,7 @@
 namespace sto {
 
 
+
 /**
  * Red-black tree of vids that maintains an additional partial_sum on each node.
  * Search is possible both through vids and through a size offset (binary searched for in partial_sums).
@@ -58,6 +59,28 @@ class RBTree {
     return result.first->value;
   }
 
+  bool Find(const KeyType& key, ValueType *val = nullptr) const {
+    Node *node = FindNodeOrParent(key);
+    if(!IsNil(node) && node->key == key) {
+      if(val != nullptr)
+        *val = node->value;
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  // debug only
+  size_t ChildSize(const KeyType& key) const {
+    Node *node = FindNodeOrParent(key);
+    assert(!IsNil(node) && node->key == key);
+    return node->partial_sum;
+  }
+
+  size_t Size() const {
+    return root_->partial_sum;
+  }
+
   /**
    * Random access into this tree at a specific size offset.
    * Changes 'offset' to be relative into the node returned.
@@ -65,6 +88,18 @@ class RBTree {
   ValueType& At(size_t *offset) {
     Node *node = At(root_, *offset);
     return node->value;
+  }
+
+  void AddSize(const KeyType& key, size_t add_size) {
+    Node *node = FindNodeOrParent(key);
+    assert(!IsNil(node) && node->key == key);
+    AddSize(node, add_size);
+  }
+
+  /** Walk tree in-order and apply func(key, value) to each node. */
+  template<typename Func>
+  void Walk(Func func) {
+    Walk(root_, func);
   }
 
  protected:
@@ -82,7 +117,7 @@ class RBTree {
     Node *right;
     Color color;
 
-    Node(Node *p, Node *l, Node *r, Color c, KeyType k): partial_sum(0), own_size(0), value(), parent(p), left(l), right(r), color(c), key(k) {}
+    Node(Node *p, Node *l, Node *r, Color c, KeyType k): key(k), partial_sum(0), own_size(0), value(), parent(p), left(l), right(r), color(c) {}
 
     Node(): partial_sum(0), own_size(0), value(), parent(nullptr), left(nullptr), right(nullptr) {}
 
@@ -124,6 +159,16 @@ class RBTree {
     }
     assert(false);
     //return prev;
+    return nullptr;
+  }
+
+  template<typename Func>
+  void Walk(Node *node, Func func) {
+    if (node != nil_) {
+      Walk(node->left, func);
+      func(node->key, node->value);
+      Walk(node->right, func);
+    }
   }
 
   inline const Node *GetRoot() const {
@@ -171,6 +216,7 @@ class RBTree {
     else if (IsRightChild(node))
       return node->parent->left;
     assert(false);
+    return nullptr;
   }
   inline Node *ReplaceChild(Node *child, Node *new_child) {
     if (IsNil(child->parent)) {
@@ -211,6 +257,7 @@ class RBTree {
     else if (IsRightChild(node))
       return LeftRotate(node->parent);
     assert(false);
+    return nullptr;
   }
   inline Node *FindNodeOrParent(const KeyType& key) const {
     Node *node = root_;

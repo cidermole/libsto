@@ -167,28 +167,28 @@ TEST_F(TokenIndexTests, tree_common_prefix) {
 
   // hardcoding the tree structure in ASCII is pretty crude, I know.
   std::string expected_tree = R"(TreeNode size=13 is_leaf=false
-* '</s>' vid=1 partial_sum=0
+* '</s>' vid=1
   TreeNode size=2 is_leaf=true
   * [sid=0 offset=8]
   * [sid=1 offset=3]
-* 'bit' vid=2 partial_sum=2
+* 'bit' vid=2
   TreeNode size=2 is_leaf=true
   * [sid=1 offset=2]
   * [sid=0 offset=2]
-* 'cat' vid=3 partial_sum=4
+* 'cat' vid=3
   TreeNode size=1 is_leaf=true
   * [sid=0 offset=4]
-* 'dog' vid=4 partial_sum=5
+* 'dog' vid=4
   TreeNode size=2 is_leaf=true
   * [sid=1 offset=1]
   * [sid=0 offset=1]
-* 'mat' vid=5 partial_sum=7
+* 'mat' vid=5
   TreeNode size=1 is_leaf=true
   * [sid=0 offset=7]
-* 'on' vid=6 partial_sum=8
+* 'on' vid=6
   TreeNode size=1 is_leaf=true
   * [sid=0 offset=5]
-* 'the' vid=7 partial_sum=9
+* 'the' vid=7
   TreeNode size=4 is_leaf=true
   * [sid=0 offset=3]
   * [sid=1 offset=0]
@@ -236,41 +236,41 @@ TEST_F(TokenIndexTests, tree_2level_common_prefix_the) {
 
   // hardcoding the tree structure in ASCII is pretty crude, I know.
   std::string expected_tree = R"(TreeNode size=15 is_leaf=false
-* '</s>' vid=1 partial_sum=0
+* '</s>' vid=1
   TreeNode size=3 is_leaf=true
   * [sid=0 offset=8]
   * [sid=1 offset=3]
   * [sid=2 offset=1]
-* 'bit' vid=2 partial_sum=3
+* 'bit' vid=2
   TreeNode size=2 is_leaf=true
   * [sid=1 offset=2]
   * [sid=0 offset=2]
-* 'cat' vid=3 partial_sum=5
+* 'cat' vid=3
   TreeNode size=1 is_leaf=true
   * [sid=0 offset=4]
-* 'dog' vid=4 partial_sum=6
+* 'dog' vid=4
   TreeNode size=2 is_leaf=true
   * [sid=1 offset=1]
   * [sid=0 offset=1]
-* 'mat' vid=5 partial_sum=8
+* 'mat' vid=5
   TreeNode size=1 is_leaf=true
   * [sid=0 offset=7]
-* 'on' vid=6 partial_sum=9
+* 'on' vid=6
   TreeNode size=1 is_leaf=true
   * [sid=0 offset=5]
-* 'the' vid=7 partial_sum=10
+* 'the' vid=7
   TreeNode size=5 is_leaf=false
-  * '</s>' vid=1 partial_sum=0
+  * '</s>' vid=1
     TreeNode size=1 is_leaf=true
     * [sid=2 offset=0]
-  * 'cat' vid=3 partial_sum=1
+  * 'cat' vid=3
     TreeNode size=1 is_leaf=true
     * [sid=0 offset=3]
-  * 'dog' vid=4 partial_sum=2
+  * 'dog' vid=4
     TreeNode size=2 is_leaf=true
     * [sid=1 offset=0]
     * [sid=0 offset=0]
-  * 'mat' vid=5 partial_sum=4
+  * 'mat' vid=5
     TreeNode size=1 is_leaf=true
     * [sid=0 offset=6]
 )";

@@ -113,15 +113,11 @@ size_t IndexSpan<Token>::narrow_array_(Token t) {
 
 template<class Token>
 size_t IndexSpan<Token>::narrow_tree_(Token t) {
-  auto& children = tree_path_.back()->children_;
-  TreeNodeChildMapIter child_iter = children.find(t.vid);
-
-  if(child_iter == children.end())
+  TreeNode<Token> *node;
+  if(!tree_path_.back()->children_.Find(t.vid, &node))
     return 0; // do not modify the IndexSpan and signal failure
 
-  this->tree_node_visit_(*tree_path_.back(), child_iter);
-
-  tree_path_.push_back(child_iter->second);
+  tree_path_.push_back(node);
   return tree_path_.back()->size();
 }
 
@@ -173,87 +169,23 @@ template class IndexSpan<TrgToken>;
 template<class Token>
 TreeChildMap<Token>::TreeChildMap() {}
 
-template<class Token>
-TreeNode<Token> *&TreeChildMap<Token>::operator[](Vid vid) {
-  Entry *entry = children_.Lookup(vid, /* insert = */ true);
-  return entry->second;
-}
-
+/*
 template<class Token>
 typename TreeChildMap<Token>::Iterator TreeChildMap<Token>::find(Vid vid) {
   return children_.find(vid);
 }
-
-template<class Token>
-size_t TreeChildMap<Token>::UpdateChildSizeSums(Vid vid) {
-  Entry *entry = (vid != Token::kInvalidVid) ? children_.Lookup(vid, /* insert = */ false) : children_.Start();
-  assert(entry != nullptr); // assert found
-
-  return children_.UpdatePartialSums(entry);
-
-  /*
-   * we could replace UpdatePartialSums() with member code here:
-   *
-  size_t partial_sum = entry->partial_sum;
-
-  // could have been done with iterators as well...
-  for(; entry != nullptr; entry = children_.Next(entry)) {
-    entry->partial_sum = partial_sum;
-    partial_sum += entry->size();
-  }
-   */
-}
+*/
 
 template<class Token>
 Position<Token> TreeChildMap<Token>::AtUnordered(size_t offset) {
-  Vid vid;
-  size_t child_offset;
-  FindBoundUnordered(offset, vid, child_offset);
-  TreeNode<Token> *child = operator[](vid);
-  return child->AtUnordered(child_offset);
+  TreeNode<Token> *child = children_.At(&offset); // note: changes offset
+  return child->AtUnordered(offset);
 }
 
 template<class Token>
 Position<Token> TreeChildMap<Token>::At(size_t offset, const Vocab<Token> &vocab) {
-  Entry *prev = nullptr, *cur;
-
-  for(Token t : vocab) {
-    // iterate through contained vids in order
-    if((cur = children_.Lookup(t.vid, /* insert = */ false)) == nullptr)
-      continue;
-
-    // look for upper_bound position
-    if(cur->partial_sum > offset)
-      break;
-
-    prev = cur;
-  }
-
-  assert(prev != nullptr);
-  size_t child_offset = offset - prev->partial_sum;
-  assert(child_offset < prev->size());
-  return prev->second->At(child_offset, vocab);
-}
-
-template<class Token>
-void TreeChildMap<Token>::FindBoundUnordered(size_t offset, Vid &vid, size_t &child_offset) {
-  Entry *entry = children_.FindPartialSumBound(offset); // TODO: this should move to TreeChildMap (doesn't use any private members of QHashMap)
-  vid = entry->first;
-  child_offset = offset - entry->partial_sum;
-
-  /*
-   * There is a Heisenbug, probably somewhere in UpdateChildSizeSums(), which may manifest itself here.
-   *
-   * IndexSpan::operator[](40866)
-   * failed in FindBoundUnordered().
-   *
-   * AtUnordered()
-   * [40866] -> vid 14, child_offset 18989 (size_ == 18990 so OK).
-   *   [18989] -> vid 8189, child_offset 1 (size_ == 1??? BAD).
-   *
-   * added an  assert(sum == (*tp)->size())  in AddSubsequence_() but I can't seem to reproduce it anymore.
-   */
-  assert(child_offset < entry->size());
+  TreeNode<Token> *child = children_.At(&offset); // note: changes offset
+  return child->AtUnordered(offset);
 }
 
 // explicit template instantiation
@@ -298,16 +230,21 @@ void TokenIndex<Token>::AddSubsequence_(const Sentence<Token> &sent, Offset star
 
   for(Offset i = start; !finished && i < sent.size(); i++) {
     // add to cumulative count for internal TreeNodes (excludes SA leaves which increment in AddPosition_()), including the root (if it's not a SA)
-    if(!cur_span.tree_path_.back()->is_leaf())
+    if(!cur_span.tree_path_.back()->is_leaf()) {
       cur_span.tree_path_.back()->size_++; // we add this here, and not in the partial sum update loop below, because we may have split a SA, which increments on its own already (a bit ugly)
+      if(cur_span.tree_path_.back()->children_.Find(sent[i].vid)) // fails if we need to create a new tree entry, see (1) below
+        cur_span.tree_path_.back()->children_.AddSize(sent[i].vid, /* add_size = */ 1);
+      // note: avoids the TreeNode potentially created by splitting a SA. However, SA adds its own count, so the TreeNode ends up being the correct size.
+    }
 
     span_size = cur_span.narrow(sent[i]);
 
     if(span_size == 0 || cur_span.in_array_()) {
       // create an entry (whether in tree or SA)
       if(!cur_span.in_array_()) {
-        // create tree entry (leaf)
+        // (1) create tree entry (leaf)
         cur_span.tree_path_.back()->children_[sent[i].vid] = new TreeNode<Token>(); // to do: should be implemented as a method on TreeNode
+        cur_span.tree_path_.back()->children_.AddSize(sent[i].vid, /* add_size = */ 1);
         cur_span.narrow(sent[i]); // step IndexSpan into the node just created (which contains an empty SA)
         assert(cur_span.in_array_());
       }
@@ -319,16 +256,16 @@ void TokenIndex<Token>::AddSubsequence_(const Sentence<Token> &sent, Offset star
     }
   }
 
+  /*
   // update partial sums of cumulative counts
   Offset i = start;
   auto tp = cur_span.tree_path_.begin();
   for(; i < sent.size() && tp != cur_span.tree_path_.end(); ++i, ++tp) {
     if(!(*tp)->is_leaf()) {
-      //size_t sum = (*tp)->children_.UpdateChildSizeSums(sent[i].vid);
-      size_t sum = (*tp)->children_.UpdateChildSizeSums(); // returns sum(size of children)
-      assert(sum == (*tp)->size()); // ensure sum(size of children) agrees with the size member at this level
+      (*tp)->children_.AddSize(sent[i].vid, 1);
     }
   }
+   */
 }
 
 // explicit template instantiation
@@ -343,8 +280,14 @@ TreeNode<Token>::TreeNode(size_t maxArraySize) : size_(0), partial_size_sum_(0),
 
 template<class Token>
 TreeNode<Token>::~TreeNode() {
+  /*
   for(auto entry : children_)
     delete entry->second;
+    */
+  // ~RBTree() should do the work. But pointers are opaque to it (ValueType), so it does not, currently.
+  children_.Walk([](Vid vid, TreeNode<Token> *e) {
+    delete e;
+  });
 }
 
 template<class Token>
@@ -397,14 +340,20 @@ void TreeNode<Token>::SplitNode(const Corpus<Token> &corpus, Offset depth) {
     TreeNode<Token> *new_child = new TreeNode<Token>(kMaxArraySize);
     new_child->array_.insert(new_child->array_.begin(), vid_range.first, vid_range.second);
     new_child->size_ = new_child->array_.size();
-    children_[pos.add(depth, corpus).vid(corpus)] = new_child;
+    //children_[pos.add(depth, corpus).vid(corpus)] = new_child;
+    children_.FindOrInsert(pos.add(depth, corpus).vid(corpus), /* add_size = */ new_child->size_) = new_child;
+
+    TreeNode<Token> *n;
+    assert(children_.Find(pos.add(depth, corpus).vid(corpus), &n));
+    assert(n->size_ == new_child->size_); // NOT: n->children_.size(). that's one level deeper and is empty!
+    assert(children_.ChildSize(pos.add(depth, corpus).vid(corpus)) == new_child->size_);
 
     if(vid_range.second != array_.end())
       pos = *vid_range.second; // position with next vid
     else
       break;
   }
-  children_.UpdateChildSizeSums(); // compute partial sums  (could've done this in above loop as well)
+  assert(children_.size() == array_.size());
   array_.clear(); // destroy the suffix array
 }
 
@@ -435,12 +384,12 @@ void TreeNode<Token>::DebugPrint(std::ostream &os, const Corpus<Token> &corpus, 
   std::string spaces = nspaces(depth * 2);
   os << spaces << "TreeNode size=" << size() << " is_leaf=" << (is_leaf() ? "true" : "false") << std::endl;
 
-  // for internal TreeNodes (is_leaf=false)
-  for(auto e : children_) {
-    std::string surface = corpus.vocab()[Token{e->first}];
-    os << spaces << "* '" << surface << "' vid=" << static_cast<int>(e->first) << " partial_sum=" << static_cast<int>(e->partial_sum) << std::endl;
-    e->second->DebugPrint(os, corpus, depth + 1);
-  }
+  // for internal TreeNodes (is_leaf=false), these have children_ entries
+  children_.Walk([&corpus, &os, &spaces, depth](Vid vid, TreeNode<Token> *e) {
+    std::string surface = corpus.vocab()[Token{vid}];
+    os << spaces << "* '" << surface << "' vid=" << static_cast<int>(vid) << std::endl;
+    e->DebugPrint(os, corpus, depth + 1);
+  });
 
   // for suffix arrays (is_leaf=true)
   for(auto p : array_) {
