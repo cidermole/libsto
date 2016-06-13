@@ -53,7 +53,6 @@ public:
   /**
    * Random access to a position within the selected span.
    * O(log(n/k)) with with k = TreeNode<Token>::kMaxArraySize.
-   * WARNING: order depends on underlying hash maps.
    */
   Position<Token> operator[](size_t rel);
 
@@ -147,8 +146,6 @@ public:
 
   /**
    * random access into the spanned range.
-   * WARNING: the order of our children depends on the population order
-   * of the underlying hash map.
    */
   Position<Token> AtUnordered(size_t offset);
 
@@ -159,18 +156,7 @@ public:
   Position<Token> At(size_t offset, const Vocab<Token> &vocab);
 
 private:
-  //typedef typename ChildMap::Entry Entry;
-
   ChildMap children_;
-
-  /**
-   * Obtains the child containing the position at 'offset' and the
-   * relative offset into that child.
-   * WARNING: the order of our children depends on the population order
-   * of the underlying hash map.
-   * Returns values in (vid, child_offset).   // if child_offset == offset, then we're at a leaf and vid was not written.
-   */
-  void FindBoundUnordered(size_t offset, Vid &vid, size_t &child_offset);
 };
 
 /**
@@ -243,7 +229,7 @@ public:
 
   /** random access
    * in O(log(n/k)) with with k = TreeNode<Token>::kMaxArraySize.
-   * WARNING: order depends on underlying hash map. */
+   */
   Position<Token> AtUnordered(size_t offset);
 
   /**
