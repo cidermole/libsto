@@ -119,12 +119,12 @@ void BenchmarkTests::create_random_queries(TokenIndex<SrcToken> &tokenIndex, std
   }
 }
 
-TEST_F(BenchmarkTests, index_10k) {
+TEST_F(BenchmarkTests, index_100k) {
   Vocab<SrcToken> vocab;
   Corpus<SrcToken> corpus(vocab);
 
   std::string textFile = kTextFile;
-  const size_t nlines = 15000;
+  const size_t nlines = 100000;
 
   /*
    * $ wc /tmp/ep.10k
@@ -149,7 +149,7 @@ TEST_F(BenchmarkTests, index_10k) {
 
   ///////////////////////////
 
-  TokenIndex<SrcToken> tokenIndex(corpus, /* maxLeafSize = */ 10000); // 100000
+  TokenIndex<SrcToken> tokenIndex(corpus, /* maxLeafSize = */ 10000);
 
   benchmark_time([&corpus, &tokenIndex](){
     for(size_t i = 0; i < corpus.size(); i++) {
@@ -161,8 +161,6 @@ TEST_F(BenchmarkTests, index_10k) {
   util::PrintUsage(std::cerr);
 
   ///////////////////////////
-  IndexSpan<SrcToken> spanb = tokenIndex.span();
-  spanb[40866]; // why U no trigger, Heisenbug?
 
   std::vector<std::vector<SrcToken>> queries;
   create_random_queries(tokenIndex, queries, /* num = */ 1000000);
@@ -171,7 +169,7 @@ TEST_F(BenchmarkTests, index_10k) {
   benchmark_time([&corpus, &tokenIndex, &queries, sample](){
     std::random_device rd;
     std::mt19937 gen(rd());
-    size_t dummy = 0;
+    size_t dummy = 0, nsamples_total = 0;
 
     for(auto query : queries) {
       IndexSpan<SrcToken> span = tokenIndex.span();
@@ -183,9 +181,10 @@ TEST_F(BenchmarkTests, index_10k) {
       size_t nsamples = std::min(sample, span.size());
       for(size_t i = 0; i < nsamples; i++)
         dummy += span[sample_dist(gen)].offset;
+      nsamples_total += nsamples;
     }
 
-    std::cerr << "dummy = " << dummy << std::endl;
+    std::cerr << "nsamples_total = " << nsamples_total << " dummy = " << dummy << std::endl;
   }, "query_index");
 }
 
