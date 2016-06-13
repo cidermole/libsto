@@ -260,7 +260,11 @@ private:
   size_t size_; /** Number of token positions. cumulative length in inner nodes, array_.size() in leaf nodes */
   size_t partial_size_sum_; /** partial sum of all sizes on this tree level to our left (so leftmost child has 0 here) */
 
-  const size_t kMaxArraySize; /** maximum size of suffix array leaf, larger sizes are split up into TreeNodes. */
+  /**
+   * maximum size of suffix array leaf, larger sizes are split up into TreeNodes.
+   * NOTE: the SA leaf of </s> may grow above kMaxArraySize, see AddPosition_() implementation.
+   */
+  const size_t kMaxArraySize;
 
   /**
    * Insert the existing Corpus Position into this index.

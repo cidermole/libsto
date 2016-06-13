@@ -124,7 +124,7 @@ TEST_F(BenchmarkTests, index_10k) {
   Corpus<SrcToken> corpus(vocab);
 
   std::string textFile = kTextFile;
-  const size_t nlines = 10000;
+  const size_t nlines = 15000;
 
   /*
    * $ wc /tmp/ep.10k
@@ -150,7 +150,6 @@ TEST_F(BenchmarkTests, index_10k) {
   ///////////////////////////
 
   TokenIndex<SrcToken> tokenIndex(corpus, /* maxLeafSize = */ 10000); // 100000
-  // TODO: test: currently, if maxLeafSize < nlines, then . </s> will fail, because we'll try to split </s>.
 
   benchmark_time([&corpus, &tokenIndex](){
     for(size_t i = 0; i < corpus.size(); i++) {
@@ -185,6 +184,8 @@ TEST_F(BenchmarkTests, index_10k) {
       for(size_t i = 0; i < nsamples; i++)
         dummy += span[sample_dist(gen)].offset;
     }
+
+    std::cerr << "dummy = " << dummy << std::endl;
   }, "query_index");
 }
 

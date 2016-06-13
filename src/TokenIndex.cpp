@@ -312,7 +312,29 @@ void TreeNode<Token>::AddPosition_(const Sentence<Token> &sent, Offset start, si
   size_++;
   assert(size_ == array_.size());
 
-  if(array_.size() > kMaxArraySize)
+  /*
+   * disallow splits of </s>
+   *
+   * We currently don't have a principled way of splitting </s>, as there are no subsequent tokens to compare.
+   * Therefore, the SA leaf of </s> (especially below ".", i.e. the sequence ". </s>") may grow above kMaxArraySize.
+   * It will grow approx. to the number of Corpus sentences indexed.
+   *
+   * If really necessary, we could think about splitting the same token into a tree. Note that we already have a tree
+   * structure (RBTree TreeNode::children_) for partial sums. Maybe this modification could be attached there.
+   *
+   * It may seem from the suffix trie that </s> doesn't really convey any information, and it could be collapsed
+   * into a single number. However, the leaves contain the Corpus Positions of the entire path to the suffix,
+   * which we want to sample.
+   */
+  bool allow_split = (
+      //depth == 0 ||
+      (
+        sent.size() > start + depth// &&
+        //corpus_pos.add(static_cast<Offset>(depth), corpus).vid(corpus) != 1 // define constant 1 for vid of </s>
+      )
+  );
+
+  if(array_.size() > kMaxArraySize && allow_split)
     SplitNode(corpus, static_cast<Offset>(depth)); // suffix array grown too large, split into TreeNode
 }
 
