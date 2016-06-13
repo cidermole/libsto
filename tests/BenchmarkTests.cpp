@@ -189,8 +189,24 @@ TEST_F(BenchmarkTests, index_10k) {
   }, "query_index");
 }
 
-#include "util/rbtree.hpp"
 
-TEST_F(BenchmarkTests, tree_tests) {
-  RBTree<int, int> tree;
+TEST_F(BenchmarkTests, nosplit_eos) {
+  // verify that </s> does not get split even if we add more sentences than maxLeafSize.
+  // TokenIndex would fail with an assertion if the split should happen.
+
+  Vocab<SrcToken> vocab;
+  Corpus<SrcToken> corpus(vocab);
+
+  std::string textFile = kTextFile;
+  const size_t nlines = 1000;
+
+  ReadTextFile(corpus, vocab, textFile, nlines);
+
+  ///////////////////////////
+
+  TokenIndex<SrcToken> tokenIndex(corpus, /* maxLeafSize = */ 100);
+
+  for(size_t i = 0; i < corpus.size(); i++) {
+    tokenIndex.AddSentence(corpus.sentence(i));
+  }
 }
