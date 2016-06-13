@@ -308,7 +308,7 @@ void TreeNode<Token>::AddPosition_(const Sentence<Token> &sent, Offset start, si
 
   //std::cerr << "TreeNode::AddPosition_(sent, start=" << ((int) start) << ") token=" << corpus.vocab()[sent[start]] << " (vid=" << sent[start].vid << ") insert_pos=" << (insert_pos - array_.begin()) << std::endl;
 
-  array_.insert(insert_pos, corpus_pos);
+  array_.insert(insert_pos, corpus_pos); // TODO: thread safety (shifts should be atomic)
   size_++;
   assert(size_ == array_.size());
 
@@ -354,6 +354,9 @@ void TreeNode<Token>::SplitNode(const Corpus<Token> &corpus, Offset depth) {
   std::pair<iter, iter> vid_range;
   Position<Token> pos = array_[0]; // first position with first vid
 
+  // TODO: thread safety (instead of children_, fill an alternative container here, then swap in when valid)
+  // TODO: (we could also just use an atomic bool as an implementation of is_leaf())
+
   // for each top-level word, find the suffix array range and populate individual split arrays
   while(true) {
     vid_range = std::equal_range(array_.begin(), array_.end(), pos, comp);
@@ -376,7 +379,8 @@ void TreeNode<Token>::SplitNode(const Corpus<Token> &corpus, Offset depth) {
       break;
   }
   assert(children_.size() == array_.size());
-  array_.clear(); // destroy the suffix array
+  array_.clear(); // destroy the suffix array  // TODO: thread safety (swap in children_, ensure array_ isn't used by anyone*, clear it)
+  // TODO: this could, again, work through reference counting and shared_ptr
 }
 
 template<class Token>

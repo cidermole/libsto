@@ -232,6 +232,14 @@ class RBTree {
     } else { assert(false); }
     return new_child;
   }
+
+  /*
+   * TODO: thread safety
+   * LeftRotate() and RightRotate() need to allocate two new nodes for P and Q, make them valid,
+   * then swap them.
+   * Since delete of the two old nodes depends on their usage from reading threads, we must use
+   * shared_ptr to do thread-safe atomic reference counting and release memory when appropriate.
+   */
   inline Node *LeftRotate(Node *node) {
     assert(node != nil_ && node->right != nil_);
     Node *child = node->right;
@@ -243,6 +251,7 @@ class RBTree {
     std::swap(node->color, child->color);
     return child;
   }
+  // TODO: thread safety
   inline Node *RightRotate(Node *node) {
     assert(node != nil_ && node->left != nil_);
     Node *child = node->left;
