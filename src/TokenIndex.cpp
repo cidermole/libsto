@@ -117,6 +117,7 @@ size_t IndexSpan<Token>::narrow_tree_(Token t) {
   if(!tree_path_.back()->children_.Find(t.vid, &node))
     return 0; // do not modify the IndexSpan and signal failure
 
+  assert(node != nullptr);
   tree_path_.push_back(node);
   return tree_path_.back()->size();
 }
@@ -179,6 +180,7 @@ typename TreeChildMap<Token>::Iterator TreeChildMap<Token>::find(Vid vid) {
 template<class Token>
 Position<Token> TreeChildMap<Token>::AtUnordered(size_t offset) {
   TreeNode<Token> *child = children_.At(&offset); // note: changes offset
+  assert(child != nullptr);
   return child->AtUnordered(offset);
 }
 
@@ -370,7 +372,7 @@ void TreeNode<Token>::SplitNode(const Corpus<Token> &corpus, Offset depth) {
 
     TreeNode<Token> *n;
     assert(children_.Find(pos.add(depth, corpus).vid(corpus), &n));
-    assert(n->size_ == new_child->size_); // NOT: n->children_.size(). that's one level deeper and is empty!
+    assert(n != nullptr && n->size_ == new_child->size_); // NOT: n->children_.size(). that's one level deeper and is empty!
     assert(children_.ChildSize(pos.add(depth, corpus).vid(corpus)) == new_child->size_);
 
     if(vid_range.second != array_.end())

@@ -25,6 +25,16 @@ namespace sto {
  * Red-black tree of vids that maintains an additional partial_sum on each node.
  * Search is possible both through vids and through a size offset (binary searched for in partial_sums).
  *
+ * Thread safety guarantees:
+ *
+ * There may be a single thread writing to the RBTree at any time.
+ * Write access MUST be sequentially ordered.  to do: add a write lock to enforce this.
+ *
+ * Writing may occur concurrently with multiple threads reading. In this case, every call to the RBTree
+ * presents a consistent (valid) state, but with a best-effort presentation of write results to readers.
+ *
+ * Template types:
+ *
  * KeyType must support these operators: !=, ==, <, >
  * ValueType must currently have a default constructor
  */
@@ -117,10 +127,10 @@ class RBTree {
 
     Node(std::shared_ptr<Node> p, std::shared_ptr<Node> l, std::shared_ptr<Node> r, Color c, KeyType k): key(k), partial_sum(0), own_size(0), value(), parent(p), left(l), right(r), color(c) {}
 
-    Node(): partial_sum(0), own_size(0), value(), parent(nullptr), left(nullptr), right(nullptr) {}
+    Node(): partial_sum(0), own_size(0), value(), parent(), left(nullptr), right(nullptr) {}
 
   private:
-    std::shared_ptr<Node> parent;
+    std::weak_ptr<Node> parent; /** only used for modifying access, hence we don't need reference counting (and also break reference cycles here) */
     std::shared_ptr<Node> left;
     std::shared_ptr<Node> right;
     Color color;
@@ -138,7 +148,7 @@ class RBTree {
     std::shared_ptr<Node> n = node;
     while(!IsNil(n)) {
       n->partial_sum += add_size;
-      n = n->parent;
+      n = n->parent.lock();
     }
   }
 
@@ -197,78 +207,140 @@ class RBTree {
     node->color = kBlack;
   }
   inline bool IsLeftChild(const std::shared_ptr<Node> node) const {
-    return node->parent->left == node;
+    return node->parent.lock()->left == node;
   }
   inline bool IsRightChild(const std::shared_ptr<Node> node) const {
-    return node->parent->right == node;
+    return node->parent.lock()->right == node;
   }
   inline void SetLeft(std::shared_ptr<Node> node, std::shared_ptr<Node> child) {
     assert(!IsNil(node));
-    node->left = child;
     if (!IsNil(child))
       child->parent = node;
+    node->left = child;
   }
   inline void SetRight(std::shared_ptr<Node> node, std::shared_ptr<Node> child) {
     assert(!IsNil(node));
-    node->right = child;
     if (!IsNil(child))
       child->parent = node;
+    node->right = child;
   }
   inline std::shared_ptr<Node> GetSibling(const std::shared_ptr<Node> node) const {
     if (IsLeftChild(node))
-      return node->parent->right;
+      return node->parent.lock()->right;
     else if (IsRightChild(node))
-      return node->parent->left;
+      return node->parent.lock()->left;
     assert(false);
     return nullptr;
   }
   inline std::shared_ptr<Node> ReplaceChild(std::shared_ptr<Node> child, std::shared_ptr<Node> new_child) {
-    if (IsNil(child->parent)) {
-      root_ = new_child;
+    std::shared_ptr<Node> parent = child->parent.lock();
+    if (IsNil(parent)) {
       new_child->parent = nil_;
+      root_ = new_child;
     } else if (IsLeftChild(child)) {
-      SetLeft(child->parent, new_child);
+      SetLeft(parent, new_child);
     } else if (IsRightChild(child)) {
-      SetRight(child->parent, new_child);
+      SetRight(parent, new_child);
     } else { assert(false); }
     return new_child;
   }
 
-  /*
-   * TODO: thread safety
+  /** See comments on RightRotate() */
+  inline std::shared_ptr<Node> LeftRotate(std::shared_ptr<Node> node, std::shared_ptr<Node> keepRef) {
+    assert(node != nil_ && node->right != nil_);
+    std::shared_ptr<Node> child = node->right;
+
+    // Node(parent, left, right, color, key)
+    std::shared_ptr<Node> p = std::make_shared<Node>(nil_ /* set below */, node->left, child->left, child->color, node->key); p->value = node->value;
+    std::shared_ptr<Node> q = std::make_shared<Node>(node, p, child->right, node->color, child->key); q->value = child->value;
+    p->parent = q;
+    q->own_size = child->own_size;
+    q->partial_sum = node->partial_sum;
+    p->own_size = node->own_size;
+    p->partial_sum = p->own_size + p->left->partial_sum + p->right->partial_sum;
+    ReplaceChild(node, q);
+
+    // keep the reference to the node just inserted
+    if(node == keepRef) {
+      *node = *p;
+      ReplaceChild(p, node);
+      p = node;
+    }
+    if(child == keepRef) {
+      *child = *q;
+      ReplaceChild(q, child);
+      q = child;
+      p->parent = q;
+    }
+
+    // before, (a, b, c) nodes still have their old parents.
+    if(p->left != nil_) p->left->parent = p;
+    if(p->right != nil_) p->right->parent = p;
+    if(q->right != nil_) q->right->parent = q;
+
+    return q;
+  }
+  /**
    * LeftRotate() and RightRotate() need to allocate two new nodes for P and Q, make them valid,
    * then swap them.
    * Since delete of the two old nodes depends on their usage from reading threads, we must use
    * shared_ptr to do thread-safe atomic reference counting and release memory when appropriate.
+   * Note that the newly inserted node, keepRef, is kept in the tree structure, for Put() reference re-use.
    */
-  inline std::shared_ptr<Node> LeftRotate(std::shared_ptr<Node> node) {
-    assert(node != nil_ && node->right != nil_);
-    std::shared_ptr<Node> child = node->right;
-    child->partial_sum = node->partial_sum;
-    ReplaceChild(node, child);
-    SetRight(node, child->left);
-    SetLeft(child, node);
-    node->partial_sum = node->own_size + node->left->partial_sum + node->right->partial_sum;
-    std::swap(node->color, child->color);
-    return child;
-  }
-  // TODO: thread safety
-  inline std::shared_ptr<Node> RightRotate(std::shared_ptr<Node> node) {
+  inline std::shared_ptr<Node> RightRotate(std::shared_ptr<Node> node, std::shared_ptr<Node> keepRef) {
     assert(node != nil_ && node->left != nil_);
     std::shared_ptr<Node> child = node->left;
-    child->partial_sum = node->partial_sum;
-    ReplaceChild(node, child);
-    SetLeft(node, child->right);
-    SetRight(child, node);
-    node->partial_sum = node->own_size + node->left->partial_sum + node->right->partial_sum;
-    std::swap(node->color, child->color);
-    return child;
+
+    // p, q: see picture of nodes at https://en.wikipedia.org/wiki/Tree_rotation#Illustration
+    //
+    // for thread safety, we first build the right-rotated tree fragment separately,
+    // and then swap it in in a valid state.
+
+    // Node(parent, left, right, color, key)
+    std::shared_ptr<Node> q = std::make_shared<Node>(nil_ /* set below */, child->right, node->right, child->color, node->key); q->value = node->value;
+    std::shared_ptr<Node> p = std::make_shared<Node>(node, child->left, q, node->color, child->key); p->value = child->value;
+    q->parent = p;
+    p->own_size = child->own_size;
+    p->partial_sum = node->partial_sum;
+    q->own_size = node->own_size;
+    q->partial_sum = q->own_size + q->left->partial_sum + q->right->partial_sum;
+    ReplaceChild(node, p);
+
+    // keep the reference to the node just inserted
+    /*
+     * As an additional complication, the Put() implementation keeps the reference to the node just inserted.
+     * We could either search for that node again, or we can re-use that node's memory as we do now.
+     */
+    if(node == keepRef) {
+      *node = *q;
+      ReplaceChild(q, node);
+      q = node;
+    }
+    if(child == keepRef) {
+      *child = *p;
+      ReplaceChild(p, child);
+      p = child;
+      q->parent = p;
+    }
+
+    // before, (a, b, c) nodes still have their old parents.
+    // for thread safety: node->parent is never used by reading access, only by writes, so we are safe to update them.
+    if(p->left != nil_) p->left->parent = p;
+    if(q->left != nil_) q->left->parent = q;
+    if(q->right != nil_) q->right->parent = q;
+
+    return p;
+    /*
+     * Since delete of the two old nodes depends on their usage from reading threads, we use
+     * shared_ptr to do thread-safe atomic reference counting and release memory when readers
+     * have finished using them.
+     */
   }
-  inline std::shared_ptr<Node> ReverseRotate(std::shared_ptr<Node> node) {
+  inline std::shared_ptr<Node> ReverseRotate(std::shared_ptr<Node> node, std::shared_ptr<Node> keepRef) {
     if (IsLeftChild(node))
-      return RightRotate(node->parent);
+      return RightRotate(node->parent.lock(), keepRef);
     else if (IsRightChild(node))
-      return LeftRotate(node->parent);
+      return LeftRotate(node->parent.lock(), keepRef);
     assert(false);
     return nullptr;
   }
@@ -282,7 +354,7 @@ class RBTree {
     }
     return parent;
   }
-  void FixInsert(std::shared_ptr<Node> node);
+  void FixInsert(const std::shared_ptr<Node> node);
   void FixRemove(std::shared_ptr<Node> node);
 
   std::shared_ptr<Node> root_;
@@ -311,7 +383,8 @@ RBTree<KeyType, ValueType>::Put(const KeyType& key) {
     else
       SetRight(parent, node);
   }
-  FixInsert(node);
+  FixInsert(node); // reallocates memory for some nodes, but keeps the 'node' reference.
+  // (we re-use that node's memory in FixInsert(). see LeftRotate())
   ++count_;
   return std::make_pair(node, true);
 }
@@ -347,43 +420,48 @@ bool RBTree<KeyType, ValueType>::Remove(const KeyType& key) {
 /* Private */
 
 template <typename KeyType, typename ValueType>
-void RBTree<KeyType, ValueType>::FixInsert(std::shared_ptr<Node> node) {
-  while (!IsBlack(node) && !IsBlack(node->parent)) {
-    std::shared_ptr<Node> parent = node->parent;
+void
+RBTree<KeyType, ValueType>::FixInsert(const std::shared_ptr<Node> inserted) {
+  std::shared_ptr<Node> node = inserted;
+
+  while (!IsBlack(node) && !IsBlack(node->parent.lock())) {
+    std::shared_ptr<Node> parent = node->parent.lock();
     std::shared_ptr<Node> uncle = GetSibling(parent);
     if (IsRed(uncle)) {
       SetBlack(uncle);
       SetBlack(parent);
-      SetRed(parent->parent);
-      node = parent->parent;
+      SetRed(parent->parent.lock());
+      node = parent->parent.lock();
     } else {  // IsBlack(uncle)
       if (IsLeftChild(node) != IsLeftChild(parent))
-        parent = ReverseRotate(node);
-      node = ReverseRotate(parent);
+        parent = ReverseRotate(node, /* preserve = */ inserted);
+      node = ReverseRotate(parent, /* preserve = */ inserted);
     }
   }
-  if (IsNil(node->parent))
+  if (IsNil(node->parent.lock()))
     SetBlack(node);
 }
 
 template <typename KeyType, typename ValueType>
-void RBTree<KeyType, ValueType>::FixRemove(std::shared_ptr<Node> node) {
-  while (!IsRed(node) && !IsNil(node->parent)) {
+void RBTree<KeyType, ValueType>::FixRemove(std::shared_ptr<Node> target) {
+  std::shared_ptr<Node> node = target;
+
+  while (!IsRed(node) && !IsNil(node->parent.lock())) {
     std::shared_ptr<Node> sibling = GetSibling(node);
     if (IsRed(sibling)) {
-      ReverseRotate(sibling);
+      ReverseRotate(sibling, /* preserve = */ target);
       sibling = GetSibling(node);
     }
     if (IsBlack(sibling->left) && IsBlack(sibling->right)) {
       SetRed(sibling);
-      node = node->parent;
+      node = node->parent.lock();
     } else {
       if (IsLeftChild(sibling) && !IsRed(sibling->left))
-        sibling = LeftRotate(sibling);
+        sibling = LeftRotate(sibling, /* preserve = */ target);
       else if (IsRightChild(sibling) && !IsRed(sibling->right))
-        sibling = RightRotate(sibling);
-      ReverseRotate(sibling);
-      node = GetSibling(node->parent);
+        sibling = RightRotate(sibling, /* preserve = */ target);
+      ReverseRotate(sibling, /* preserve = */ target);
+      node = GetSibling(node->parent.lock());
     }
   }
   SetBlack(node);
