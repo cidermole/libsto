@@ -163,7 +163,7 @@ TEST_F(BenchmarkTests, index_100k) {
   ///////////////////////////
 
   std::vector<std::vector<SrcToken>> queries;
-  create_random_queries(tokenIndex, queries, /* num = */ 1000000);
+  create_random_queries(tokenIndex, queries, /* num = */ 100000);
   size_t sample = 1000;
 
   benchmark_time([&corpus, &tokenIndex, &queries, sample](){
