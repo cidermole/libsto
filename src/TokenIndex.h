@@ -225,6 +225,7 @@ public:
   typedef typename Corpus<Token>::Offset Offset;
   //typedef std::map<Vid, TreeNode *> ChildMap;
   typedef TreeChildMap<Token> ChildMap;
+  typedef std::vector<Position<Token>> SuffixArray;
 
   /** Constructs an empty TreeNode, i.e. a leaf with a SuffixArray. */
   TreeNode(size_t maxArraySize = 100000);
@@ -233,7 +234,7 @@ public:
   /** true if this is a leaf, i.e. a suffix array. */
   bool is_leaf() const { return is_leaf_.load(); }
 
-  /** Number of token positions in the index. */
+  /** Number of token positions. cumulative length in inner nodes, array_.size() in leaf nodes */
   size_t size() const { assert(is_leaf() || size_ == children_.size()); return size_; }
 
   /** random access
@@ -252,7 +253,7 @@ public:
 private:
   std::atomic<bool> is_leaf_; /** whether this is a suffix array (leaf node) */
   ChildMap children_; /** node children, empty if leaf node */
-  std::shared_ptr<std::vector<Position<Token>>> array_; /** suffix array, only if is_leaf_ == true */
+  std::shared_ptr<SuffixArray> array_; /** suffix array, only if is_leaf_ == true */
   size_t size_; /** Number of token positions. cumulative length in inner nodes, array_.size() in leaf nodes */
   size_t partial_size_sum_; /** partial sum of all sizes on this tree level to our left (so leftmost child has 0 here) */
 

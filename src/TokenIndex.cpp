@@ -260,7 +260,7 @@ template class TokenIndex<TrgToken>;
 // --------------------------------------------------------
 
 template<class Token>
-TreeNode<Token>::TreeNode(size_t maxArraySize) : is_leaf_(true), array_(new std::vector<Position<Token>>), size_(0), partial_size_sum_(0), kMaxArraySize(maxArraySize)
+TreeNode<Token>::TreeNode(size_t maxArraySize) : is_leaf_(true), array_(new SuffixArray), size_(0), partial_size_sum_(0), kMaxArraySize(maxArraySize)
 {}
 
 template<class Token>
@@ -277,9 +277,10 @@ void TreeNode<Token>::AddPosition_(const Sentence<Token> &sent, Offset start, si
 
   Position<Token> corpus_pos{sent.sid(), start};
   const Corpus<Token> &corpus = sent.corpus();
-  std::shared_ptr<std::vector<Position<Token>>> array = array_;
+  std::shared_ptr<SuffixArray> array = array_;
 
   // find insert position in sorted suffix array
+  // thread safety: single writer guarantees that the insert_pos will still be valid later below
   auto insert_pos = std::upper_bound(
       array->begin(), array->end(),
       corpus_pos,
@@ -322,7 +323,7 @@ void TreeNode<Token>::AddPosition_(const Sentence<Token> &sent, Offset start, si
 /** Split this leaf node (suffix array) into a proper TreeNode with children. */
 template<class Token>
 void TreeNode<Token>::SplitNode(const Corpus<Token> &corpus, Offset depth) {
-  typedef typename std::vector<Position<Token>>::iterator iter;
+  typedef typename SuffixArray::iterator iter;
 
   assert(is_leaf()); // this method works only on suffix arrays
 
@@ -333,7 +334,7 @@ void TreeNode<Token>::SplitNode(const Corpus<Token> &corpus, Offset depth) {
 
   assert(size() > 0);
   std::pair<iter, iter> vid_range;
-  std::shared_ptr<std::vector<Position<Token>>> array = array_;
+  std::shared_ptr<SuffixArray> array = array_;
   Position<Token> pos = (*array)[0]; // first position with first vid
 
   // thread safety: we build the TreeNode while is_leaf_ == true, so children_ is not accessed while being modified
@@ -344,7 +345,7 @@ void TreeNode<Token>::SplitNode(const Corpus<Token> &corpus, Offset depth) {
 
     // copy each range into its own suffix array
     TreeNode<Token> *new_child = new TreeNode<Token>(kMaxArraySize);
-    std::shared_ptr<std::vector<Position<Token>>> new_array = new_child->array_;
+    std::shared_ptr<SuffixArray> new_array = new_child->array_;
     new_array->insert(new_array->begin(), vid_range.first, vid_range.second);
     new_child->size_ = new_array->size();
     //children_[pos.add(depth, corpus).vid(corpus)] = new_child;
@@ -372,7 +373,7 @@ void TreeNode<Token>::SplitNode(const Corpus<Token> &corpus, Offset depth) {
 template<class Token>
 Position<Token> TreeNode<Token>::AtUnordered(size_t offset) {
   // thread safety: obtain reference first, check later, so we are sure to have a valid array -- avoids race with SplitNode()
-  std::shared_ptr<std::vector<Position<Token>>> array = array_;
+  std::shared_ptr<SuffixArray> array = array_;
   if(is_leaf())
     return (*array)[offset];
   else
@@ -382,7 +383,7 @@ Position<Token> TreeNode<Token>::AtUnordered(size_t offset) {
 template<class Token>
 Position<Token> TreeNode<Token>::At(size_t offset, const Vocab<Token> &vocab) {
   // thread safety: obtain reference first, check later, so we are sure to have a valid array -- avoids race with SplitNode()
-  std::shared_ptr<std::vector<Position<Token>>> array = array_;
+  std::shared_ptr<SuffixArray> array = array_;
   if(is_leaf())
     return (*array)[offset];
   else
@@ -408,9 +409,11 @@ void TreeNode<Token>::DebugPrint(std::ostream &os, const Corpus<Token> &corpus, 
   });
 
   // for suffix arrays (is_leaf=true)
-  std::shared_ptr<std::vector<Position<Token>>> array = array_;
-  for(auto p : *array) {
-    os << spaces << "* [sid=" << static_cast<int>(p.sid) << " offset=" << static_cast<int>(p.offset) << "]" << std::endl;
+  std::shared_ptr<SuffixArray> array = array_;
+  if(array != nullptr) {
+    for(auto p : *array) {
+      os << spaces << "* [sid=" << static_cast<int>(p.sid) << " offset=" << static_cast<int>(p.offset) << "]" << std::endl;
+    }
   }
 }
 
