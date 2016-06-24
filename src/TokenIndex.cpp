@@ -366,8 +366,9 @@ void TreeNode<Token>::SplitNode(const Corpus<Token> &corpus, Offset depth) {
   // release: ensure prior writes to children_ get flushed before the atomic operation
   is_leaf_.store(false, std::memory_order_release);
 
-  array->clear(); // destroy the suffix array  // TODO: thread safety (swap in children_, ensure array_ isn't used by anyone*, clear it)
-  // TODO: this could, again, work through reference counting and shared_ptr
+  // destroy the suffix array (last reader will clean up)
+  array_.reset();
+  // note: array_ null check could replace is_leaf_
 }
 
 template<class Token>
