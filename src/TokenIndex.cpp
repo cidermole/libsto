@@ -170,13 +170,6 @@ template class IndexSpan<TrgToken>;
 template<class Token>
 TreeChildMap<Token>::TreeChildMap() {}
 
-/*
-template<class Token>
-typename TreeChildMap<Token>::Iterator TreeChildMap<Token>::find(Vid vid) {
-  return children_.find(vid);
-}
-*/
-
 template<class Token>
 Position<Token> TreeChildMap<Token>::AtUnordered(size_t offset) {
   TreeNode<Token> *child = children_.At(&offset); // note: changes offset
@@ -258,17 +251,6 @@ void TokenIndex<Token>::AddSubsequence_(const Sentence<Token> &sent, Offset star
       // note: cur_span is not entirely in a valid state after this, because a leaf node has been split, but array_path_ is lacking sentinel: spanning full array range
     }
   }
-
-  /*
-  // update partial sums of cumulative counts
-  Offset i = start;
-  auto tp = cur_span.tree_path_.begin();
-  for(; i < sent.size() && tp != cur_span.tree_path_.end(); ++i, ++tp) {
-    if(!(*tp)->is_leaf()) {
-      (*tp)->children_.AddSize(sent[i].vid, 1);
-    }
-  }
-   */
 }
 
 // explicit template instantiation
@@ -283,10 +265,6 @@ TreeNode<Token>::TreeNode(size_t maxArraySize) : is_leaf_(true), array_(new std:
 
 template<class Token>
 TreeNode<Token>::~TreeNode() {
-  /*
-  for(auto entry : children_)
-    delete entry->second;
-    */
   // ~RBTree() should do the work. But pointers are opaque to it (ValueType), so it does not, currently.
   children_.Walk([](Vid vid, TreeNode<Token> *e) {
     delete e;
@@ -309,8 +287,6 @@ void TreeNode<Token>::AddPosition_(const Sentence<Token> &sent, Offset start, si
         return arr_pos.compare(new_pos, corpus);
       }
   );
-
-  //std::cerr << "TreeNode::AddPosition_(sent, start=" << ((int) start) << ") token=" << corpus.vocab()[sent[start]] << " (vid=" << sent[start].vid << ") insert_pos=" << (insert_pos - array_.begin()) << std::endl;
 
   static constexpr size_t cache_line_size = 64; /** processor's cacheline size in bytes */
 
@@ -337,13 +313,7 @@ void TreeNode<Token>::AddPosition_(const Sentence<Token> &sent, Offset start, si
    * into a single number. However, the leaves contain the Corpus Positions of the entire path to the suffix,
    * which we want to sample.
    */
-  bool allow_split = (
-      //depth == 0 ||
-      (
-        sent.size() > start + depth// &&
-        //corpus_pos.add(static_cast<Offset>(depth), corpus).vid(corpus) != 1 // define constant 1 for vid of </s>
-      )
-  );
+  bool allow_split = sent.size() > start + depth;
 
   if(array->size() > kMaxArraySize && allow_split)
     SplitNode(corpus, static_cast<Offset>(depth)); // suffix array grown too large, split into TreeNode
