@@ -10,6 +10,8 @@
 #include <iostream>
 #include <map>
 #include <vector>
+#include <memory>
+#include <atomic>
 
 #include "Corpus.h"
 #include "util/rbtree.hpp"
@@ -183,8 +185,15 @@ public:
    * Insert the existing Corpus Sentence into this index.
    * This potentially splits existing suffix array leaves into individual TreeNodes,
    * and inserts Position entries into the suffix array. Hence, it is an
-   * O(k + log(n)) operation, with k = TreeNode<Token>::kMaxArraySize
-   * (TODO) fix the formula
+   *
+   * O(l * (k + log(n)))
+   *
+   * operation, with l = sent.size(), k = TreeNode<Token>::kMaxArraySize
+   * and n = span().size() aka the full index size.
+   *
+   * Thread safety: given some memory model assumptions (Total Store Ordering) about
+   * the target architecture (x86/x64), writes concurrent to multiple reading threads
+   * do not result in invalid state being read.
    */
   void AddSentence(const Sentence<Token> &sent);
 
@@ -222,7 +231,7 @@ public:
   ~TreeNode();
 
   /** true if this is a leaf, i.e. a suffix array. */
-  bool is_leaf() const { return children_.empty(); }
+  bool is_leaf() const { return is_leaf_.load(); }
 
   /** Number of token positions in the index. */
   size_t size() const { assert(is_leaf() || size_ == children_.size()); return size_; }
@@ -241,8 +250,9 @@ public:
   void DebugPrint(std::ostream &os, const Corpus<Token> &corpus, size_t depth = 0);
 
 private:
+  std::atomic<bool> is_leaf_; /** whether this is a suffix array (leaf node) */
   ChildMap children_; /** node children, empty if leaf node */
-  std::vector<Position<Token>> array_; /** suffix array, only if children_.empty() */
+  std::shared_ptr<std::vector<Position<Token>>> array_; /** suffix array, only if is_leaf_ == true */
   size_t size_; /** Number of token positions. cumulative length in inner nodes, array_.size() in leaf nodes */
   size_t partial_size_sum_; /** partial sum of all sizes on this tree level to our left (so leftmost child has 0 here) */
 

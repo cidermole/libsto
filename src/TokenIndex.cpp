@@ -58,7 +58,7 @@ Range IndexSpan<Token>::find_bounds_array_(Token t) {
   // then, we only need to compare at the depth of new_sequence_size, since all tokens before should be equal
   size_t old_sequence_size = sequence_.size();
 
-  auto &array = tree_path_.back()->array_;
+  auto array = tree_path_.back()->array_;
   Range prev_bounds = array_path_.back();
   Range bounds;
 
@@ -66,7 +66,7 @@ Range IndexSpan<Token>::find_bounds_array_(Token t) {
 
   // binary search for the range containing Token t
   bounds.begin = std::lower_bound(
-      array.begin() + prev_bounds.begin, array.begin() + prev_bounds.end,
+      array->begin() + prev_bounds.begin, array->begin() + prev_bounds.end,
       //new_sequence,
       t,
       [&corpus, old_sequence_size](const Position<Token> &pos, const Token &t) {
@@ -79,10 +79,10 @@ Range IndexSpan<Token>::find_bounds_array_(Token t) {
         // note: Token::operator<(Token&) compares by vid (not surface form)
         return sent[pos.offset + old_sequence_size] < t;
       }
-  ) - array.begin();
+  ) - array->begin();
 
   bounds.end = std::upper_bound(
-      array.begin() + prev_bounds.begin, array.begin() + prev_bounds.end,
+      array->begin() + prev_bounds.begin, array->begin() + prev_bounds.end,
       //new_sequence,
       t,
       [&corpus, old_sequence_size](const Token &t, const Position<Token> &pos) {
@@ -95,7 +95,7 @@ Range IndexSpan<Token>::find_bounds_array_(Token t) {
         // note: Token::operator<(Token&) compares by vid (not surface form)
         return t < sent[pos.offset + old_sequence_size];
       }
-  ) - array.begin();
+  ) - array->begin();
 
   return bounds;
 }
@@ -231,6 +231,7 @@ void TokenIndex<Token>::AddSubsequence_(const Sentence<Token> &sent, Offset star
   bool finished = false;
 
   for(Offset i = start; !finished && i < sent.size(); i++) {
+    // TODO thread safety
     // add to cumulative count for internal TreeNodes (excludes SA leaves which increment in AddPosition_()), including the root (if it's not a SA)
     if(!cur_span.tree_path_.back()->is_leaf()) {
       cur_span.tree_path_.back()->size_++; // we add this here, and not in the partial sum update loop below, because we may have split a SA, which increments on its own already (a bit ugly)
@@ -277,7 +278,7 @@ template class TokenIndex<TrgToken>;
 // --------------------------------------------------------
 
 template<class Token>
-TreeNode<Token>::TreeNode(size_t maxArraySize) : size_(0), partial_size_sum_(0), kMaxArraySize(maxArraySize)
+TreeNode<Token>::TreeNode(size_t maxArraySize) : is_leaf_(true), array_(new std::vector<Position<Token>>), size_(0), partial_size_sum_(0), kMaxArraySize(maxArraySize)
 {}
 
 template<class Token>
@@ -298,10 +299,11 @@ void TreeNode<Token>::AddPosition_(const Sentence<Token> &sent, Offset start, si
 
   Position<Token> corpus_pos{sent.sid(), start};
   const Corpus<Token> &corpus = sent.corpus();
+  std::shared_ptr<std::vector<Position<Token>>> array = array_;
 
   // find insert position in sorted suffix array
   auto insert_pos = std::upper_bound(
-      array_.begin(), array_.end(),
+      array->begin(), array->end(),
       corpus_pos,
       [&corpus](const Position<Token> &new_pos, const Position<Token> &arr_pos) {
         return arr_pos.compare(new_pos, corpus);
@@ -310,9 +312,16 @@ void TreeNode<Token>::AddPosition_(const Sentence<Token> &sent, Offset start, si
 
   //std::cerr << "TreeNode::AddPosition_(sent, start=" << ((int) start) << ") token=" << corpus.vocab()[sent[start]] << " (vid=" << sent[start].vid << ") insert_pos=" << (insert_pos - array_.begin()) << std::endl;
 
-  array_.insert(insert_pos, corpus_pos); // TODO: thread safety (shifts should be atomic)
+  static constexpr size_t cache_line_size = 64; /** processor's cacheline size in bytes */
+
+  // on x86/x64 this assert ensures that array updates become visible in a valid state.
+  static_assert(cache_line_size % sizeof(typename decltype(array_)::element_type::value_type) == 0);
+  // if necessary (eg. for byte packing), we might implement our own vector<> that aligns elements to fit within cachelines
+
+  array->insert(insert_pos, corpus_pos); // note: critical point for thread safety
+
   size_++;
-  assert(size_ == array_.size());
+  assert(size_ == array->size());
 
   /*
    * disallow splits of </s>
@@ -336,7 +345,7 @@ void TreeNode<Token>::AddPosition_(const Sentence<Token> &sent, Offset start, si
       )
   );
 
-  if(array_.size() > kMaxArraySize && allow_split)
+  if(array->size() > kMaxArraySize && allow_split)
     SplitNode(corpus, static_cast<Offset>(depth)); // suffix array grown too large, split into TreeNode
 }
 
@@ -354,19 +363,20 @@ void TreeNode<Token>::SplitNode(const Corpus<Token> &corpus, Offset depth) {
 
   assert(size() > 0);
   std::pair<iter, iter> vid_range;
-  Position<Token> pos = array_[0]; // first position with first vid
+  std::shared_ptr<std::vector<Position<Token>>> array = array_;
+  Position<Token> pos = (*array)[0]; // first position with first vid
 
-  // TODO: thread safety (instead of children_, fill an alternative container here, then swap in when valid)
-  // TODO: (we could also just use an atomic bool as an implementation of is_leaf())
+  // thread safety: we build the TreeNode while is_leaf_ == true, so children_ is not accessed while being modified
 
   // for each top-level word, find the suffix array range and populate individual split arrays
   while(true) {
-    vid_range = std::equal_range(array_.begin(), array_.end(), pos, comp);
+    vid_range = std::equal_range(array->begin(), array->end(), pos, comp);
 
     // copy each range into its own suffix array
     TreeNode<Token> *new_child = new TreeNode<Token>(kMaxArraySize);
-    new_child->array_.insert(new_child->array_.begin(), vid_range.first, vid_range.second);
-    new_child->size_ = new_child->array_.size();
+    std::shared_ptr<std::vector<Position<Token>>> new_array = new_child->array_;
+    new_array->insert(new_array->begin(), vid_range.first, vid_range.second);
+    new_child->size_ = new_array->size();
     //children_[pos.add(depth, corpus).vid(corpus)] = new_child;
     children_.FindOrInsert(pos.add(depth, corpus).vid(corpus), /* add_size = */ new_child->size_) = new_child;
 
@@ -375,28 +385,36 @@ void TreeNode<Token>::SplitNode(const Corpus<Token> &corpus, Offset depth) {
     assert(n != nullptr && n->size_ == new_child->size_); // NOT: n->children_.size(). that's one level deeper and is empty!
     assert(children_.ChildSize(pos.add(depth, corpus).vid(corpus)) == new_child->size_);
 
-    if(vid_range.second != array_.end())
+    if(vid_range.second != array->end())
       pos = *vid_range.second; // position with next vid
     else
       break;
   }
-  assert(children_.size() == array_.size());
-  array_.clear(); // destroy the suffix array  // TODO: thread safety (swap in children_, ensure array_ isn't used by anyone*, clear it)
+  assert(children_.size() == array->size());
+
+  // release: ensure prior writes to children_ get flushed before the atomic operation
+  is_leaf_.store(false, std::memory_order_release);
+
+  array->clear(); // destroy the suffix array  // TODO: thread safety (swap in children_, ensure array_ isn't used by anyone*, clear it)
   // TODO: this could, again, work through reference counting and shared_ptr
 }
 
 template<class Token>
 Position<Token> TreeNode<Token>::AtUnordered(size_t offset) {
+  // thread safety: obtain reference first, check later, so we are sure to have a valid array -- avoids race with SplitNode()
+  std::shared_ptr<std::vector<Position<Token>>> array = array_;
   if(is_leaf())
-    return array_[offset];
+    return (*array)[offset];
   else
     return children_.AtUnordered(offset);
 }
 
 template<class Token>
 Position<Token> TreeNode<Token>::At(size_t offset, const Vocab<Token> &vocab) {
+  // thread safety: obtain reference first, check later, so we are sure to have a valid array -- avoids race with SplitNode()
+  std::shared_ptr<std::vector<Position<Token>>> array = array_;
   if(is_leaf())
-    return array_[offset];
+    return (*array)[offset];
   else
     return children_.At(offset, vocab);
 }
@@ -420,7 +438,8 @@ void TreeNode<Token>::DebugPrint(std::ostream &os, const Corpus<Token> &corpus, 
   });
 
   // for suffix arrays (is_leaf=true)
-  for(auto p : array_) {
+  std::shared_ptr<std::vector<Position<Token>>> array = array_;
+  for(auto p : *array) {
     os << spaces << "* [sid=" << static_cast<int>(p.sid) << " offset=" << static_cast<int>(p.offset) << "]" << std::endl;
   }
 }
