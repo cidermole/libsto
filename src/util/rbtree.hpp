@@ -12,6 +12,8 @@
 #ifndef RBTREE_RBTREE_H_
 #define RBTREE_RBTREE_H_
 
+#include <sstream>
+
 #include <memory>
 #include <cstddef>
 #include <cassert>
@@ -82,6 +84,10 @@ class RBTree {
     } else {
       return false;
     }
+  }
+
+  void Print() {
+    PrintTree(root_);
   }
 
   // debug only
@@ -184,6 +190,41 @@ class RBTree {
       Walk(node->right, func);
     }
   }
+
+
+  // debug only
+  template<typename Func>
+  void WalkNodePre(std::weak_ptr<Node> n, Func func, size_t depth = 0) {
+    const Node *node = n.lock().get();
+    func(n, depth);
+    if (n.lock() != nil_ && (node->left != nil_ || node->right != nil_)) {
+      WalkNodePre(node->left, func, depth + 1);
+      WalkNodePre(node->right, func, depth + 1);
+    }
+  }
+
+  // debug only
+  void PrintTree(std::weak_ptr<Node> par) {
+    std::cerr << " PrintTree parent.use_count()=" << par.use_count() << std::endl;
+
+    //func(key, value)
+    std::shared_ptr<Node> nil = nil_;
+    std::cerr << std::endl;
+    WalkNodePre(root_, [&nil](std::weak_ptr<Node> n, size_t depth) {
+      std::stringstream ss; for(size_t i = 0; i < depth; i++) ss << " ";
+      if(n.lock() == nil) {
+        std::cerr << ss.str() << "nil_" << std::endl;
+        return;
+      }
+      // there is a stacked order of locking/unlocking if you do this (multiple locks are acquired and released after the statement):
+      //std::cerr << ss.str() << "vid=" << n.lock()->key << " (s use_count=" << (n.lock().use_count() - 1) << ", w use_count=" << n.use_count() << ") " << n.lock().get() << std::endl;
+      std::shared_ptr<Node> node = n.lock();
+      //std::cerr << ss.str() << "vid=" << node->key << " (s use_count=" << (node.use_count() - 1) << ") " << node.get() << std::endl;
+      std::cerr << ss.str() << "vid=" << node->key << " (partial_sum=" << node->partial_sum << " own_size=" << node->own_size << ") " << node.get() << std::endl;
+    });
+    std::cerr << std::endl;
+  }
+
 
   inline const std::shared_ptr<Node> GetRoot() const {
     return root_;
