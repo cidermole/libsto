@@ -126,6 +126,10 @@ public:
     return children_.Find(key, val);
   }
 
+  void Print() {
+    children_.Print();
+  }
+
   size_t size() const {
     return children_.Size();
   }
@@ -274,6 +278,9 @@ private:
    * depth: distance of TreeNode from the root of this tree, used in splits
    */
   void AddPosition_(const Sentence<Token> &sent, Offset start, size_t depth);
+
+  /** Call SplitNode() if this node needs to be split. Returns true if it was. */
+  bool CheckSplitNode(const Sentence<Token> &sent, Offset start, Offset depth);
 
   /** Split this leaf node (suffix array) into a proper TreeNode with children.
    * depth: distance of TreeNode from the root of this tree

@@ -112,6 +112,7 @@ TEST_F(TokenIndexTests, suffix_array_split) {
   // so this is not a good test.
 
   IndexSpan<SrcToken> span = tokenIndex.span();
+  tokenIndex.DebugPrint(std::cerr);
   EXPECT_EQ(sent_words.size(), span.size()) << "the Sentence should have added its tokens to the IndexSpan";
 
   std::vector<size_t>      expect_suffix_array_offset  = {8,      2,     4,     1,     7,     5,    3,     0,     6 };
