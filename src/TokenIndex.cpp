@@ -128,18 +128,10 @@ template<class Token>
 Position<Token> IndexSpan<Token>::operator[](size_t rel) {
   assert(rel < size());
 
-  // may need to traverse the tree down, using bin search on the cumulative counts
+  // traverses the tree down using binary search on the cumulative counts at each internal TreeNode
+  // until we hit a SuffixArray leaf and can do random access there.
   // upper_bound()-1 of rel inside the list of our children
-  return tree_path_.back()->AtUnordered(rel);
-}
-
-template<class Token>
-Position<Token> IndexSpan<Token>::At(size_t rel) {
-  assert(rel < size());
-
-  // may need to traverse the tree down, using bin search on the cumulative counts
-  // upper_bound()-1 of rel inside the list of our children
-  return tree_path_.back()->At(rel, index_->corpus()->vocab());
+  return tree_path_.back()->At(rel);
 }
 
 template<class Token>
@@ -178,16 +170,10 @@ template<class Token>
 TreeChildMap<Token>::TreeChildMap() {}
 
 template<class Token>
-Position<Token> TreeChildMap<Token>::AtUnordered(size_t offset) {
+Position<Token> TreeChildMap<Token>::At(size_t offset) {
   TreeNode<Token> *child = children_.At(&offset); // note: changes offset
   assert(child != nullptr);
-  return child->AtUnordered(offset);
-}
-
-template<class Token>
-Position<Token> TreeChildMap<Token>::At(size_t offset, const Vocab<Token> &vocab) {
-  TreeNode<Token> *child = children_.At(&offset); // note: changes offset
-  return child->AtUnordered(offset);
+  return child->At(offset);
 }
 
 // explicit template instantiation
@@ -400,23 +386,13 @@ size_t TreeNode<Token>::size() const {
 }
 
 template<class Token>
-Position<Token> TreeNode<Token>::AtUnordered(size_t offset) {
+Position<Token> TreeNode<Token>::At(size_t offset) {
   // thread safety: obtain reference first, check later, so we are sure to have a valid array -- avoids race with SplitNode()
   std::shared_ptr<SuffixArray> array = array_;
   if(is_leaf())
     return (*array)[offset];
   else
-    return children_.AtUnordered(offset);
-}
-
-template<class Token>
-Position<Token> TreeNode<Token>::At(size_t offset, const Vocab<Token> &vocab) {
-  // thread safety: obtain reference first, check later, so we are sure to have a valid array -- avoids race with SplitNode()
-  std::shared_ptr<SuffixArray> array = array_;
-  if(is_leaf())
-    return (*array)[offset];
-  else
-    return children_.At(offset, vocab);
+    return children_.At(offset);
 }
 
 std::string nspaces(size_t n) {

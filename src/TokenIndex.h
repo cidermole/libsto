@@ -60,12 +60,6 @@ public:
    */
   Position<Token> operator[](size_t rel);
 
-  /**
-   * Access to a position within the selected span. As opposed to operator[],
-   * this guarantees the order, but is O(V * log(n/k)) with vocabulary size V.
-   */
-  Position<Token> At(size_t rel);
-
   /** Number of token positions spanned in the index. */
   size_t size() const;
 
@@ -164,15 +158,9 @@ public:
   //size_t UpdateChildSizeSums(Vid vid = Token::kInvalidVid);
 
   /**
-   * random access into the spanned range.
+   * Access to a position within the selected span.
    */
-  Position<Token> AtUnordered(size_t offset);
-
-  /**
-   * Access to a position within the selected span. As opposed to AtUnordered(),
-   * this guarantees the order, but is O(V) with vocabulary size at each node.
-   */
-  Position<Token> At(size_t offset, const Vocab<Token> &vocab);
+  Position<Token> At(size_t offset);
 
 private:
   ChildMap children_;
@@ -254,16 +242,11 @@ public:
   /** Number of token positions. cumulative length in inner nodes, array_.size() in leaf nodes */
   size_t size() const;
 
-  /** random access
-   * in O(log(n/k)) with with k = TreeNode<Token>::kMaxArraySize.
-   */
-  Position<Token> AtUnordered(size_t offset);
-
   /**
-   * Access to a position within the selected span. As opposed to operator[],
-   * this guarantees the order, but is O(V) with vocabulary size.
+   * Access to a position within the selected span
+   * in O(log(n/k)) with k = TreeNode<Token>::kMaxArraySize.
    */
-  Position<Token> At(size_t offset, const Vocab<Token> &vocab);
+  Position<Token> At(size_t offset);
 
   void DebugPrint(std::ostream &os, const Corpus<Token> &corpus, size_t depth = 0);
 
