@@ -49,6 +49,8 @@ public:
    * Returns new span size.
    * If the token was not found at all, returns zero without modifying the
    * IndexSpan.
+   * If an empty SuffixArray leaf was found, returns zero while
+   * still modifying the IndexSpan.
    */
   size_t narrow(Token t);
 
@@ -70,7 +72,18 @@ public:
   /** Length of lookup sequence, or the number of times narrow() has been called. */
   size_t depth() const;
 
+  /** TreeNode at current depth. */
+  TreeNode<Token> *node();
+
+  /** first part of path from root through the tree, excluding suffix array range choices */
+  const std::vector<TreeNode<Token> *>& tree_path() const { return tree_path_; }
+
+  /** true if span reaches into a suffix array leaf. */
+  bool in_array() const;
+
 private:
+  static constexpr size_t NOT_FOUND = static_cast<size_t>(-1);
+
   TokenIndex<Token> *index_;
 
   // these 3 are only kept for debugging; for bookkeeping, we only need tree_path_.back()
@@ -78,17 +91,17 @@ private:
   std::vector<TreeNode<Token> *> tree_path_; /** first part of path from root through the tree */
   std::vector<Range> array_path_; /** second part of path from leaf through the suffix array. These Ranges always index relative to the specific suffix array. */
 
-  /** narrow() in suffix array. */
+  /** narrow() in suffix array.
+   * returns > 0 on success, NOT_FOUND on failure: for consistency with narrow_tree_() */
   size_t narrow_array_(Token t);
 
   /** find the bounds of an existing Token or insertion point of a new one */
   Range find_bounds_array_(Token t);
 
-  /** narrow() in tree. */
+  /** narrow() in tree.
+   * returns >= 0 on success, NOT_FOUND on failure. (=0 stepping into empty SuffixArray leaf)
+   */
   size_t narrow_tree_(Token t);
-
-  /** true if span reaches into a suffix array leaf. */
-  bool in_array_() const;
 };
 
 /**
@@ -261,28 +274,32 @@ private:
 
   /**
    * maximum size of suffix array leaf, larger sizes are split up into TreeNodes.
-   * NOTE: the SA leaf of </s> may grow above kMaxArraySize, see AddPosition_() implementation.
+   * NOTE: the SA leaf of </s> may grow above kMaxArraySize, see AddPosition() implementation.
    */
   const size_t kMaxArraySize;
 
   /**
-   * Insert the existing Corpus Position into this index.
-   * This potentially splits existing suffix array leaves into individual TreeNodes,
-   * and inserts Position entries into the suffix array. Hence, it is an
+   * Insert the existing Corpus Position into this leaf node (SuffixArray).
+   * This potentially splits the SuffixArray into individual TreeNodes,
+   * and inserts a Position entry into the suffix array. Hence, it is an
    * O(k + log(n)) operation, with k = TreeNode<Token>::kMaxArraySize
    *
-   * Exclusively for adding to a SA (leaf node). Does NOT increment size_.
+   * Exclusively for adding to a SA (leaf node).
    *
    * depth: distance of TreeNode from the root of this tree, used in splits
    */
-  void AddPosition_(const Sentence<Token> &sent, Offset start, size_t depth);
+  void AddPosition(const Sentence<Token> &sent, Offset start, size_t depth);
 
-  /** Call SplitNode() if this node needs to be split. Returns true if it was. */
-  bool CheckSplitNode(const Sentence<Token> &sent, Offset start, Offset depth);
+  /** Add an empty leaf node (SuffixArray) as a child. */
+  void AddLeaf(Vid vid);
 
-  /** Split this leaf node (suffix array) into a proper TreeNode with children.
+  /** Increase the given vid child's size. */
+  void AddSize(Vid vid, size_t add_size);
+
+  /**
+   * Split this leaf node (SuffixArray) into a proper TreeNode with children.
    * depth: distance of TreeNode from the root of this tree
-   * */
+   */
   void SplitNode(const Corpus<Token> &corpus, Offset depth);
 };
 

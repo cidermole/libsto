@@ -33,20 +33,21 @@ template<class Token>
 size_t IndexSpan<Token>::narrow(Token t) {
   size_t new_span;
 
-  if(in_array_())
+  if(in_array())
     new_span = narrow_array_(t);
   else
     new_span = narrow_tree_(t);
 
-  if(new_span != 0) {
-    // only modify the IndexSpan if no failure
-    sequence_.push_back(t);
+  if(new_span == NOT_FOUND)
+    return 0;
+  // only modify the IndexSpan if no failure
 
-    // if we just descended into the suffix array, add sentinel: spanning full array range
-    // array_path_: entries always index relative to the specific suffix array
-    if(in_array_() && array_path_.size() == 0)
-      array_path_.push_back(Range{0, tree_path_.back()->size()});
-  }
+  sequence_.push_back(t);
+
+  // if we just descended into the suffix array, add sentinel: spanning full array range
+  // array_path_: entries always index relative to the specific suffix array
+  if(in_array() && array_path_.size() == 0)
+    array_path_.push_back(Range{0, tree_path_.back()->size()});
 
   return new_span;
 }
@@ -105,7 +106,7 @@ size_t IndexSpan<Token>::narrow_array_(Token t) {
   Range new_range = find_bounds_array_(t);
 
   if(new_range.size() == 0)
-    return 0; // do not modify the IndexSpan and signal failure
+    return NOT_FOUND; // do not modify the IndexSpan and signal failure
 
   array_path_.push_back(new_range);
   return new_range.size();
@@ -115,8 +116,9 @@ template<class Token>
 size_t IndexSpan<Token>::narrow_tree_(Token t) {
   TreeNode<Token> *node;
   if(!tree_path_.back()->children_.Find(t.vid, &node))
-    return 0; // do not modify the IndexSpan and signal failure
+    return NOT_FOUND; // do not modify the IndexSpan and signal failure
 
+  // note: we also end up here if stepping into an empty, existing SuffixArray leaf
   assert(node != nullptr);
   tree_path_.push_back(node);
   return tree_path_.back()->size();
@@ -142,7 +144,7 @@ Position<Token> IndexSpan<Token>::At(size_t rel) {
 
 template<class Token>
 size_t IndexSpan<Token>::size() const {
-  if(in_array_()) {
+  if(in_array()) {
     assert(array_path_.size() > 0);
     return array_path_.back().size();
   } else {
@@ -152,12 +154,17 @@ size_t IndexSpan<Token>::size() const {
 }
 
 template<class Token>
+TreeNode<Token> *IndexSpan<Token>::node() {
+  return tree_path_.back();
+}
+
+template<class Token>
 size_t IndexSpan<Token>::depth() const {
   return sequence_.size();
 }
 
 template<class Token>
-bool IndexSpan<Token>::in_array_() const {
+bool IndexSpan<Token>::in_array() const {
   return tree_path_.back()->is_leaf();
 }
 
@@ -221,34 +228,38 @@ void TokenIndex<Token>::AddSubsequence_(const Sentence<Token> &sent, Offset star
   // track the position to insert at
   IndexSpan<Token> cur_span = span();
   size_t span_size;
+  Offset i;
   bool finished = false;
 
-  for(Offset i = start; !finished && i < sent.size(); i++) {
-    // TODO thread safety
-    // add to cumulative count for internal TreeNodes (excludes SA leaves which increment in AddPosition_()), including the root (if it's not a SA)
-    if(!cur_span.tree_path_.back()->is_leaf()) {
-      if(cur_span.tree_path_.back()->children_.Find(sent[i].vid)) // fails if we need to create a new tree entry, see (1) below
-        cur_span.tree_path_.back()->children_.AddSize(sent[i].vid, /* add_size = */ 1);
-      // note: avoids the TreeNode potentially created by splitting a SA. However, SA adds its own count, so the TreeNode ends up being the correct size.
-    }
-
+  for(i = start; !finished && i < sent.size(); i++) {
     span_size = cur_span.narrow(sent[i]);
 
-    if(span_size == 0 || cur_span.in_array_()) {
+    if(span_size == 0 || cur_span.in_array()) {
       // create an entry (whether in tree or SA)
-      if(!cur_span.in_array_()) {
+      if(!cur_span.in_array()) {
         // (1) create tree entry (leaf)
-        cur_span.tree_path_.back()->children_[sent[i].vid] = new TreeNode<Token>(); // to do: should be implemented as a method on TreeNode
-        cur_span.tree_path_.back()->children_.AddSize(sent[i].vid, /* add_size = */ 1);
+        cur_span.node()->AddLeaf(sent[i].vid);
         cur_span.narrow(sent[i]); // step IndexSpan into the node just created (which contains an empty SA)
-        assert(cur_span.in_array_());
+        assert(cur_span.in_array());
       }
       // stop after adding to a SA (entry there represents all the remaining depth)
       finished = true;
       // create SA entry
-      cur_span.tree_path_.back()->AddPosition_(sent, start, cur_span.tree_path_.size() - 1 /* why not equivalent? */ /* BAD: cur_span.depth() - (span_size ? 1 : 0)*/); // depth()-1: e.g. for the root level SA split, we've got depth()==1 (except if span_size==0) but need to look at first SA entry position (at offset 0)
-      // note: cur_span is not entirely in a valid state after this, because a leaf node has been split, but array_path_ is lacking sentinel: spanning full array range
+      cur_span.node()->AddPosition(sent, start, cur_span.depth());
+      // note: after a split, cur_span is at the new internal TreeNode, not at the SA. it might make sense to move the split here to change this.
     }
+  }
+  assert(finished);
+  //assert(cur_span.in_array()); // after a split, cur_span is at the new internal TreeNode, not at the SA.
+
+  // add to cumulative count for internal TreeNodes (excludes SA leaves which increment in AddPosition()), including the root (if it's not a SA)
+  auto &path = cur_span.tree_path();
+  i = start + cur_span.depth();
+  for(auto it = path.rbegin(); it != path.rend(); ++it) {
+    // add sizes from deepest level towards root, so that readers will see a valid state (children being at least as big as they should be)
+    if(!(*it)->is_leaf())
+      (*it)->AddSize(sent[i].vid, /* add_size = */ 1);
+    i--;
   }
 }
 
@@ -271,7 +282,7 @@ TreeNode<Token>::~TreeNode() {
 }
 
 template<class Token>
-void TreeNode<Token>::AddPosition_(const Sentence<Token> &sent, Offset start, size_t depth) {
+void TreeNode<Token>::AddPosition(const Sentence<Token> &sent, Offset start, size_t depth) {
   assert(is_leaf()); // Exclusively for adding to a SA (leaf node).
 
   Position<Token> corpus_pos{sent.sid(), start};
@@ -312,8 +323,20 @@ void TreeNode<Token>::AddPosition_(const Sentence<Token> &sent, Offset start, si
    */
   bool allow_split = sent.size() > start + depth;
 
-  if(array->size() > kMaxArraySize && allow_split)
+  if(array->size() > kMaxArraySize && allow_split) {
     SplitNode(corpus, static_cast<Offset>(depth)); // suffix array grown too large, split into TreeNode
+    children_.AddSize(corpus_pos.add(depth, corpus).vid(corpus), /* add_size = */ -1);
+  }
+}
+
+template<class Token>
+void TreeNode<Token>::AddLeaf(Vid vid) {
+  children_[vid] = new TreeNode<Token>();
+}
+
+template<class Token>
+void TreeNode<Token>::AddSize(Vid vid, size_t add_size) {
+  children_.AddSize(vid, add_size);
 }
 
 /** Split this leaf node (suffix array) into a proper TreeNode with children. */

@@ -221,11 +221,15 @@ void TokenIndexTests::fill_tree_2level_common_prefix_the(TokenIndex<SrcToken> &t
 
   // a leaf </s> attached to 'the' which itself should be split:
 
+  tokenIndex.DebugPrint(std::cerr);
+
   //                                      0      1
   std::vector<std::string> sent2_words = {"the", "</s>"};
 
   Sentence<SrcToken> sentence2 = AddSentence(sent2_words);
   tokenIndex.AddSentence(sentence2);
+
+  tokenIndex.DebugPrint(std::cerr);
 }
 
 TEST_F(TokenIndexTests, tree_2level_common_prefix_the) {
