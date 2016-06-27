@@ -223,74 +223,33 @@ void TokenIndex<Token>::AddSubsequence_(const Sentence<Token> &sent, Offset star
   size_t span_size;
   bool finished = false;
 
-  /*
-   * walk through the trie from the root until we either hit a SuffixArray leaf
-   * or we lack an existing child TreeNode (need to insert a SuffixArray leaf).
-   */
   for(Offset i = start; !finished && i < sent.size(); i++) {
     // TODO thread safety
+    // add to cumulative count for internal TreeNodes (excludes SA leaves which increment in AddPosition_()), including the root (if it's not a SA)
+    if(!cur_span.tree_path_.back()->is_leaf()) {
+      cur_span.tree_path_.back()->size_++; // we add this here, and not in the partial sum update loop below, because we may have split a SA, which increments on its own already (a bit ugly)
+      if(cur_span.tree_path_.back()->children_.Find(sent[i].vid)) // fails if we need to create a new tree entry, see (1) below
+        cur_span.tree_path_.back()->children_.AddSize(sent[i].vid, /* add_size = */ 1);
+      // note: avoids the TreeNode potentially created by splitting a SA. However, SA adds its own count, so the TreeNode ends up being the correct size.
+    }
+
     span_size = cur_span.narrow(sent[i]);
 
-    /*
-     * Possible states:
-     *
-     * 1) hit existing child TreeNode: span_size != 0 && !cur_span.in_array_()
-     *      continue walking
-     * 2) no existing child TreeNode: span_size == 0 && !cur_span.in_array_()
-     *      create SuffixArray leaf -> goto 3)
-     * 3) hit SuffixArray, lacking the correct top level child (should never happen): span_size == 0 && cur_span.in_array_()
-     * 4) hit SuffixArray, found top level child: span_size != 0 && cur_span.in_array_()
-     *
-     * we can handle 3) and 4) together:
-     *      insert into SuffixArray and return
-     */
-
-    //happens on root level when there's no such SA top level child.
-    //assert(!(span_size == 0 && cur_span.in_array_()) || root_->size() == 0);
-    // if we just hit the SA, that means there is a leaf there, and it has to have the correct TreeNode above.
-    // Since size > 0 for any SA, this assert will hold for everything except for the empty root.
-
-
-    // 3) and 4): potentially split the SuffixArray
-    if(cur_span.in_array_()) {
-      // to do: make CheckSplitNode() a pure check and call SplitNode() here. It is clearer in an if.
-      if(cur_span.tree_path_.back()->CheckSplitNode(sent, start, static_cast<Offset>(cur_span.tree_path_.size() - 1))) {
-        assert(cur_span.tree_path_.back()->is_leaf() || cur_span.tree_path_.back()->size_ == cur_span.tree_path_.back()->children_.size());
-        assert(!cur_span.in_array_());
-        // this depends on array_path_ having the full range span (see assert above); in other words, specific to IndexSpan implementation -> move code there.
-        span_size = cur_span.narrow(sent[i]); // step IndexSpan into the node just created (which contains the split SA part)
-        // here, array_path_.size() != 0 and so entry just stays there TODO step back/widen?
-        // note: it is possible that the node we wanted to add doesn't exist yet (need to add SuffixArray leaf to newly created TreeNode) -- handled by 2) below.
-        assert(cur_span.tree_path_.back()->is_leaf() || cur_span.tree_path_.back()->size_ == cur_span.tree_path_.back()->children_.size());
+    if(span_size == 0 || cur_span.in_array_()) {
+      // create an entry (whether in tree or SA)
+      if(!cur_span.in_array_()) {
+        // (1) create tree entry (leaf)
+        cur_span.tree_path_.back()->children_[sent[i].vid] = new TreeNode<Token>(); // to do: should be implemented as a method on TreeNode
+        cur_span.tree_path_.back()->children_.AddSize(sent[i].vid, /* add_size = */ 1);
+        cur_span.narrow(sent[i]); // step IndexSpan into the node just created (which contains an empty SA)
+        assert(cur_span.in_array_());
       }
-    }
-
-    // 2) no existing child TreeNode: create SuffixArray leaf
-    if(span_size == 0 && !cur_span.in_array_()) {
-      cur_span.tree_path_.back()->children_[sent[i].vid] = new TreeNode<Token>(); // to do: should be implemented as a method on TreeNode
-      cur_span.tree_path_.back()->children_.AddSize(sent[i].vid, /* add_size = */ 0);
-      // TODO bug: narrow_tree() will return 0 and not append the leaf, since it is empty and hence returns 0 length.
-      span_size = cur_span.narrow(sent[i]); // step IndexSpan into the node just created (which contains an empty SA)
-      assert(cur_span.in_array_());
-      assert(cur_span.tree_path_.back()->is_leaf() || cur_span.tree_path_.back()->size_ == cur_span.tree_path_.back()->children_.size());
-    }
-
-    //except if root has no such child
-    //assert(!cur_span.in_array_() || span_size == cur_span.tree_path_.back()->size()); // if just stepped into SA, we have a full range span
-
-
-    // we might have split a node above, check again
-    if(cur_span.in_array_()) {
-      // create a SuffixArray entry and stop (entry there represents all the remaining depth)
+      // stop after adding to a SA (entry there represents all the remaining depth)
       finished = true;
+      // create SA entry
       cur_span.tree_path_.back()->AddPosition_(sent, start, cur_span.tree_path_.size() - 1 /* why not equivalent? */ /* BAD: cur_span.depth() - (span_size ? 1 : 0)*/); // depth()-1: e.g. for the root level SA split, we've got depth()==1 (except if span_size==0) but need to look at first SA entry position (at offset 0)
+      // note: cur_span is not entirely in a valid state after this, because a leaf node has been split, but array_path_ is lacking sentinel: spanning full array range
     }
-  }
-
-  // add to cumulative count for internal TreeNodes (excludes SA leaves which increment in AddPosition_()), including the root (if it's not a SA)
-  for(auto node : cur_span.tree_path_) {
-    if(!node->is_leaf())
-      node->size_++;
   }
 }
 
@@ -340,10 +299,7 @@ void TreeNode<Token>::AddPosition_(const Sentence<Token> &sent, Offset start, si
 
   size_++;
   assert(size_ == array->size());
-}
 
-template<class Token>
-bool TreeNode<Token>::CheckSplitNode(const Sentence<Token> &sent, Offset start, Offset depth) {
   /*
    * disallow splits of </s>
    *
@@ -360,11 +316,8 @@ bool TreeNode<Token>::CheckSplitNode(const Sentence<Token> &sent, Offset start, 
    */
   bool allow_split = sent.size() > start + depth;
 
-  if(array_->size() >= kMaxArraySize && allow_split) {
-    SplitNode(sent.corpus(), depth); // suffix array grown too large, split into TreeNode
-    return true;
-  }
-  return false;
+  if(array->size() > kMaxArraySize && allow_split)
+    SplitNode(corpus, static_cast<Offset>(depth)); // suffix array grown too large, split into TreeNode
 }
 
 /** Split this leaf node (suffix array) into a proper TreeNode with children. */
@@ -409,11 +362,6 @@ void TreeNode<Token>::SplitNode(const Corpus<Token> &corpus, Offset depth) {
       break;
   }
   assert(children_.size() == array->size());
-  std::cerr << "assert(children_.size() == array->size()) = assert(" << children_.size() << " == " << array->size() << ")" << std::endl;
-
-  std::cerr << "after SplitNode(), rbtree looks like this:" << std::endl;
-  children_.Print();
-  std::cerr << std::endl;
 
   // release: ensure prior writes to children_ get flushed before the atomic operation
   is_leaf_.store(false, std::memory_order_release);
