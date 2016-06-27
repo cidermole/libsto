@@ -239,7 +239,7 @@ public:
   bool is_leaf() const { return is_leaf_.load(); }
 
   /** Number of token positions. cumulative length in inner nodes, array_.size() in leaf nodes */
-  size_t size() const { assert(is_leaf() || size_ == children_.size()); return size_; }
+  size_t size() const;
 
   /** random access
    * in O(log(n/k)) with with k = TreeNode<Token>::kMaxArraySize.
@@ -258,8 +258,6 @@ private:
   std::atomic<bool> is_leaf_; /** whether this is a suffix array (leaf node) */
   ChildMap children_; /** node children, empty if leaf node */
   std::shared_ptr<SuffixArray> array_; /** suffix array, only if is_leaf_ == true */
-  size_t size_; /** Number of token positions. cumulative length in inner nodes, array_.size() in leaf nodes */
-  size_t partial_size_sum_; /** partial sum of all sizes on this tree level to our left (so leftmost child has 0 here) */
 
   /**
    * maximum size of suffix array leaf, larger sizes are split up into TreeNodes.

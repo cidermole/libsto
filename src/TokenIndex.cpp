@@ -227,7 +227,6 @@ void TokenIndex<Token>::AddSubsequence_(const Sentence<Token> &sent, Offset star
     // TODO thread safety
     // add to cumulative count for internal TreeNodes (excludes SA leaves which increment in AddPosition_()), including the root (if it's not a SA)
     if(!cur_span.tree_path_.back()->is_leaf()) {
-      cur_span.tree_path_.back()->size_++; // we add this here, and not in the partial sum update loop below, because we may have split a SA, which increments on its own already (a bit ugly)
       if(cur_span.tree_path_.back()->children_.Find(sent[i].vid)) // fails if we need to create a new tree entry, see (1) below
         cur_span.tree_path_.back()->children_.AddSize(sent[i].vid, /* add_size = */ 1);
       // note: avoids the TreeNode potentially created by splitting a SA. However, SA adds its own count, so the TreeNode ends up being the correct size.
@@ -260,7 +259,7 @@ template class TokenIndex<TrgToken>;
 // --------------------------------------------------------
 
 template<class Token>
-TreeNode<Token>::TreeNode(size_t maxArraySize) : is_leaf_(true), array_(new SuffixArray), size_(0), partial_size_sum_(0), kMaxArraySize(maxArraySize)
+TreeNode<Token>::TreeNode(size_t maxArraySize) : is_leaf_(true), array_(new SuffixArray), kMaxArraySize(maxArraySize)
 {}
 
 template<class Token>
@@ -296,9 +295,6 @@ void TreeNode<Token>::AddPosition_(const Sentence<Token> &sent, Offset start, si
   // if necessary (eg. for byte packing), we might implement our own vector<> that aligns elements to fit within cachelines
 
   array->insert(insert_pos, corpus_pos); // note: critical point for thread safety
-
-  size_++;
-  assert(size_ == array->size());
 
   /*
    * disallow splits of </s>
@@ -347,14 +343,13 @@ void TreeNode<Token>::SplitNode(const Corpus<Token> &corpus, Offset depth) {
     TreeNode<Token> *new_child = new TreeNode<Token>(kMaxArraySize);
     std::shared_ptr<SuffixArray> new_array = new_child->array_;
     new_array->insert(new_array->begin(), vid_range.first, vid_range.second);
-    new_child->size_ = new_array->size();
     //children_[pos.add(depth, corpus).vid(corpus)] = new_child;
-    children_.FindOrInsert(pos.add(depth, corpus).vid(corpus), /* add_size = */ new_child->size_) = new_child;
+    children_.FindOrInsert(pos.add(depth, corpus).vid(corpus), /* add_size = */ new_array->size()) = new_child;
 
     TreeNode<Token> *n;
     assert(children_.Find(pos.add(depth, corpus).vid(corpus), &n));
-    assert(n != nullptr && n->size_ == new_child->size_); // NOT: n->children_.size(). that's one level deeper and is empty!
-    assert(children_.ChildSize(pos.add(depth, corpus).vid(corpus)) == new_child->size_);
+    assert(n != nullptr);
+    assert(children_.ChildSize(pos.add(depth, corpus).vid(corpus)) == new_array->size());
 
     if(vid_range.second != array->end())
       pos = *vid_range.second; // position with next vid
@@ -369,6 +364,16 @@ void TreeNode<Token>::SplitNode(const Corpus<Token> &corpus, Offset depth) {
   // destroy the suffix array (last reader will clean up)
   array_.reset();
   // note: array_ null check could replace is_leaf_
+}
+
+template<class Token>
+size_t TreeNode<Token>::size() const {
+  // thread safety: obtain reference first, check later, so we are sure to have a valid array -- avoids race with SplitNode()
+  std::shared_ptr<SuffixArray> array = array_;
+  if(is_leaf())
+    return array->size();
+  else
+    return children_.size();
 }
 
 template<class Token>
