@@ -57,10 +57,18 @@ public:
   /**
    * Random access to a position within the selected span.
    * O(log(n/k)) with with k = TreeNode<Token>::kMaxArraySize.
+   *
+   * When reading a SuffixArray leaf that is being written to,
+   * returned Position values will always be valid, but
+   * may be to the left of 'rel'.
    */
   Position<Token> operator[](size_t rel);
 
-  /** Number of token positions spanned in the index. */
+  /**
+   * Number of token positions spanned in the index.
+   *
+   * Returns a size cached when narrow() was called.
+   */
   size_t size() const;
 
   /** Length of lookup sequence, or the number of times narrow() has been called. */

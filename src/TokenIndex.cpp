@@ -24,9 +24,6 @@ IndexSpan<Token>::IndexSpan(TokenIndex<Token> &index) : index_(&index)
   // but for a leaf-only tree (rooted in a suffix array) we cannot do better:
   if(index_->root_->is_leaf())
     array_path_.push_back(Range{0, index_->root_->size()});
-
-  // who invalidates IndexSpan when TokenIndex is updated?
-  // ideally, we should track that, and provide errors to the user.
 }
 
 template<class Token>
@@ -291,7 +288,23 @@ void TreeNode<Token>::AddPosition(const Sentence<Token> &sent, Offset start, siz
   static_assert(cache_line_size % sizeof(typename decltype(array_)::element_type::value_type) == 0);
   // if necessary (eg. for byte packing), we might implement our own vector<> that aligns elements to fit within cachelines
 
-  array->insert(insert_pos, corpus_pos); // note: critical point for thread safety
+  if(array->capacity() >= array->size() + 1) {
+    // safe to insert, no reallocation: shifting elements backwards. readers may observe either old or shifted elements.
+    array->insert(insert_pos, corpus_pos);
+  } else {
+    // reallocation must happen. we do this manually (instead of using vector::insert()) to avoid locking.
+
+    // in a new copy, prepare the new state of the vector
+    std::shared_ptr<SuffixArray> resized = std::make_shared<SuffixArray>();
+    resized->reserve(std::max<size_t>(1, array->capacity() * 2)); // reserve at least 1, because capacity starts at 0
+    resized->insert(resized->begin(), array->begin(), insert_pos); // copy first part
+    resized->push_back(corpus_pos); // new item
+    resized->insert(resized->end(), insert_pos, array->end()); // copy second part
+
+    array_ = resized; // atomic replace
+
+    array = array_;
+  }
 
   /*
    * disallow splits of </s>
