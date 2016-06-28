@@ -10,6 +10,7 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <atomic>
 
 #include "Vocab.h"
 #include "MappedFile.h"
@@ -115,6 +116,8 @@ private:
   size_t size_; /** number of tokens */
 };
 
+template<class Token> struct AtomicPosition;
+
 /**
  * Position of a Token within a Corpus.
  */
@@ -129,7 +132,16 @@ public:
   Offset offset; /** offset within sentence */
   // TODO: size_t offset() {}, offset_ private. (saves us from casting all the time)
 
+  Position() noexcept: sid(0), offset(0) {}
   Position(Sid s, Offset o): sid(s), offset(o) {}
+
+  Position(const Position &other) = default;
+  Position(Position &&other) = default;
+
+  Position &operator=(Position &&other) = default;
+  Position &operator=(const Position &other) = default;
+
+  Position(AtomicPosition<Token> &atomic_pos) : Position(atomic_pos.load()) {}
 
   /** like operator<(this, other) */
   bool compare(const Position<Token> &other, const Corpus<Token> &corpus) const;
@@ -144,6 +156,38 @@ public:
   /** add offset. */
   Position add(Offset offset, const Corpus<Token> &corpus) const;
 };
+
+
+/**
+ * Atomic Position<Token> wrapper to provide safe concurrent access to individual entries of a vector of these.
+ */
+template<class Token>
+struct AtomicPosition {
+  static constexpr std::memory_order order = std::memory_order_relaxed;
+  
+  AtomicPosition(Position<Token> &p) {
+    pos.store(p, order);
+  }
+  AtomicPosition(AtomicPosition<Token> &&p) {
+    pos.store(p.pos.load(), order);
+  }
+  AtomicPosition(const AtomicPosition<Token> &p): pos() {
+    pos.store(p.pos.load(), order);
+  }
+  AtomicPosition<Token> &operator=(const AtomicPosition<Token> &p) {
+    pos.store(p.pos.load(), order);
+    return *this;
+  }
+  AtomicPosition<Token> &operator=(AtomicPosition<Token> &&p) {
+    pos.store(p.pos.load(), order);
+    return *this;
+  }
+
+  Position<Token> load() { return pos.load(order); }
+
+  std::atomic<Position<Token>> pos;
+};
+
 
 } // namespace sto
 

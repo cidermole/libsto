@@ -282,12 +282,6 @@ void TreeNode<Token>::AddPosition(const Sentence<Token> &sent, Offset start, siz
       }
   );
 
-  static constexpr size_t cache_line_size = 64; /** processor's cacheline size in bytes */
-
-  // on x86/x64 this assert ensures that array updates become visible in a valid state.
-  static_assert(cache_line_size % sizeof(typename decltype(array_)::element_type::value_type) == 0);
-  // if necessary (eg. for byte packing), we might implement our own vector<> that aligns elements to fit within cachelines
-
   if(array->capacity() >= array->size() + 1) {
     // safe to insert, no reallocation: shifting elements backwards. readers may observe either old or shifted elements.
     array->insert(insert_pos, corpus_pos);
@@ -429,7 +423,7 @@ void TreeNode<Token>::DebugPrint(std::ostream &os, const Corpus<Token> &corpus, 
   // for suffix arrays (is_leaf=true)
   std::shared_ptr<SuffixArray> array = array_;
   if(array != nullptr) {
-    for(auto p : *array) {
+    for(Position<Token> p : *array) {
       os << spaces << "* [sid=" << static_cast<int>(p.sid) << " offset=" << static_cast<int>(p.offset) << "]" << std::endl;
     }
   }

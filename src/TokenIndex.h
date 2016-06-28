@@ -238,7 +238,7 @@ public:
   typedef typename Corpus<Token>::Offset Offset;
   //typedef std::map<Vid, TreeNode *> ChildMap;
   typedef TreeChildMap<Token> ChildMap;
-  typedef std::vector<Position<Token>> SuffixArray;
+  typedef std::vector<AtomicPosition<Token>> SuffixArray;
 
   /** Constructs an empty TreeNode, i.e. a leaf with a SuffixArray. */
   TreeNode(size_t maxArraySize = 100000);
