@@ -10,7 +10,6 @@ set(SOURCES
         MappedFile.h
         TokenIndex.cpp
         TokenIndex.h
-        qhashmap.hpp
         util/rbtree.hpp
         util/Time.h
         util/usage.cpp
