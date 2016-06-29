@@ -15,7 +15,7 @@ namespace sto {
 
 /* Create empty corpus */
 template<class Token>
-Corpus<Token>::Corpus(const Vocab<Token> &vocab) : vocab_(&vocab), sentIndexEntries_(nullptr)
+Corpus<Token>::Corpus(const Corpus<Token>::Vocabulary *vocab) : vocab_(vocab), sentIndexEntries_(nullptr)
 {
   dyn_sentIndex_.push_back(0);
   sentIndexHeader_.idxSize = static_cast<decltype(sentIndexHeader_.idxSize)>(-1); // denotes no static entries, see begin()
@@ -23,7 +23,7 @@ Corpus<Token>::Corpus(const Vocab<Token> &vocab) : vocab_(&vocab), sentIndexEntr
 
 /* Load corpus from mtt-build .mtt format or from split corpus/sentidx. */
 template<class Token>
-Corpus<Token>::Corpus(const std::string &filename, const Vocab<Token> &vocab) : vocab_(&vocab) {
+Corpus<Token>::Corpus(const std::string &filename, const Corpus<Token>::Vocabulary *vocab) : vocab_(vocab) {
   track_.reset(new MappedFile(filename));
   CorpusTrackHeader &header = *reinterpret_cast<CorpusTrackHeader*>(track_->ptr);
   trackHeader_ = header;
@@ -72,10 +72,17 @@ Sentence<Token> Corpus<Token>::sentence(Sid sid) const {
 template<class Token>
 void Corpus<Token>::AddSentence(const std::vector<Token> &sent) {
   for(auto token : sent) {
-    vocab_->at(token); // access the Token to ensure it is contained in vocabulary (throws exception otherwise)
+    if(vocab_)
+      vocab_->at(token); // access the Token to ensure it is contained in vocabulary (throws exception otherwise)
     dyn_track_.push_back(token.vid);
   }
   dyn_sentIndex_.push_back(static_cast<SentIndexEntry>(dyn_track_.size()));
+}
+
+template<class Token>
+const typename Corpus<Token>::Vocabulary& Corpus<Token>::vocab() const {
+  assert(vocab_);
+  return *vocab_;
 }
 
 template<class Token>
@@ -86,6 +93,7 @@ typename Corpus<Token>::Sid Corpus<Token>::size() const {
 // explicit template instantiation
 template class Corpus<SrcToken>;
 template class Corpus<TrgToken>;
+template class Corpus<AlignmentLink>;
 
 // --------------------------------------------------------
 
@@ -126,6 +134,7 @@ std::string Sentence<Token>::surface() const {
 // explicit template instantiation
 template class Sentence<SrcToken>;
 template class Sentence<TrgToken>;
+template class Sentence<AlignmentLink>;
 
 // --------------------------------------------------------
 

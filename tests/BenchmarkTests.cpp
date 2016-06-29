@@ -78,7 +78,7 @@ std::string kTextFile = "/home/david/mmt/data/training/real/ep/train.clean.en";
 TEST_F(BenchmarkTests, asdf) {
   // ~/mmt/data/training/real/ep/train.clean.en has 750k lines.
   Vocab<SrcToken> vocab;
-  Corpus<SrcToken> corpus(vocab);
+  Corpus<SrcToken> corpus(&vocab);
   ReadTextFile(corpus, vocab, kTextFile, /* nlines = */ 1);
   std::cerr << "[size=" << corpus.sentence(0).size() << "] " << corpus.sentence(0).surface() << std::endl;
 
@@ -121,7 +121,7 @@ void BenchmarkTests::create_random_queries(TokenIndex<SrcToken> &tokenIndex, std
 
 TEST_F(BenchmarkTests, index_100k) {
   Vocab<SrcToken> vocab;
-  Corpus<SrcToken> corpus(vocab);
+  Corpus<SrcToken> corpus(&vocab);
 
   std::string textFile = kTextFile;
   const size_t nlines = 100000;
@@ -194,7 +194,7 @@ TEST_F(BenchmarkTests, nosplit_eos) {
   // TokenIndex would fail with an assertion if the split should happen.
 
   Vocab<SrcToken> vocab;
-  Corpus<SrcToken> corpus(vocab);
+  Corpus<SrcToken> corpus(&vocab);
 
   std::string textFile = kTextFile;
   const size_t nlines = 1000;

@@ -37,7 +37,7 @@ struct TokenIndexTests : testing::Test {
   void fill_tree_2level_common_prefix_the(TokenIndex<SrcToken> &tokenIndex);
   void tree_2level_common_prefix_the_m(size_t maxLeafSize);
 
-  TokenIndexTests() : corpus(vocab), tokenIndex(corpus) {}
+  TokenIndexTests() : corpus(&vocab), tokenIndex(corpus) {}
   virtual ~TokenIndexTests() {}
 };
 

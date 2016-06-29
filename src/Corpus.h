@@ -14,6 +14,7 @@
 
 #include "Vocab.h"
 #include "MappedFile.h"
+#include "Types.h"
 #include "CorpusTypes.h"
 
 namespace sto {
@@ -30,15 +31,16 @@ template<class Token> class Sentence;
 template<class Token>
 class Corpus {
 public:
-  typedef uint32_t Sid; /** sentence ID type */
-  typedef uint8_t Offset; /** type of token offset within sentence */
+  typedef sid_t Sid; /** sentence ID type */
+  typedef offset_t Offset; /** type of token offset within sentence */
   typedef typename Token::Vid Vid; /** vocabulary ID type */
+  typedef typename Token::Vocabulary Vocabulary; /** Vocab<Token> */
 
   /** Create empty corpus */
-  Corpus(const Vocab<Token> &vocab);
+  Corpus(const Vocabulary *vocab = nullptr);
 
   /** Load corpus from mtt-build .mtt format or from split corpus/sentidx. */
-  Corpus(const std::string &filename, const Vocab<Token> &vocab);
+  Corpus(const std::string &filename, const Vocabulary *vocab = nullptr);
 
   /**
    * begin of sentence (points into sequence of vocabulary IDs in corpus track)
@@ -48,7 +50,7 @@ public:
   // should be friended to Sentence
 
   // should be friended to Sentence
-  //Vocab<Token> *vocab() { return vocab_; }
+  //Vocabulary *vocab() { return vocab_; }
 
   /** retrieve Sentence, a lightweight reference to a sentence's location. Last token is the EOS symbol </s>. */
   Sentence<Token> sentence(Sid sid) const;
@@ -56,13 +58,13 @@ public:
   /** add a sentence to the dynamic part. Last token must be the EOS symbol </s> */
   void AddSentence(const std::vector<Token> &sent);
 
-  const Vocab<Token> &vocab() const { return *vocab_; }
+  const Vocabulary &vocab() const;
 
   /** number of sentences */
   Sid size() const;
 
 private:
-  const Vocab<Token> *vocab_;
+  const Vocabulary *vocab_;
   std::unique_ptr<MappedFile> track_;     /** mapping starts from beginning of file, includes header */
   std::unique_ptr<MappedFile> sentIndex_; /** mapping starts from index start, *excludes* header */
   Vid *trackTokens_;
@@ -150,6 +152,7 @@ public:
   bool operator==(const Position& other) const;
 
   std::string surface(const Corpus<Token> &corpus) const;
+  /** vocabulary ID of the token at this corpus position. Used by TokenIndex. */
   Vid vid(const Corpus<Token> &corpus) const;
   Token token(const Corpus<Token> &corpus) const;
 

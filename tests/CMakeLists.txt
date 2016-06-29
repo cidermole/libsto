@@ -4,7 +4,7 @@
 #install(FILES res/vocab.tdx DESTINATION ${CMAKE_CURRENT_BINARY_DIR} CONFIGURATIONS Debug Release)
 #configure_file(res/vocab.tdx COPYONLY)
 
-set(RESOURCES res/vocab.tdx res/corpus.mct)
+set(RESOURCES res/vocab.tdx res/corpus.mct res/align.mam)
 set(TEST_SOURCES VocabTests.cpp CorpusTests.cpp TokenIndexTests.cpp BenchmarkTests.cpp)
 
 file(COPY ${RESOURCES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/res/)

@@ -8,6 +8,7 @@
 #define STO_VOCAB_H
 
 #include <string>
+#include <cassert>
 #include <unordered_map>
 
 namespace sto {
@@ -52,6 +53,14 @@ private:
 
   /** Load vocabulary from mtt-build .tdx format */
   void load_ugsapt_tdx(const std::string &filename);
+};
+
+/** Empty vocabulary interface without implementations, to provide as a template argument. */
+template<class Token>
+class DummyVocab {
+public:
+  std::string operator[](const Token token) const { assert(false); return std::string(); }
+  std::string at(const Token token) const { assert(false); return std::string(); }
 };
 
 } // namespace sto
