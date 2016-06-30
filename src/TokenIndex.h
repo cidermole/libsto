@@ -37,12 +37,17 @@ struct Range {
  */
 template<class Token>
 class IndexSpan {
-  // TODO: c++11 move constructor, move assignment
 public:
   friend class TokenIndex<Token>;
 
   // use TokenIndex::span() instead
   IndexSpan(TokenIndex<Token> &index);
+
+  IndexSpan(IndexSpan<Token> &other) = default;
+  IndexSpan<Token>& operator=(IndexSpan<Token> &other) = default;
+
+  IndexSpan(IndexSpan<Token> &&other) = default;
+  IndexSpan<Token>& operator=(IndexSpan<Token> &&other) = default;
 
   /**
    * Narrow the span by adding a token to the end of the lookup sequence.
