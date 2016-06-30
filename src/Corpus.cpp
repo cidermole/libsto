@@ -18,7 +18,7 @@ template<class Token>
 Corpus<Token>::Corpus(const Corpus<Token>::Vocabulary *vocab) : vocab_(vocab), sentIndexEntries_(nullptr)
 {
   dyn_sentIndex_.push_back(0);
-  sentIndexHeader_.idxSize = static_cast<decltype(sentIndexHeader_.idxSize)>(-1); // denotes no static entries, see begin()
+  sentIndexHeader_.idxSize = 0; // no static entries
 }
 
 /* Load corpus from mtt-build .mtt format or from split corpus/sentidx. */
@@ -53,6 +53,10 @@ Corpus<Token>::Corpus(const std::string &filename, const Corpus<Token>::Vocabula
 
 template<class Token>
 const typename Corpus<Token>::Vid* Corpus<Token>::begin(Sid sid) const {
+  // for zero-size static track, [0] is not the static trailing sentinel, but a dynamic index access
+  if(sentIndexHeader_.idxSize == 0)
+    sid++;
+
   // static track
   if(sid < sentIndexHeader_.idxSize + 1) { // idxSize excludes the trailing sentinel
     return trackTokens_ + sentIndexEntries_[sid];
@@ -87,7 +91,7 @@ const typename Corpus<Token>::Vocabulary& Corpus<Token>::vocab() const {
 
 template<class Token>
 typename Corpus<Token>::Sid Corpus<Token>::size() const {
-  return sentIndexHeader_.idxSize + static_cast<Sid>(dyn_sentIndex_.size());
+  return sentIndexHeader_.idxSize + static_cast<Sid>(dyn_sentIndex_.size() - 1);
 }
 
 // explicit template instantiation
