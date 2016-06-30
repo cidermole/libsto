@@ -75,6 +75,11 @@ class RBTree {
     return result.first->value;
   }
 
+  /** finds the entry for key, or inserts a new empty entry. */
+  ValueType& operator[](const KeyType& key) {
+    return FindOrInsert(key, /* add_size = */ 0);
+  }
+
   bool Find(const KeyType& key, ValueType *val = nullptr) const {
     std::shared_ptr<Node> node = FindNodeOrParent(key);
     if(!IsNil(node) && node->key == key) {

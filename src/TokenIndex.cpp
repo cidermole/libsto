@@ -164,22 +164,6 @@ template class IndexSpan<TrgToken>;
 // --------------------------------------------------------
 
 template<class Token>
-TreeChildMap<Token>::TreeChildMap() {}
-
-template<class Token>
-Position<Token> TreeChildMap<Token>::At(size_t offset) {
-  TreeNode<Token> *child = children_.At(&offset); // note: changes offset
-  assert(child != nullptr);
-  return child->At(offset);
-}
-
-// explicit template instantiation
-template class TreeChildMap<SrcToken>;
-template class TreeChildMap<TrgToken>;
-
-// --------------------------------------------------------
-
-template<class Token>
 TokenIndex<Token>::TokenIndex(Corpus<Token> &corpus, size_t maxLeafSize) : corpus_(&corpus), root_(new TreeNode<Token>(maxLeafSize))
 {}
 
@@ -372,7 +356,7 @@ void TreeNode<Token>::SplitNode(const Corpus<Token> &corpus, Offset depth) {
     else
       break;
   }
-  assert(children_.size() == array->size());
+  assert(children_.Size() == array->size());
 
   // release: ensure prior writes to children_ get flushed before the atomic operation
   is_leaf_.store(false, std::memory_order_release);
@@ -389,17 +373,20 @@ size_t TreeNode<Token>::size() const {
   if(is_leaf())
     return array->size();
   else
-    return children_.size();
+    return children_.Size();
 }
 
 template<class Token>
 Position<Token> TreeNode<Token>::At(size_t offset) {
   // thread safety: obtain reference first, check later, so we are sure to have a valid array -- avoids race with SplitNode()
   std::shared_ptr<SuffixArray> array = array_;
-  if(is_leaf())
+  if(is_leaf()) {
     return (*array)[offset];
-  else
-    return children_.At(offset);
+  } else {
+    TreeNode<Token> *child = children_.At(&offset); // note: changes offset
+    assert(child != nullptr);
+    return child->At(offset);
+  }
 }
 
 std::string nspaces(size_t n) {

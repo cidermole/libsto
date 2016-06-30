@@ -107,74 +107,6 @@ private:
 };
 
 /**
- * Map from vids to TreeNode children.
- * Additionally carries along partial sums for child sizes.
- */
-template<class Token>
-class TreeChildMap {
-public:
-  typedef typename Token::Vid Vid;
-  typedef RBTree<Vid, TreeNode<Token> *> ChildMap;
-  //typedef typename ChildMap::iterator Iterator;
-
-  TreeChildMap();
-
-  //Iterator begin() { return children_.begin(); }
-  //Iterator end() { return children_.end(); }
-
-  bool empty() const { return children_.Count() == 0; }
-
-  /** finds the TreeNode for vid, or inserts a new empty TreeNode. */
-  TreeNode<Token> *&operator[](Vid vid) {
-    return children_.FindOrInsert(vid, /* add_size = */ 0);
-  }
-
-  void AddSize(Vid vid, size_t add_size) {
-    children_.AddSize(vid, add_size);
-  }
-
-  TreeNode<Token> *&FindOrInsert(Vid vid, size_t add_size) {
-    return children_.FindOrInsert(vid, add_size);
-  }
-
-  bool Find(const Vid& key, TreeNode<Token> **val = nullptr) const {
-    return children_.Find(key, val);
-  }
-
-  void Print() {
-    children_.Print();
-  }
-
-  size_t size() const {
-    return children_.Size();
-  }
-
-  size_t ChildSize(const Vid& key) const {
-    return children_.ChildSize(key);
-  }
-
-  /** Walk tree in-order and apply func(key, value) to each node. */
-  template<typename Func>
-  void Walk(Func func) {
-    children_.Walk(func);
-  }
-
-  /** returns iterator to specified element, or end() if not found. */
-  //Iterator find(Vid vid);
-
-  /** Update the size partial sums of our children after vid. Default is update everything. Returns total sum of children. */
-  //size_t UpdateChildSizeSums(Vid vid = Token::kInvalidVid);
-
-  /**
-   * Access to a position within the selected span.
-   */
-  Position<Token> At(size_t offset);
-
-private:
-  ChildMap children_;
-};
-
-/**
  * Indexes a Corpus. The index is implemented as a hybrid suffix tree/array.
  *
  * Vocab note: explicit sentence end delimiting symbol </s> must be indexed at the very beginning of all vocab symbols (sort order matters, shorter sequences must come first)!
@@ -236,8 +168,7 @@ public:
 
   typedef typename Corpus<Token>::Vid Vid;
   typedef typename Corpus<Token>::Offset Offset;
-  //typedef std::map<Vid, TreeNode *> ChildMap;
-  typedef TreeChildMap<Token> ChildMap;
+  typedef RBTree<Vid, TreeNode<Token> *> ChildMap;
   typedef std::vector<AtomicPosition<Token>> SuffixArray;
 
   /** Constructs an empty TreeNode, i.e. a leaf with a SuffixArray. */
@@ -260,8 +191,8 @@ public:
 
 private:
   std::atomic<bool> is_leaf_; /** whether this is a suffix array (leaf node) */
-  ChildMap children_; /** node children, empty if leaf node */
-  std::shared_ptr<SuffixArray> array_; /** suffix array, only if is_leaf_ == true */
+  ChildMap children_; /** TreeNode children, empty if is_leaf. Additionally carries along partial sums for child sizes. */
+  std::shared_ptr<SuffixArray> array_; /** suffix array, only if is_leaf */
 
   /**
    * maximum size of suffix array leaf, larger sizes are split up into TreeNodes.
