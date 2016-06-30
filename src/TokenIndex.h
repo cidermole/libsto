@@ -132,7 +132,8 @@ public:
   Corpus<Token> *corpus() { return corpus_; }
 
   /**
-   * Insert the existing Corpus Sentence into this index.
+   * Insert the existing Corpus Sentence into this index. Last token must be the EOS symbol </s>.
+   *
    * This potentially splits existing suffix array leaves into individual TreeNodes,
    * and inserts Position entries into the suffix array. Hence, it is an
    *
@@ -141,8 +142,7 @@ public:
    * operation, with l = sent.size(), k = TreeNode<Token>::kMaxArraySize
    * and n = span().size() aka the full index size.
    *
-   * Thread safety: given some memory model assumptions (Total Store Ordering) about
-   * the target architecture (x86/x64), writes concurrent to multiple reading threads
+   * Thread safety: writes concurrent to multiple reading threads
    * do not result in invalid state being read.
    */
   void AddSentence(const Sentence<Token> &sent);

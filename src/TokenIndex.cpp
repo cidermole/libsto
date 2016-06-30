@@ -213,7 +213,10 @@ void TokenIndex<Token>::AddSubsequence_(const Sentence<Token> &sent, Offset star
       finished = true;
       // create SA entry
       cur_span.node()->AddPosition(sent, start, cur_span.depth());
-      // note: after a split, cur_span is at the new internal TreeNode, not at the SA. it might make sense to move the split here to change this.
+      // After a split, cur_span is at the new internal TreeNode, not at the SA.
+      // This is by design: since the SA insertion added a count there, the split created a TreeNode with already incremented size.
+
+      // note: it might make sense to move the split here.
     }
   }
   assert(finished);
@@ -222,10 +225,12 @@ void TokenIndex<Token>::AddSubsequence_(const Sentence<Token> &sent, Offset star
   // add to cumulative count for internal TreeNodes (excludes SA leaves which increment in AddPosition()), including the root (if it's not a SA)
   auto &path = cur_span.tree_path();
   i = start + cur_span.depth();
-  for(auto it = path.rbegin(); it != path.rend(); ++it) {
+  auto it = path.rbegin();
+  ++it; i--; // avoid leaf, potentially avoid most recent internal TreeNode created by a split above.
+  for(; it != path.rend(); ++it) {
     // add sizes from deepest level towards root, so that readers will see a valid state (children being at least as big as they should be)
-    if(!(*it)->is_leaf())
-      (*it)->AddSize(sent[i].vid, /* add_size = */ 1);
+    assert(!(*it)->is_leaf());
+    (*it)->AddSize(sent[i].vid, /* add_size = */ 1);
     i--;
   }
 }
@@ -302,7 +307,6 @@ void TreeNode<Token>::AddPosition(const Sentence<Token> &sent, Offset start, siz
 
   if(array->size() > kMaxArraySize && allow_split) {
     SplitNode(corpus, static_cast<Offset>(depth)); // suffix array grown too large, split into TreeNode
-    children_.AddSize(corpus_pos.add(depth, corpus).vid(corpus), /* add_size = */ -1);
   }
 }
 
