@@ -119,8 +119,13 @@ void Vocab<Token>::load_ugsapt_tdx(const std::string &filename) {
   size_ = header.size;
 }
 
+template<class Token>
+constexpr typename DummyVocab<Token>::Vid DummyVocab<Token>::kEOS;
+
 // explicit template instantiation
 template class Vocab<SrcToken>;
 template class Vocab<TrgToken>;
+
+template class DummyVocab<AlignmentLink>;
 
 } // namespace sto

@@ -70,7 +70,8 @@ Range IndexSpan<Token>::find_bounds_array_(Token t) {
       [&corpus, old_sequence_size](const Position<Token> &pos, const Token &t) {
         Sentence<Token> sent = corpus.sentence(pos.sid);
         // lexicographic sort order means shorter sequences always come first in array
-        if (sent.size() - pos.offset < old_sequence_size + 1)
+        // sent.size() + 1: add implicit </s>
+        if (sent.size() + 1 - pos.offset < old_sequence_size + 1)
           return true;
         // we only need to compare at the depth of new_sequence_size, since all tokens before are equal
 
@@ -86,7 +87,8 @@ Range IndexSpan<Token>::find_bounds_array_(Token t) {
       [&corpus, old_sequence_size](const Token &t, const Position<Token> &pos) {
         Sentence<Token> sent = corpus.sentence(pos.sid);
         // lexicographic sort order means shorter sequences always come first in array
-        if (sent.size() - pos.offset < old_sequence_size + 1)
+        // sent.size() + 1: add implicit </s>
+        if (sent.size() + 1 - pos.offset < old_sequence_size + 1)
           return false;
         // we only need to compare at the depth of new_sequence_size, since all tokens before are equal
 
@@ -181,7 +183,7 @@ template<class Token>
 void TokenIndex<Token>::AddSentence(const Sentence<Token> &sent) {
   // start a subsequence at each sentence position
   // each subsequence only goes as deep as necessary to hit a SA
-  for(Offset i = 0; i < sent.size(); i++)
+  for(Offset i = 0; i <= sent.size(); i++)
     AddSubsequence_(sent, i);
 }
 
@@ -198,7 +200,7 @@ void TokenIndex<Token>::AddSubsequence_(const Sentence<Token> &sent, Offset star
   Offset i;
   bool finished = false;
 
-  for(i = start; !finished && i < sent.size(); i++) {
+  for(i = start; !finished && i <= sent.size(); i++) {
     span_size = cur_span.narrow(sent[i]);
 
     if(span_size == 0 || cur_span.in_array()) {
@@ -303,7 +305,7 @@ void TreeNode<Token>::AddPosition(const Sentence<Token> &sent, Offset start, siz
    * into a single number. However, the leaves contain the Corpus Positions of the entire path to the suffix,
    * which we want to sample.
    */
-  bool allow_split = sent.size() > start + depth;
+  bool allow_split = sent.size() + 1 > start + depth; // +1 for implicit </s>
 
   if(array->size() > kMaxArraySize && allow_split) {
     SplitNode(corpus, static_cast<Offset>(depth)); // suffix array grown too large, split into TreeNode

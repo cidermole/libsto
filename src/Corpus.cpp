@@ -117,8 +117,11 @@ Sentence<Token>::Sentence(const Sentence<Token> &&o) : corpus_(o.corpus_), sid_(
 
 template<class Token>
 Token Sentence<Token>::operator[](size_t i) const {
-  assert(i < size_);
-  return Token{begin_[i]};
+  assert(i <= size_);
+  if(i == size_)
+    return Token{Corpus<Token>::Vocabulary::kEOS}; // implicit </s>
+  else
+    return Token{begin_[i]};
 }
 
 template<class Token>
@@ -171,7 +174,7 @@ Token Position<Token>::token(const Corpus<Token> &corpus) const {
 
 template<class Token>
 Position<Token> Position<Token>::add(Offset offset, const Corpus<Token> &corpus) const {
-  assert(static_cast<Offset>(corpus.sentence(this->sid).size()) - this->offset >= offset + 1);
+  assert(static_cast<Offset>(corpus.sentence(this->sid).size()) + 1 - this->offset >= offset + 1);
   return Position(this->sid, this->offset + offset);
 }
 

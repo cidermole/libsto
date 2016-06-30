@@ -67,7 +67,7 @@ struct aln_link_t {
   offset_t src; /** token offset in source sentence */
   offset_t trg; /** token offset in target sentence */
 
-  aln_link_t(offset_t s, offset_t t): src(s), trg(t) {}
+  constexpr aln_link_t(offset_t s, offset_t t): src(s), trg(t) {}
 
   // these are used in tests
   bool operator==(const aln_link_t &other) const { return src == other.src && trg == other.trg; }

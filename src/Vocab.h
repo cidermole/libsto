@@ -21,6 +21,7 @@ template<class Token>
 class Vocab {
 public:
   typedef typename Token::Vid Vid;
+  static constexpr typename Token::Vid kEOS = 1; /** vocabulary ID for </s>, the end-of-sentence sentinel token */
 
   /** Create empty vocabulary */
   Vocab();
@@ -59,6 +60,9 @@ private:
 template<class Token>
 class DummyVocab {
 public:
+  typedef typename Token::Vid Vid;
+  static constexpr typename Token::Vid kEOS = {0, 0};
+
   std::string operator[](const Token token) const { assert(false); return std::string(); }
   std::string at(const Token token) const { assert(false); return std::string(); }
 };

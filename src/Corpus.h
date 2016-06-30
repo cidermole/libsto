@@ -23,8 +23,6 @@ template<class Token> class Sentence;
 
 /**
  * Memory-mapped corpus.
- * Last token of each sentence must be the EOS symbol </s> for TokenIndex to work correctly.
- * TODO: encode </s> as a static const member somewhere.
  *
  * Read-only for now.
  */
@@ -48,9 +46,6 @@ public:
    */
   const Vid *begin(Sid sid) const;
   // should be friended to Sentence
-
-  // should be friended to Sentence
-  //Vocabulary *vocab() { return vocab_; }
 
   /** retrieve Sentence, a lightweight reference to a sentence's location. Last token is the EOS symbol </s>. */
   Sentence<Token> sentence(Sid sid) const;
@@ -95,10 +90,10 @@ public:
   Sentence(const Sentence<Token> &&other);
   Sentence &operator=(const Sentence<Token> &other) = default;
 
-  /** get Token `i` of this Sentence */
+  /** get Token `i` of this Sentence. Token at i==size() is implicit </s>. */
   Token operator[](size_t i) const;
 
-  /** number of tokens */
+  /** number of tokens, excluding the implicit </s> at the end. */
   size_t size() const { return size_; }
 
   /** sentence ID */

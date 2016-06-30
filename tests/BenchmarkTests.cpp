@@ -68,7 +68,7 @@ void ReadTextFile(Corpus<SrcToken> &corpus, Vocab<SrcToken> &vocab, std::string 
     std::vector<SrcToken> sent;
     for(auto w : words)
       sent.push_back(vocab[w]);
-    sent.push_back(eos);
+    //sent.push_back(eos); // this is now implicit in Sentence::operator[]
     corpus.AddSentence(sent);
   }, nlines);
 }
@@ -102,7 +102,7 @@ void BenchmarkTests::create_random_queries(TokenIndex<SrcToken> &tokenIndex, std
 
     assert(sent.size() > 1); // because no empty sents, and </s>
     assert(pos.offset < sent.size());
-    size_t max_len = std::min<size_t>(5, sent.size() - static_cast<size_t>(pos.offset) - 1); // -1: never query </s> by itself
+    size_t max_len = std::min<size_t>(5, sent.size() - static_cast<size_t>(pos.offset)); // note: never query </s> by itself
     if(max_len == 0) {
       // sample another position/sentence instead (never query </s> by itself)
       i--;

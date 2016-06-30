@@ -48,10 +48,10 @@ TEST_F(TokenIndexTests, get_word) {
 }
 
 TEST_F(TokenIndexTests, add_sentence) {
-  sentence = AddSentence({"this", "is", "an", "example"});
+  sentence = AddSentence({"this", "is", "an", "example" /*, "</s>" */});
   tokenIndex.AddSentence(sentence);
   IndexSpan<SrcToken> span = tokenIndex.span();
-  EXPECT_EQ(4, span.size()) << "the Sentence should have added 4 tokens to the IndexSpan";
+  EXPECT_EQ(5, span.size()) << "the Sentence should have added 5 tokens to the IndexSpan";
 }
 
 TEST_F(TokenIndexTests, suffix_array_paper_example) {
@@ -65,11 +65,11 @@ TEST_F(TokenIndexTests, suffix_array_paper_example) {
 
   // '", "'.join(['"'] + 'the dog bit the cat on the mat </s>'.split() + ['"'])
   //                                     0      1      2      3      4      5     6      7      8
-  std::vector<std::string> sent_words = {"the", "dog", "bit", "the", "cat", "on", "the", "mat", "</s>"};
+  std::vector<std::string> sent_words = {"the", "dog", "bit", "the", "cat", "on", "the", "mat" /*, "</s>" */};
   sentence = AddSentence(sent_words);
   tokenIndex.AddSentence(sentence);
   IndexSpan<SrcToken> span = tokenIndex.span();
-  EXPECT_EQ(sent_words.size(), span.size()) << "the Sentence should have added its tokens to the IndexSpan";
+  EXPECT_EQ(sent_words.size() + 1, span.size()) << "the Sentence should have added its tokens to the IndexSpan";
 
   // ideas:
   // * add sanity check function for verifying partial sums
@@ -102,7 +102,7 @@ TEST_F(TokenIndexTests, suffix_array_split) {
   TokenIndex<SrcToken> tokenIndex(corpus, /* maxLeafSize = */ 8);
 
   //                                     0      1      2      3      4      5     6      7      8
-  std::vector<std::string> sent_words = {"the", "dog", "bit", "the", "cat", "on", "the", "mat", "</s>"};
+  std::vector<std::string> sent_words = {"the", "dog", "bit", "the", "cat", "on", "the", "mat" /*, "</s>"*/};
 
   sentence = AddSentence(sent_words);
   tokenIndex.AddSentence(sentence);
@@ -113,7 +113,7 @@ TEST_F(TokenIndexTests, suffix_array_split) {
 
   IndexSpan<SrcToken> span = tokenIndex.span();
   tokenIndex.DebugPrint(std::cerr);
-  EXPECT_EQ(sent_words.size(), span.size()) << "the Sentence should have added its tokens to the IndexSpan";
+  EXPECT_EQ(sent_words.size() + 1, span.size()) << "the Sentence should have added its tokens to the IndexSpan";
 
   std::vector<size_t>      expect_suffix_array_offset  = {8,      2,     4,     1,     7,     5,    3,     0,     6 };
   std::vector<std::string> expect_suffix_array_surface = {"</s>", "bit", "cat", "dog", "mat", "on", "the", "the", "the"};
@@ -151,13 +151,13 @@ TEST_F(TokenIndexTests, tree_common_prefix) {
   TokenIndex<SrcToken> tokenIndex(corpus, /* maxLeafSize = */ 8);
 
   //                                      0      1      2      3      4      5     6      7      8
-  std::vector<std::string> sent0_words = {"the", "dog", "bit", "the", "cat", "on", "the", "mat", "</s>"};
+  std::vector<std::string> sent0_words = {"the", "dog", "bit", "the", "cat", "on", "the", "mat" /*, "</s>"*/};
 
   sentence = AddSentence(sent0_words);
   tokenIndex.AddSentence(sentence);
 
   //                                      0      1      2      3
-  std::vector<std::string> sent1_words = {"the", "dog", "bit", "</s>"};
+  std::vector<std::string> sent1_words = {"the", "dog", "bit" /*, "</s>"*/};
 
   Sentence<SrcToken> sentence1 = AddSentence(sent1_words);
   tokenIndex.AddSentence(sentence1);
@@ -208,13 +208,13 @@ void TokenIndexTests::fill_tree_2level_common_prefix_the(TokenIndex<SrcToken> &t
     vocab[s]; // vocabulary insert (in this ID order, so sort by vid is intuitive)
 
   //                                      0      1      2      3      4      5     6      7      8
-  std::vector<std::string> sent0_words = {"the", "dog", "bit", "the", "cat", "on", "the", "mat", "</s>"};
+  std::vector<std::string> sent0_words = {"the", "dog", "bit", "the", "cat", "on", "the", "mat" /*, "</s>"*/};
 
   sentence = AddSentence(sent0_words);
   tokenIndex.AddSentence(sentence);
 
   //                                      0      1      2      3
-  std::vector<std::string> sent1_words = {"the", "dog", "bit", "</s>"};
+  std::vector<std::string> sent1_words = {"the", "dog", "bit" /*, "</s>"*/};
 
   Sentence<SrcToken> sentence1 = AddSentence(sent1_words);
   tokenIndex.AddSentence(sentence1);
@@ -224,7 +224,7 @@ void TokenIndexTests::fill_tree_2level_common_prefix_the(TokenIndex<SrcToken> &t
   tokenIndex.DebugPrint(std::cerr);
 
   //                                      0      1
-  std::vector<std::string> sent2_words = {"the", "</s>"};
+  std::vector<std::string> sent2_words = {"the" /*, "</s>"*/};
 
   Sentence<SrcToken> sentence2 = AddSentence(sent2_words);
   tokenIndex.AddSentence(sentence2);
