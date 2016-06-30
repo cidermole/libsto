@@ -88,6 +88,9 @@ public:
   /** true if span reaches into a suffix array leaf. */
   bool in_array() const;
 
+  /** partial lookup sequence so far, as appended by narrow() */
+  const std::vector<Token>& sequence() const { return sequence_; }
+
 private:
   static constexpr size_t NOT_FOUND = static_cast<size_t>(-1);
 
