@@ -35,7 +35,7 @@ size_t IndexSpan<Token>::narrow(Token t) {
   else
     new_span = narrow_tree_(t);
 
-  if(new_span == NOT_FOUND)
+  if(new_span == STO_NOT_FOUND)
     return 0;
   // only modify the IndexSpan if no failure
 
@@ -105,7 +105,7 @@ size_t IndexSpan<Token>::narrow_array_(Token t) {
   Range new_range = find_bounds_array_(t);
 
   if(new_range.size() == 0)
-    return NOT_FOUND; // do not modify the IndexSpan and signal failure
+    return STO_NOT_FOUND; // do not modify the IndexSpan and signal failure
 
   array_path_.push_back(new_range);
   return new_range.size();
@@ -115,7 +115,7 @@ template<class Token>
 size_t IndexSpan<Token>::narrow_tree_(Token t) {
   TreeNode<Token> *node;
   if(!tree_path_.back()->children_.Find(t.vid, &node))
-    return NOT_FOUND; // do not modify the IndexSpan and signal failure
+    return STO_NOT_FOUND; // do not modify the IndexSpan and signal failure
 
   // note: we also end up here if stepping into an empty, existing SuffixArray leaf
   assert(node != nullptr);
