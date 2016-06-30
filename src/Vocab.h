@@ -30,7 +30,7 @@ public:
   Vocab(const std::string &filename);
 
   /** Returns the surface form of `token`. */
-  std::string operator[](const Token token) const;
+  const std::string& operator[](const Token token) const;
 
   /** Returns the Token for the given `surface` form. May insert `surface`. */
   Token operator[](const std::string &surface);

@@ -23,7 +23,7 @@ Vocab<Token>::Vocab(const std::string &filename) : size_(0) /* set later */ {
 }
 
 template<class Token>
-std::string Vocab<Token>::operator[](const Token token) const {
+const std::string& Vocab<Token>::operator[](const Token token) const {
   return id2surface_.at(token.vid);
 }
 
