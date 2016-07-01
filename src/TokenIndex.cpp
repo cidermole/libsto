@@ -130,7 +130,7 @@ Position<Token> IndexSpan<Token>::operator[](size_t rel) const {
   // traverses the tree down using binary search on the cumulative counts at each internal TreeNode
   // until we hit a SuffixArray leaf and can do random access there.
   // upper_bound()-1 of rel inside the list of our children
-  return tree_path_.back()->At(rel);
+  return tree_path_.back()->At(array_path_.back().begin, rel);
 }
 
 template<class Token>
@@ -421,15 +421,15 @@ size_t TreeNode<Token>::size() const {
 }
 
 template<class Token>
-Position<Token> TreeNode<Token>::At(size_t offset) {
+Position<Token> TreeNode<Token>::At(size_t sa_offset, size_t rel_offset) {
   // thread safety: obtain reference first, check later, so we are sure to have a valid array -- avoids race with SplitNode()
   std::shared_ptr<SuffixArray> array = array_;
   if(is_leaf()) {
-    return (*array)[offset];
+    return (*array)[sa_offset + rel_offset];
   } else {
-    TreeNode<Token> *child = children_.At(&offset); // note: changes offset
+    TreeNode<Token> *child = children_.At(&rel_offset); // note: changes rel_offset
     assert(child != nullptr);
-    return child->At(offset);
+    return child->At(sa_offset, rel_offset);
   }
 }
 

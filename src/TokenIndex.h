@@ -197,7 +197,7 @@ public:
    * Access to a position within the selected span
    * in O(log(n/k)) with k = TreeNode<Token>::kMaxArraySize.
    */
-  Position<Token> At(size_t offset);
+  Position<Token> At(size_t abs_offset, size_t rel_offset);
 
   void DebugPrint(std::ostream &os, const Corpus<Token> &corpus, size_t depth = 0);
 
