@@ -119,6 +119,70 @@ void BenchmarkTests::create_random_queries(TokenIndex<SrcToken> &tokenIndex, std
   }
 }
 
+
+TEST_F(BenchmarkTests, index_eim_small) {
+  Vocab<SrcToken> vocab;
+  Corpus<SrcToken> corpus(&vocab);
+
+  std::string textFile = "/home/david/tmp/eim-small.en"; // the training corpus included with MMT
+  const size_t nlines = 100000; // not applicable limit
+
+  /*
+   * $ wc /tmp/eim-small.en
+   * 5494 120370 654764 /tmp/eim-small.en
+   *
+   * 5.5 k lines, 120 k tokens
+   */
+
+  util::PrintUsage(std::cerr);
+
+  benchmark_time([&corpus, &vocab, &textFile, &nlines](){
+    ReadTextFile(corpus, vocab, textFile, nlines);
+  }, "read");
+  util::PrintUsage(std::cerr);
+
+  ///////////////////////////
+
+  TokenIndex<SrcToken> tokenIndex(corpus); // maxLeafSize = default (100 k)
+
+  benchmark_time([&corpus, &vocab, &tokenIndex](){
+    for(size_t i = 0; i < corpus.size(); i++) {
+      if(i % 1000 == 0)
+        std::cerr << "tokenIndex @ AddSentence(i=" << i << ")..." << std::endl;
+      tokenIndex.AddSentence(corpus.sentence(i));
+    }
+  }, "build_index");
+  util::PrintUsage(std::cerr);
+
+  ///////////////////////////
+
+  std::vector<std::vector<SrcToken>> queries;
+  create_random_queries(tokenIndex, queries, /* num = */ 100000);
+  size_t sample = 1000;
+
+  benchmark_time([&corpus, &tokenIndex, &queries, sample](){
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    size_t dummy = 0, nsamples_total = 0;
+
+    for(auto query : queries) {
+      IndexSpan<SrcToken> span = tokenIndex.span();
+      for(auto token : query)
+        EXPECT_GT(span.narrow(token), 0) << "queries for existing locations must succeed"; // since we just randomly sampled them, they must be in the corpus.
+
+      // at each query span, sample multiple occurrences from random locations
+      std::uniform_int_distribution<size_t> sample_dist(0, span.size()-1);
+      size_t nsamples = std::min(sample, span.size());
+      for(size_t i = 0; i < nsamples; i++)
+        dummy += span[sample_dist(gen)].offset;
+      nsamples_total += nsamples;
+    }
+
+    std::cerr << "nsamples_total = " << nsamples_total << " dummy = " << dummy << std::endl;
+  }, "query_index");
+}
+
+
 TEST_F(BenchmarkTests, index_100k) {
   Vocab<SrcToken> vocab;
   Corpus<SrcToken> corpus(&vocab);

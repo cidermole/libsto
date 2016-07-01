@@ -28,7 +28,9 @@ TEST(CorpusTests, empty_add) {
   for(auto s : surface)
     sentence.push_back(sv.at(s)); // vocabulary lookup
 
+  EXPECT_EQ(0, sc.size()) << "empty Corpus must have size() == 0";
   sc.AddSentence(sentence);
+  EXPECT_EQ(1, sc.size()) << "after adding single Sentence, Corpus must have size() == 1";
 
   // retrieve Sentence from Corpus
   Sentence<SrcToken> sent = sc.sentence(0);
