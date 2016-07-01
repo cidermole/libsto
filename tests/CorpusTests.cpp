@@ -82,21 +82,3 @@ TEST(CorpusTests, word_alignment_load) {
   for(size_t i = 0; i < expected_links.size(); i++)
     EXPECT_EQ(expected_links[i], sent[i]) << "correct entry in loaded word alignment, offset " << i;
 }
-
-TEST(CorpusTests, word_alignment_eim) {
-  assert(sizeof(aln_link_t) == 2); // important for loading existing v2 mmsapt word alignment
-
-  // 0-0 6-1 4-2 2-4 8-4 3-5 9-5 10-6 5-7 7-8 12-10 18-12 10-13 11-13 23-14 22-15 23-16 19-17 27-18 20-20 17-21 24-22 26-24 29-26 29-27 28-28 30-28 31-29 31-30 32-32 34-34 33-35 35-36
-  // 0-0 1-1 2-2 4-3 5-3 3-5 6-6 7-6 9-8 8-9 10-9 11-10 13-11 14-11 15-12 16-13 17-14 17-15 16-16 20-20 24-23 31-25 26-26 27-26 30-27 33-32 34-33 33-34 36-34 35-35 37-36 37-37
-  // ...
-  Corpus<AlignmentLink> ac("/home/david/MMT/engines/default/models/phrase_tables/model.en-it.mam");
-
-  std::vector<AlignmentLink> expected_links = {{0,0},{6,1},{4,2},{2,4},{8,4},{3,5},{9,5},{10,6},{5,7},{7,8},{12,10},{18,12},{10,13},{11,13},{23,14},{22,15},{23,16},{19,17},{27,18},{20,20},{17,21},{24,22},{26,24},{29,26},{29,27},{28,28},{30,28},{31,29},{31,30},{32,32},{34,34},{33,35},{35,36}};
-
-  // retrieve Sentence from Corpus
-  Sentence<AlignmentLink> sent = ac.sentence(0);
-
-  EXPECT_EQ(expected_links.size(), sent.size()) << "number of alignment links in Sentence(0)";
-  for(size_t i = 0; i < expected_links.size(); i++)
-    EXPECT_EQ(expected_links[i], sent[i]) << "correct entry in loaded word alignment, offset " << i;
-}
