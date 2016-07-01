@@ -79,6 +79,9 @@ public:
   /** Length of lookup sequence, or the number of times narrow() has been called. */
   size_t depth() const;
 
+  /** Distance from the root in number of TreeNodes. */
+  size_t tree_depth() const;
+
   /** TreeNode at current depth. */
   TreeNode<Token> *node();
 

@@ -155,6 +155,11 @@ size_t IndexSpan<Token>::depth() const {
 }
 
 template<class Token>
+size_t IndexSpan<Token>::tree_depth() const {
+  return tree_path_.size() - 1; // exclude sentinel entry for root (for root, tree_depth() == 0)
+}
+
+template<class Token>
 bool IndexSpan<Token>::in_array() const {
   return tree_path_.back()->is_leaf();
 }
@@ -214,7 +219,7 @@ void TokenIndex<Token>::AddSubsequence_(const Sentence<Token> &sent, Offset star
       // stop after adding to a SA (entry there represents all the remaining depth)
       finished = true;
       // create SA entry
-      cur_span.node()->AddPosition(sent, start, cur_span.depth());
+      cur_span.node()->AddPosition(sent, start, cur_span.tree_depth());
       // After a split, cur_span is at the new internal TreeNode, not at the SA.
       // This is by design: since the SA insertion added a count there, the split created a TreeNode with already incremented size.
 
