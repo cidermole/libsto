@@ -20,10 +20,22 @@ typedef uint32_t vid_t;
 typedef uint32_t sid_t; /** sentence ID type */
 typedef uint8_t offset_t; /** type of token offset within sentence */
 
+/**
+ * Accounting type in sentence index of corpus.
+ * Hack for loading mmsapt v2 format binary word alignments (*.mam file).
+ */
+struct CorpusIndexAccounting {
+  enum acc_t {
+    IDX_CNT_ENTRIES, /** count entries for corpus track */
+    IDX_CNT_BYTES /** count bytes for word alignment */
+  };
+};
+
 struct SrcToken {
   typedef Vocab<SrcToken> Vocabulary;
   typedef vid_t Vid; /** vocabulary ID type */
   static constexpr Vid kInvalidVid = 0;
+  static constexpr CorpusIndexAccounting::acc_t kIndexType = CorpusIndexAccounting::IDX_CNT_ENTRIES;
 
   Vid vid; /** vocabulary ID */
 
@@ -45,6 +57,7 @@ struct TrgToken {
   typedef Vocab<TrgToken> Vocabulary;
   typedef vid_t Vid; /** vocabulary ID type */
   static constexpr Vid kInvalidVid = 0;
+  static constexpr CorpusIndexAccounting::acc_t kIndexType = CorpusIndexAccounting::IDX_CNT_ENTRIES;
 
   Vid vid; /** vocabulary ID */
 
@@ -82,6 +95,7 @@ struct AlignmentLink {
   typedef DummyVocab<AlignmentLink> Vocabulary;
   typedef aln_link_t Vid; /** vocabulary ID type */
   static constexpr offset_t kInvalidOffset = static_cast<offset_t>(-1);
+  static constexpr CorpusIndexAccounting::acc_t kIndexType = CorpusIndexAccounting::IDX_CNT_BYTES;
 
   Vid vid; /** alignment link (called Vid for compatibility with the remaining Corpus/Sentence implementation.) */
 

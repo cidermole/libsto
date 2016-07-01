@@ -15,7 +15,7 @@ namespace sto {
 
 /* Create empty corpus */
 template<class Token>
-Corpus<Token>::Corpus(const Corpus<Token>::Vocabulary *vocab) : vocab_(vocab), sentIndexEntries_(nullptr)
+Corpus<Token>::Corpus(const Corpus<Token>::Vocabulary *vocab) : vocab_(vocab), sentIndexEntries_(nullptr), sentIndexEntrySize_(1)
 {
   dyn_sentIndex_.push_back(0);
   sentIndexHeader_.idxSize = 0; // no static entries
@@ -49,6 +49,18 @@ Corpus<Token>::Corpus(const std::string &filename, const Corpus<Token>::Vocabula
   // maybe it would be nicer if the headers read themselves, without mmap usage.
 
   dyn_sentIndex_.push_back(0);
+
+  // hack for byte counts in word alignment: divide each entry in sentIndexEntries_ by sentIndexEntrySize_
+  switch(Token::kIndexType) {
+    case CorpusIndexAccounting::IDX_CNT_ENTRIES: // corpus track
+      sentIndexEntrySize_ = 1;
+      break;
+    case CorpusIndexAccounting::IDX_CNT_BYTES: // word alignment
+      sentIndexEntrySize_ = sizeof(Token);
+      break;
+    default:
+      throw std::runtime_error("Corpus: unknown idx_type");
+  }
 }
 
 template<class Token>
@@ -59,7 +71,7 @@ const typename Corpus<Token>::Vid* Corpus<Token>::begin(Sid sid) const {
 
   // static track
   if(sid < sentIndexHeader_.idxSize + 1) { // idxSize excludes the trailing sentinel
-    return trackTokens_ + sentIndexEntries_[sid];
+    return trackTokens_ + sentIndexEntries_[sid] / sentIndexEntrySize_;
   }
 
   // dynamic track
@@ -100,7 +112,7 @@ size_t Corpus<Token>::numTokens() const {
   // (implicit </s> per sentence not stored in track => each sentence takes up exactly its token count in the track)
 
   // static + dynamic
-  return sentIndexEntries_[size()] + dyn_sentIndex_.back();
+  return sentIndexEntries_[size()] / sentIndexEntrySize_ + dyn_sentIndex_.back();
 }
 
 // explicit template instantiation

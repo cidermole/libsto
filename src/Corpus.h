@@ -65,8 +65,9 @@ private:
   const Vocabulary *vocab_;
   std::unique_ptr<MappedFile> track_;     /** mapping starts from beginning of file, includes header */
   std::unique_ptr<MappedFile> sentIndex_; /** mapping starts from index start, *excludes* header */
-  Vid *trackTokens_;
-  SentIndexEntry *sentIndexEntries_;
+  Vid *trackTokens_;                      /** static corpus track */
+  SentIndexEntry *sentIndexEntries_;      /** indexes sentence start positions in trackTokens_, includes trailing sentinel */
+  size_t sentIndexEntrySize_;             /** divide each entry in sentIndexEntries_ by this (hack for byte counts in word alignment, see CorpusIndexAccounting in Types.h) */
 
   CorpusTrackHeader trackHeader_;
   SentIndexHeader sentIndexHeader_;
