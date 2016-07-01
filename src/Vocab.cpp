@@ -15,11 +15,25 @@
 namespace sto {
 
 template<class Token>
-Vocab<Token>::Vocab() : size_(1) { }
+Vocab<Token>::Vocab() : size_(1) {
+  // insert </s> sentinel to ensure it has the lowest possible vid
+  // vid == kEOS must not be used by any word because we use it in TokenIndex as a sentinel.
+  Token eos = operator[]("</s>");
+  assert(eos.vid == kEOS);
+  assert(size_ == 2);
+}
 
 template<class Token>
 Vocab<Token>::Vocab(const std::string &filename) : size_(0) /* set later */ {
   load_ugsapt_tdx(filename);
+
+  // TODO remove UNK from vocab. or build with mtt-build -unk '</s>'
+  surface2id_["</s>"] = kEOS;
+  id2surface_[kEOS] = "</s>";
+
+  // vid == kEOS must not be used by any word because we use it in TokenIndex as a sentinel.
+  Token eos = at("</s>");
+  assert(eos.vid == kEOS);
 }
 
 template<class Token>
@@ -121,6 +135,9 @@ void Vocab<Token>::load_ugsapt_tdx(const std::string &filename) {
 
 template<class Token>
 constexpr typename DummyVocab<Token>::Vid DummyVocab<Token>::kEOS;
+
+template<class Token>
+constexpr typename Vocab<Token>::Vid Vocab<Token>::kEOS;
 
 // explicit template instantiation
 template class Vocab<SrcToken>;
