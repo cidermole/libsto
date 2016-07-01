@@ -100,8 +100,8 @@ void BenchmarkTests::create_random_queries(TokenIndex<SrcToken> &tokenIndex, std
     Position<SrcToken> pos = span[dist(gen)];
     Sentence<SrcToken> sent = tokenIndex.corpus()->sentence(pos.sid);
 
-    assert(sent.size() > 1); // because no empty sents, and </s>
-    assert(pos.offset < sent.size());
+    assert(sent.size() > 0); // no empty sents
+    assert(pos.offset <= sent.size()); // implicit </s> may be at offset=sent.size()
     size_t max_len = std::min<size_t>(5, sent.size() - static_cast<size_t>(pos.offset)); // note: never query </s> by itself
     if(max_len == 0) {
       // sample another position/sentence instead (never query </s> by itself)
