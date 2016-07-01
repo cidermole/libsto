@@ -120,7 +120,8 @@ private:
 /**
  * Indexes a Corpus. The index is implemented as a hybrid suffix tree/array.
  *
- * Vocab note: explicit sentence end delimiting symbol </s> must be indexed at the very beginning of all vocab symbols (sort order matters, shorter sequences must come first)!
+ * Vocab note: vid of explicit sentence end delimiting symbol </s> must be at the very beginning of all vocab symbols
+ * (sort order matters, shorter sequences must come first)!
  */
 template<class Token>
 class TokenIndex {
@@ -141,7 +142,7 @@ public:
    * Insert the existing Corpus Sentence into this index. Last token must be the EOS symbol </s>.
    *
    * This potentially splits existing suffix array leaves into individual TreeNodes,
-   * and inserts Position entries into the suffix array. Hence, it is an
+   * and inserts Position entries into the suffix array. Hence, it is roughly an
    *
    * O(l * (k + log(n)))
    *

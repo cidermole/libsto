@@ -199,6 +199,39 @@ void TokenIndex<Token>::DebugPrint(std::ostream &os) {
 
 template<class Token>
 void TokenIndex<Token>::AddSubsequence_(const Sentence<Token> &sent, Offset start) {
+  /*
+   * A hybrid suffix trie / suffix array implementation.
+   *
+   * The suffix array is split into several parts, each with up to kMaxArraySize entries.
+   *
+   * The suffix array parts are arranged as leaves in a tree that starts out as a suffix trie at the root.
+   * Branches that are small enough end in a suffix array leaf. Therefore, each suffix array leaf holds
+   * the entire used vocabulary ID range at a specific depth (= distance from root).
+   *
+   * depth 1:
+   *
+   * root
+   * |
+   * |   internal TreeNode
+   * v   v
+   * *--[the]--{  < suffix array leaf
+   * the cat ...
+   * the dog ...
+   * ...
+   * the zebra ...
+   * }
+   *
+   * depth 2:
+   *
+   * *--[a]--[small]--{
+   *   a small cat ...
+   *   a small dog ...
+   *   ...
+   *   a small zebra ...
+   * }
+   */
+
+
   // track the position to insert at
   IndexSpan<Token> cur_span = span();
   size_t span_size;
