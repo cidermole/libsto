@@ -58,6 +58,9 @@ public:
   /** number of sentences */
   Sid size() const;
 
+  /** total number of tokens in the entire corpus */
+  size_t numTokens() const;
+
 private:
   const Vocabulary *vocab_;
   std::unique_ptr<MappedFile> track_;     /** mapping starts from beginning of file, includes header */

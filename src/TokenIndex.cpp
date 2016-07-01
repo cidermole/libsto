@@ -15,7 +15,7 @@
 namespace sto {
 
 template<class Token>
-IndexSpan<Token>::IndexSpan(TokenIndex<Token> &index) : index_(&index)
+IndexSpan<Token>::IndexSpan(const TokenIndex<Token> &index) : index_(&index)
 {
   // starting sentinel
   tree_path_.push_back(index_->root_);
@@ -124,7 +124,7 @@ size_t IndexSpan<Token>::narrow_tree_(Token t) {
 }
 
 template<class Token>
-Position<Token> IndexSpan<Token>::operator[](size_t rel) {
+Position<Token> IndexSpan<Token>::operator[](size_t rel) const {
   assert(rel < size());
 
   // traverses the tree down using binary search on the cumulative counts at each internal TreeNode
@@ -180,7 +180,7 @@ TokenIndex<Token>::~TokenIndex() {
 }
 
 template<class Token>
-IndexSpan<Token> TokenIndex<Token>::span() {
+IndexSpan<Token> TokenIndex<Token>::span() const {
   return IndexSpan<Token>(*this);
 }
 

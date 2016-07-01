@@ -94,6 +94,15 @@ typename Corpus<Token>::Sid Corpus<Token>::size() const {
   return sentIndexHeader_.idxSize + static_cast<Sid>(dyn_sentIndex_.size() - 1);
 }
 
+template<class Token>
+size_t Corpus<Token>::numTokens() const {
+  // retrieve the trailing sentinel token offset, which gives the total number of corpus tokens
+  // (implicit </s> per sentence not stored in track => each sentence takes up exactly its token count in the track)
+
+  // static + dynamic
+  return sentIndexEntries_[size()] + dyn_sentIndex_.back();
+}
+
 // explicit template instantiation
 template class Corpus<SrcToken>;
 template class Corpus<TrgToken>;

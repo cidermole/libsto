@@ -40,7 +40,8 @@ struct SentIndexHeader {
 
 /**
  * Sentence index entry in 'corpus.six' (v3 format) or in the index section in 'corpus.mct' (v2 format).
- * Points from sentence IDs to the position in the corpus track (vocabulary ID sequence offset in number of tokens).
+ * The index points from sentence IDs to the position in the corpus track
+ * (vocabulary ID sequence offset in number of tokens).
  */
 typedef uint32_t SentIndexEntry;
 

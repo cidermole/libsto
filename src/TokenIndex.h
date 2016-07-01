@@ -41,7 +41,7 @@ public:
   friend class TokenIndex<Token>;
 
   // use TokenIndex::span() instead
-  IndexSpan(TokenIndex<Token> &index);
+  IndexSpan(const TokenIndex<Token> &index);
 
   IndexSpan(IndexSpan<Token> &other) = default;
   IndexSpan<Token>& operator=(IndexSpan<Token> &other) = default;
@@ -67,7 +67,7 @@ public:
    * returned Position values will always be valid, but
    * may be to the left of 'rel'.
    */
-  Position<Token> operator[](size_t rel);
+  Position<Token> operator[](size_t rel) const;
 
   /**
    * Number of token positions spanned in the index.
@@ -97,7 +97,7 @@ public:
 private:
   static constexpr size_t STO_NOT_FOUND = static_cast<size_t>(-1);
 
-  TokenIndex<Token> *index_;
+  const TokenIndex<Token> *index_;
 
   // these 3 are only kept for debugging; for bookkeeping, we only need tree_path_.back()
   std::vector<Token> sequence_; /** partial lookup sequence so far, as appended by narrow() */
@@ -133,7 +133,7 @@ public:
   ~TokenIndex();
 
   /** Returns the whole span of the entire index (empty lookup sequence). */
-  IndexSpan<Token> span();
+  IndexSpan<Token> span() const;
 
   Corpus<Token> *corpus() { return corpus_; }
 
