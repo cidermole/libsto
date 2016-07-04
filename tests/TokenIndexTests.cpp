@@ -461,7 +461,7 @@ TEST_F(TokenIndexTests, query_positions_valid_eim_small) {
 
   ///////////////////////////
 
-  TokenIndex<SrcToken> tokenIndex(corpus); // maxLeafSize = default (100 k)
+  TokenIndex<SrcToken> tokenIndex(corpus, /* maxLeafSize = */ 130000); // ensure no split
 
   benchmark_time([&corpus, &vocab, &tokenIndex](){
     for(size_t i = 0; i < corpus.size(); i++) {
@@ -474,29 +474,55 @@ TEST_F(TokenIndexTests, query_positions_valid_eim_small) {
 
   ///////////////////////////
 
+  auto surface = [&corpus](Position<SrcToken> pos, size_t len_limit = -1){
+    std::stringstream ss;
+    for(size_t j = 0; j < len_limit && j + pos.offset <= corpus.sentence(pos.sid).size(); j++)
+      ss << (j == 0 ? "" : " ") << pos.add(j, corpus).surface(corpus);
+    return ss.str();
+  };
+
+
   std::vector<std::vector<SrcToken>> queries;
   create_random_queries(tokenIndex, queries, /* num = */ 100000);
-  size_t sample = 1000;
 
-  benchmark_time([&corpus, &tokenIndex, &queries, sample](){
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    size_t dummy = 0, nsamples_total = 0;
 
-    for(auto query : queries) {
-      IndexSpan<SrcToken> span = tokenIndex.span();
-      for(auto token : query)
-        EXPECT_GT(span.narrow(token), 0) << "queries for existing locations must succeed"; // since we just randomly sampled them, they must be in the corpus.
+  std::random_device rd;
+  std::mt19937 gen(rd());
 
-      // at each query span, sample multiple occurrences from random locations
-      std::uniform_int_distribution<size_t> sample_dist(0, span.size()-1);
-      size_t nsamples = std::min(sample, span.size());
-      for(size_t i = 0; i < nsamples; i++) {
-        dummy += span[sample_dist(gen)].offset;
-      }
-      nsamples_total += nsamples;
+  IndexSpan<SrcToken> fullSpan = tokenIndex.span();
+
+  size_t j = 0, numPrint = 0; // numPrint = 10
+
+  for(auto query : queries) {
+    //std::string querySurface = "";
+    std::stringstream querySurface;
+    for(size_t i = 0; i < query.size(); i++)
+      querySurface << (i == 0 ? "" : " ") << vocab.at(query[i]);
+
+    IndexSpan<SrcToken> span = tokenIndex.span();
+    for(auto token : query)
+      EXPECT_GT(span.narrow(token), 0) << "queries for existing locations must succeed"; // since we just randomly sampled them, they must be in the corpus.
+
+    for(size_t i = 0; i < span.size(); i++)
+      EXPECT_EQ(querySurface.str(), surface(span[i], query.size())) << "the entire range must have the same surface prefix as the query";
+
+    // note: out-of-bounds access only works if the underlying SA is not split, and the actually mapped range does not start at beginning/end of SA.
+
+    if(!(span[0] == fullSpan[0]))
+      EXPECT_NE(querySurface.str(), surface(span.at_unchecked(-1), query.size())) << "just before the range, there must not be the same surface form";
+    else
+      EXPECT_EQ("the", vocab.at(query[0])) << "range begins at SA begin, we expect the first word to be 'the'";
+
+    if(!(span[span.size()-1] == fullSpan[fullSpan.size()-1]))
+      EXPECT_NE(querySurface.str(), surface(span.at_unchecked(span.size()), query.size())) << "just after the range, there must not be the same surface form";
+
+    if(j < numPrint) {
+      std::cerr << "verified span for query '" << querySurface.str() << "', span size = " << span.size() << std::endl;
+      if(!(span[0] == fullSpan[0]))
+        std::cerr << " surface before: '" << surface(span.at_unchecked(-1), query.size()) << "'" << std::endl;
+      if(!(span[span.size()-1] == fullSpan[fullSpan.size()-1]))
+        std::cerr << " surface after: '" << surface(span.at_unchecked(span.size()), query.size()) << "'" << std::endl;
+      j++;
     }
-
-    std::cerr << "nsamples_total = " << nsamples_total << " dummy = " << dummy << std::endl;
-  }, "query_index");
+  }
 }

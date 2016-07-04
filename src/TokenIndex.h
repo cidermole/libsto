@@ -69,6 +69,9 @@ public:
    */
   Position<Token> operator[](size_t rel) const;
 
+  // for testing!
+  Position<Token> at_unchecked(size_t rel) const;
+
   /**
    * Number of token positions spanned in the index.
    *
