@@ -130,7 +130,7 @@ Position<Token> IndexSpan<Token>::operator[](size_t rel) const {
   // traverses the tree down using binary search on the cumulative counts at each internal TreeNode
   // until we hit a SuffixArray leaf and can do random access there.
   // upper_bound()-1 of rel inside the list of our children
-  return tree_path_.back()->At(array_path_.back().begin, rel);
+  return tree_path_.back()->At(array_path_.size() ? array_path_.back().begin : 0, rel);
 }
 
 template<class Token>
