@@ -371,28 +371,15 @@ TEST_F(TokenIndexTests, static_vs_dynamic_eim) {
 
   EXPECT_EQ(staticSpan.size(), dynamicSpan.size()) << "two ways of indexing the same corpus must be equivalent";
 
-/*
-  auto print = [&sc](Position<SrcToken> pos){
-    std::cerr << "[sid=" << int(pos.sid) << " offset=" << int(pos.offset) << "]";
-    for(size_t j = 0; j < 5 && j + pos.offset <= sc.sentence(pos.sid).size(); j++)
-      std::cerr << " '" << pos.add(j, sc).surface(sc) << "'";
-    std::cerr << std::endl;
-  };
-
- // we are not equal position by position. check why:
-  for(size_t i = 0; i < 5; i++) {
-    Position<SrcToken> sp = staticSpan[i], dp = dynamicSpan[i];
-    std::cerr << "static  "; print(sp);
-    std::cerr << "dynamic "; print(dp);
-    std::cerr << std::endl;
-  }
-*/
   auto surface = [&sc](Position<SrcToken> pos){
     std::stringstream ss;
     for(size_t j = 0; j + pos.offset <= sc.sentence(pos.sid).size(); j++)
       ss << (j == 0 ? "" : " ") << pos.add(j, sc).surface(sc);
     return ss.str();
   };
+
+  // there is no equality position by position (sort stability?)
+  // however, for each surface form, there must be equality among their positions
 
   size_t numPos = staticSpan.size();
   std::unordered_set<Position<SrcToken>> staticBucket, dynamicBucket;
@@ -413,7 +400,6 @@ TEST_F(TokenIndexTests, static_vs_dynamic_eim) {
 
     staticBucket.insert(staticSpan[i]);
     dynamicBucket.insert(dynamicSpan[i]);
-    //EXPECT_EQ(staticSpan[i], dynamicSpan[i]) << "Position entry " << i << " must match between static and dynamic TokenIndex"; // position by position, this is not true (sort stability?)
   }
   EXPECT_EQ(staticBucket, dynamicBucket);
 }
