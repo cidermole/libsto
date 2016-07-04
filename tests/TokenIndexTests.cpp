@@ -4,6 +4,7 @@
  * Licensed under GNU LGPL Version 2.1, see COPYING *
  ****************************************************/
 
+#include <random>
 #include <sstream>
 #include <utility>
 #include <unordered_set>
@@ -14,6 +15,9 @@
 #include "Corpus.h"
 #include "TokenIndex.h"
 #include "Types.h"
+
+#include "util/Time.h"
+#include "util/usage.h"
 
 using namespace sto;
 
@@ -42,6 +46,8 @@ struct TokenIndexTests : testing::Test {
 
   TokenIndexTests() : corpus(&vocab), tokenIndex(corpus) {}
   virtual ~TokenIndexTests() {}
+
+  void create_random_queries(TokenIndex<SrcToken> &tokenIndex, std::vector<std::vector<SrcToken>> &queries, size_t num = 100000);
 };
 
 // demo Test Fixture
@@ -402,4 +408,95 @@ TEST_F(TokenIndexTests, static_vs_dynamic_eim) {
     dynamicBucket.insert(dynamicSpan[i]);
   }
   EXPECT_EQ(staticBucket, dynamicBucket);
+}
+
+
+// TODO DRY BenchmarkTests
+void TokenIndexTests::create_random_queries(TokenIndex<SrcToken> &tokenIndex, std::vector<std::vector<SrcToken>> &queries, size_t num) {
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  IndexSpan<SrcToken> span = tokenIndex.span();
+  std::uniform_int_distribution<size_t> dist(0, span.size()-1); // spans all corpus positions
+
+  for(size_t i = 0; i < num; i++) {
+    // pick corpus positions at random
+    Position<SrcToken> pos = span[dist(gen)];
+    Sentence<SrcToken> sent = tokenIndex.corpus()->sentence(pos.sid);
+
+    assert(sent.size() > 0); // no empty sents
+    assert(pos.offset <= sent.size()); // implicit </s> may be at offset=sent.size()
+    size_t max_len = std::min<size_t>(5, sent.size() - static_cast<size_t>(pos.offset)); // note: never query </s> by itself
+    if(max_len == 0) {
+      // sample another position/sentence instead (never query </s> by itself)
+      i--;
+      continue;
+    }
+
+    std::uniform_int_distribution<size_t> len_dist(1, max_len);
+    size_t len = len_dist(gen);
+    std::vector<SrcToken> query;
+    for(size_t j = 0; j < len; j++)
+      query.push_back(pos.add(j, *tokenIndex.corpus()).token(*tokenIndex.corpus()));
+
+    queries.push_back(query);
+  }
+}
+
+
+TEST_F(TokenIndexTests, query_positions_valid_eim_small) {
+  Vocab<SrcToken> vocab("/home/david/MMT/engines/default/models/phrase_tables/model.en.tdx");
+  Corpus<SrcToken> corpus("/home/david/MMT/engines/default/models/phrase_tables/model.en.mct", &vocab);
+  TokenIndex<SrcToken> staticIndex("/home/david/MMT/engines/default/models/phrase_tables/model.en.sfa", corpus); // built with mtt-build
+
+  std::string textFile = "/home/david/tmp/eim-small.en"; // the training corpus included with MMT
+
+  /*
+   * $ wc /tmp/eim-small.en
+   * 5494 120370 654764 /tmp/eim-small.en
+   *
+   * 5.5 k lines, 120 k tokens
+   */
+
+  util::PrintUsage(std::cerr);
+
+  ///////////////////////////
+
+  TokenIndex<SrcToken> tokenIndex(corpus); // maxLeafSize = default (100 k)
+
+  benchmark_time([&corpus, &vocab, &tokenIndex](){
+    for(size_t i = 0; i < corpus.size(); i++) {
+      if(i % 1000 == 0)
+        std::cerr << "tokenIndex @ AddSentence(i=" << i << ")..." << std::endl;
+      tokenIndex.AddSentence(corpus.sentence(i));
+    }
+  }, "build_index");
+  util::PrintUsage(std::cerr);
+
+  ///////////////////////////
+
+  std::vector<std::vector<SrcToken>> queries;
+  create_random_queries(tokenIndex, queries, /* num = */ 100000);
+  size_t sample = 1000;
+
+  benchmark_time([&corpus, &tokenIndex, &queries, sample](){
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    size_t dummy = 0, nsamples_total = 0;
+
+    for(auto query : queries) {
+      IndexSpan<SrcToken> span = tokenIndex.span();
+      for(auto token : query)
+        EXPECT_GT(span.narrow(token), 0) << "queries for existing locations must succeed"; // since we just randomly sampled them, they must be in the corpus.
+
+      // at each query span, sample multiple occurrences from random locations
+      std::uniform_int_distribution<size_t> sample_dist(0, span.size()-1);
+      size_t nsamples = std::min(sample, span.size());
+      for(size_t i = 0; i < nsamples; i++) {
+        dummy += span[sample_dist(gen)].offset;
+      }
+      nsamples_total += nsamples;
+    }
+
+    std::cerr << "nsamples_total = " << nsamples_total << " dummy = " << dummy << std::endl;
+  }, "query_index");
 }
