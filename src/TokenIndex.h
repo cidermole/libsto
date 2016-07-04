@@ -147,7 +147,7 @@ public:
   /** Returns the whole span of the entire index (empty lookup sequence). */
   IndexSpan<Token> span() const;
 
-  Corpus<Token> *corpus() { return corpus_; }
+  Corpus<Token> *corpus() const { return corpus_; }
 
   /**
    * Insert the existing Corpus Sentence into this index. Last token must be the EOS symbol </s>.
