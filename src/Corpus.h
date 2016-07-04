@@ -167,10 +167,10 @@ template<class Token>
 struct AtomicPosition {
   static constexpr std::memory_order order = std::memory_order_relaxed;
   
-  AtomicPosition(Position<Token> &p) {
+  AtomicPosition(const Position<Token> &p) {
     pos.store(p, order);
   }
-  AtomicPosition(AtomicPosition<Token> &&p) {
+  AtomicPosition(const AtomicPosition<Token> &&p) {
     pos.store(p.pos.load(), order);
   }
   AtomicPosition(const AtomicPosition<Token> &p): pos() {

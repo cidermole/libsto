@@ -129,7 +129,15 @@ public:
   friend class IndexSpan<Token>;
   typedef typename Corpus<Token>::Offset Offset;
 
-  /** Constructs an empty TokenIndex, i.e. this does not index the Corpus by itself. */
+  /**
+   * Load TokenIndex from mtt-build *.sfa file for the associated corpus.
+   *
+   * Currently, this creates one big suffix array (not memory mapped) regardless of maxLeafSize, but subsequent calls to
+   * AddSentence() will honor maxLeafSize and split where necessary (so the first additions will be expensive).
+   */
+  TokenIndex(const std::string &filename, Corpus<Token> &corpus, size_t maxLeafSize = 100000);
+
+  /** Construct an empty TokenIndex, i.e. this does not index the Corpus by itself. */
   TokenIndex(Corpus<Token> &corpus, size_t maxLeafSize = 100000);
   ~TokenIndex();
 

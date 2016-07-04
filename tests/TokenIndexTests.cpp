@@ -92,6 +92,28 @@ TEST_F(TokenIndexTests, suffix_array_paper_example) {
   }
 }
 
+TEST_F(TokenIndexTests, load_v2) {
+  // 'index.sfa' file built like this:
+  // $ echo "apple and orange and pear and apple and orange UNK" | mtt-build -i -o index
+  // UNK takes vid=1, which is our </s>. mtt-build never explicitly adds </s> to the index otherwise.
+  Vocab<SrcToken> sv("res/vocab.tdx");
+  Corpus<SrcToken> sc("res/corpus.mct", &sv);
+  TokenIndex<SrcToken> staticIndex("res/index.sfa", sc); // built with mtt-build
+
+  TokenIndex<SrcToken> dynamicIndex(sc); // building dynamically
+  dynamicIndex.AddSentence(sc.sentence(0));
+
+  IndexSpan<SrcToken> staticSpan = staticIndex.span();
+  IndexSpan<SrcToken> dynamicSpan = dynamicIndex.span();
+
+  EXPECT_EQ(staticSpan.size(), dynamicSpan.size()) << "two ways of indexing the same corpus must be equivalent";
+
+  size_t num_pos = staticSpan.size();
+  for(size_t i = 0; i < num_pos; i++) {
+    EXPECT_EQ(staticSpan[i], dynamicSpan[i]) << "Position entry " << i << " must match between static and dynamic TokenIndex";
+  }
+}
+
 TEST_F(TokenIndexTests, suffix_array_split) {
   //                                      1       2      3      4      5      6     7
   std::vector<std::string> vocab_id_order{"</s>", "bit", "cat", "dog", "mat", "on", "the"};

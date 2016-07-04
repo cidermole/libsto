@@ -27,6 +27,10 @@ namespace tpt
    * For reference, the Truth shall be little endian on disk.
    */
   struct MttHeader {
+    // to do: pack this.
+    // Currently, the types align on 8 bytes and make us properly sized even on x64.
+    // Currently, nobody uses sizeof(MttHeader), so this is fine too.
+
     uint64_t versionMagic;
     filepos_type startIdx;
     id_type idxSize;
@@ -35,6 +39,29 @@ namespace tpt
 
   /** Header for word alignments. */
   struct MamHeader : MttHeader {};
+
+  /** Header for suffix arrays.
+   *
+   * .sfa file format:
+   *
+   * * TsaHeader
+   * * positions: [{sid, offset}, ...]
+   * * index: [positions_byte_offset, ...]
+   *
+   * see imTSA::save_as_mm_tsa() in ug_im_tsa.h
+   */
+  typedef struct __attribute__((packed)) {
+    // packed: avoids padding to a multiple of 8 on x64. We use sizeof(TsaHeader) for a byte offset.
+
+    uint64_t versionMagic;
+    filepos_type idxStart; /** start of index block, byte offset from the file start */
+    id_type idxSize; /** size of index block in number of entries */
+  } TsaHeader;
+
+  typedef struct __attribute__((packed)) {
+    id_type sid;
+    offset_type offset;
+  } TsaPosition;
 
   const int INDEX_SEGMENT_DIGITS = 5; // model.en.seg00001.sfa
 }
