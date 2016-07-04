@@ -218,7 +218,7 @@ template<class Token>
 void TokenIndex<Token>::AddSentence(const Sentence<Token> &sent) {
   // start a subsequence at each sentence position
   // each subsequence only goes as deep as necessary to hit a SA
-  for(Offset i = 0; i <= sent.size(); i++)
+  for(Offset i = 0; i < sent.size(); i++)
     AddSubsequence_(sent, i);
 }
 
@@ -268,6 +268,7 @@ void TokenIndex<Token>::AddSubsequence_(const Sentence<Token> &sent, Offset star
   Offset i;
   bool finished = false;
 
+  // <= sent.size(): includes implicit </s> at the end
   for(i = start; !finished && i <= sent.size(); i++) {
     span_size = cur_span.narrow(sent[i]);
 
