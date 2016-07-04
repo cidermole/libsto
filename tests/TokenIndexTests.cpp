@@ -5,6 +5,9 @@
  ****************************************************/
 
 #include <sstream>
+#include <utility>
+#include <unordered_set>
+
 #include <gtest/gtest.h>
 
 #include "Vocab.h"
@@ -241,7 +244,8 @@ void TokenIndexTests::fill_tree_2level_common_prefix_the(TokenIndex<SrcToken> &t
 
   // a leaf </s> attached to 'the' which itself should be split:
 
-  tokenIndex.DebugPrint(std::cerr);
+  std::stringstream nil;
+  tokenIndex.DebugPrint(nil); // print to nowhere, but still run size asserts etc.
 
   //                                      0
   std::vector<std::string> sent2_words = {"the"};
@@ -249,7 +253,7 @@ void TokenIndexTests::fill_tree_2level_common_prefix_the(TokenIndex<SrcToken> &t
   Sentence<SrcToken> sentence2 = AddSentence(sent2_words);
   tokenIndex.AddSentence(sentence2);
 
-  tokenIndex.DebugPrint(std::cerr);
+  tokenIndex.DebugPrint(nil); // print to nowhere, but still run size asserts etc.
 }
 
 TEST_F(TokenIndexTests, tree_2level_common_prefix_the) {
@@ -339,4 +343,77 @@ TEST_F(TokenIndexTests, tree_2level_common_prefix_the_5) {
 TEST_F(TokenIndexTests, tree_2level_common_prefix_the_15) {
   // check invariance: maxLeafSize = 15 (without any split; common SA) should behave exactly the same
   tree_2level_common_prefix_the_m(/* maxLeafSize = */ 15);
+}
+
+namespace std {
+template <> struct hash<Position<SrcToken>> {
+  std::size_t operator()(const Position<SrcToken>& pos) const {
+    return ((hash<typename Position<SrcToken>::Offset>()(pos.offset))
+             ^ (hash<typename Position<SrcToken>::Sid>()(pos.sid) << 8));
+  }
+};
+} // namespace std
+
+TEST_F(TokenIndexTests, static_vs_dynamic_eim) {
+  Vocab<SrcToken> sv("/home/david/MMT/engines/default/models/phrase_tables/model.en.tdx");
+  Corpus<SrcToken> sc("/home/david/MMT/engines/default/models/phrase_tables/model.en.mct", &sv);
+  TokenIndex<SrcToken> staticIndex("/home/david/MMT/engines/default/models/phrase_tables/model.en.sfa", sc); // built with mtt-build
+
+  TokenIndex<SrcToken> dynamicIndex(sc); // building dynamically
+
+  std::cerr << "building dynamicIndex..." << std::endl;
+  for(size_t i = 0; i < sc.size(); i++)
+    dynamicIndex.AddSentence(sc.sentence(i));
+  std::cerr << "building dynamicIndex done." << std::endl;
+
+  IndexSpan<SrcToken> staticSpan = staticIndex.span();
+  IndexSpan<SrcToken> dynamicSpan = dynamicIndex.span();
+
+  EXPECT_EQ(staticSpan.size(), dynamicSpan.size()) << "two ways of indexing the same corpus must be equivalent";
+
+/*
+  auto print = [&sc](Position<SrcToken> pos){
+    std::cerr << "[sid=" << int(pos.sid) << " offset=" << int(pos.offset) << "]";
+    for(size_t j = 0; j < 5 && j + pos.offset <= sc.sentence(pos.sid).size(); j++)
+      std::cerr << " '" << pos.add(j, sc).surface(sc) << "'";
+    std::cerr << std::endl;
+  };
+
+ // we are not equal position by position. check why:
+  for(size_t i = 0; i < 5; i++) {
+    Position<SrcToken> sp = staticSpan[i], dp = dynamicSpan[i];
+    std::cerr << "static  "; print(sp);
+    std::cerr << "dynamic "; print(dp);
+    std::cerr << std::endl;
+  }
+*/
+  auto surface = [&sc](Position<SrcToken> pos){
+    std::stringstream ss;
+    for(size_t j = 0; j + pos.offset <= sc.sentence(pos.sid).size(); j++)
+      ss << (j == 0 ? "" : " ") << pos.add(j, sc).surface(sc);
+    return ss.str();
+  };
+
+  size_t numPos = staticSpan.size();
+  std::unordered_set<Position<SrcToken>> staticBucket, dynamicBucket;
+  std::string currentSurface = "";
+  size_t j = 0, numPrintTop = 0; // numPrintTop = 5;
+  for(size_t i = 0; i < numPos; i++) {
+    if(surface(staticSpan[i]) != currentSurface) {
+      if(j < numPrintTop)
+        std::cerr << "comparing '" << currentSurface << "' with bucket size " << staticBucket.size() << std::endl;
+
+      // compare buckets, empty them
+      EXPECT_EQ(staticBucket, dynamicBucket);
+      staticBucket.clear();
+      dynamicBucket.clear();
+      currentSurface = surface(staticSpan[i]);
+      j++;
+    }
+
+    staticBucket.insert(staticSpan[i]);
+    dynamicBucket.insert(dynamicSpan[i]);
+    //EXPECT_EQ(staticSpan[i], dynamicSpan[i]) << "Position entry " << i << " must match between static and dynamic TokenIndex"; // position by position, this is not true (sort stability?)
+  }
+  EXPECT_EQ(staticBucket, dynamicBucket);
 }
