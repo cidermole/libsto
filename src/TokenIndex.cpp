@@ -16,7 +16,7 @@
 namespace sto {
 
 template<class Token>
-IndexSpan<Token>::IndexSpan(const TokenIndex<Token> &index) : index_(&index), empty_(new TreeNode<Token>)
+IndexSpan<Token>::IndexSpan(const TokenIndex<Token> &index) : index_(&index)
 {
   // starting sentinel
   tree_path_.push_back(index_->root_);
@@ -25,8 +25,6 @@ IndexSpan<Token>::IndexSpan(const TokenIndex<Token> &index) : index_(&index), em
   // but for a leaf-only tree (rooted in a suffix array) we cannot do better:
   if(index_->root_->is_leaf())
     array_path_.push_back(Range{0, index_->root_->size()});
-
-  assert(empty_->is_leaf() && empty_->size() == 0);
 }
 
 template<class Token>
@@ -37,6 +35,10 @@ size_t IndexSpan<Token>::narrow(Token t) {
     new_span = narrow_array_(t);
   else
     new_span = narrow_tree_(t);
+
+  if(new_span == STO_NOT_FOUND)
+    return 0;
+  // only modify the IndexSpan if no failure
 
   sequence_.push_back(t);
 
@@ -102,14 +104,21 @@ Range IndexSpan<Token>::find_bounds_array_(Token t) {
 template<class Token>
 size_t IndexSpan<Token>::narrow_array_(Token t) {
   Range new_range = find_bounds_array_(t);
+
+  if(new_range.size() == 0)
+    return STO_NOT_FOUND; // do not modify the IndexSpan and signal failure
+
   array_path_.push_back(new_range);
   return new_range.size();
 }
 
 template<class Token>
 size_t IndexSpan<Token>::narrow_tree_(Token t) {
-  TreeNode<Token> *node = empty_.get();
-  tree_path_.back()->children_.Find(t.vid, &node); // keeps node unchanged on failure
+  TreeNode<Token> *node;
+  if(!tree_path_.back()->children_.Find(t.vid, &node))
+    return STO_NOT_FOUND; // do not modify the IndexSpan and signal failure
+
+  // note: we also end up here if stepping into an empty, existing SuffixArray leaf
   assert(node != nullptr);
   tree_path_.push_back(node);
   return tree_path_.back()->size();
@@ -143,7 +152,6 @@ size_t IndexSpan<Token>::size() const {
 
 template<class Token>
 TreeNode<Token> *IndexSpan<Token>::node() {
-  assert(tree_path_.size() > 0);
   return tree_path_.back();
 }
 
