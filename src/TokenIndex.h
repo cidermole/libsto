@@ -52,7 +52,7 @@ public:
   /**
    * Narrow the span by adding a token to the end of the lookup sequence.
    * Returns new span size.
-   * If the token was not found at all, returns zero without modifying the
+   * If the token was not found at all, returns zero WHILE modifying the
    * IndexSpan.
    * If an empty SuffixArray leaf was found, returns zero while
    * still modifying the IndexSpan.
@@ -98,9 +98,8 @@ public:
   const std::vector<Token>& sequence() const { return sequence_; }
 
 private:
-  static constexpr size_t STO_NOT_FOUND = static_cast<size_t>(-1);
-
   const TokenIndex<Token> *index_;
+  std::shared_ptr<TreeNode<Token>> empty_; /** empty sentinel leaf to append to tree_path_ when a lookup sequence fails. */
 
   // these 3 are only kept for debugging; for bookkeeping, we only need tree_path_.back()
   std::vector<Token> sequence_; /** partial lookup sequence so far, as appended by narrow() */

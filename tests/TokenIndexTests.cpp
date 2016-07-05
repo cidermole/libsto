@@ -165,8 +165,8 @@ TEST_F(TokenIndexTests, suffix_array_split) {
   size_t newsz = span.narrow(vocab["dog"]);
   EXPECT_EQ(0, newsz) << "'bit the dog' must be size 0, i.e. not found";
 
-  EXPECT_EQ(1, span.size()) << "failed call must not narrow the span";
-  EXPECT_EQ(1, span.narrow(vocab["cat"])) << "IndexSpan must now behave as if the failed narrow() call had not happened";
+  EXPECT_EQ(0, span.size()) << "failed call must narrow the span";
+  EXPECT_EQ(0, span.narrow(vocab["cat"])) << "narrowing 0-length span must fail";
 
   span = tokenIndex.span();
   EXPECT_EQ(3, span.narrow(vocab["the"])) << "'the' range size check";
