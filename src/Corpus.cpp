@@ -65,19 +65,32 @@ Corpus<Token>::Corpus(const std::string &filename, const Corpus<Token>::Vocabula
 
 template<class Token>
 const typename Corpus<Token>::Vid* Corpus<Token>::begin(Sid sid) const {
-  // for zero-size static track, [0] is not the static trailing sentinel, but a dynamic index access
-  if(sentIndexHeader_.idxSize == 0)
-    sid++;
-
   // static track
-  if(sid < sentIndexHeader_.idxSize + 1) { // idxSize excludes the trailing sentinel
+  if(sid < sentIndexHeader_.idxSize) {
+    // we never provide the trailing sentinel here (note that idxSize excludes it)
     return trackTokens_ + sentIndexEntries_[sid] / sentIndexEntrySize_;
   }
 
   // dynamic track
   sid -= sentIndexHeader_.idxSize;
-  assert(sid < dyn_sentIndex_.size()); // dyn_sentIndex_ includes the trailing sentinel
+  assert(sid < dyn_sentIndex_.size() - 1);
+  // we never provide the trailing sentinel here (note that dyn_sentIndex_.size() includes it)
   return dyn_track_.data() + dyn_sentIndex_[sid];
+}
+
+template<class Token>
+const typename Corpus<Token>::Vid* Corpus<Token>::end(Sid sid) const {
+  // static track
+  if(sid < sentIndexHeader_.idxSize) {
+    // provide the trailing sentinel here (note that idxSize excludes it)
+    return trackTokens_ + sentIndexEntries_[sid + 1] / sentIndexEntrySize_;
+  }
+
+  // dynamic track
+  sid -= sentIndexHeader_.idxSize;
+  assert(sid < dyn_sentIndex_.size() - 1);
+  // provide the trailing sentinel here (note that dyn_sentIndex_.size() includes it)
+  return dyn_track_.data() + dyn_sentIndex_[sid + 1];
 }
 
 template<class Token>
@@ -87,9 +100,6 @@ Sentence<Token> Corpus<Token>::sentence(Sid sid) const {
 
 template<class Token>
 void Corpus<Token>::AddSentence(const std::vector<Token> &sent) {
-  if(dyn_sentIndex_.size() == 1)
-    dyn_sentIndex_.push_back(0); // pretend there is a zero-length sentence at [static.size()]. Since that is the static trailing sentinel, it can never be read as a dyn sentence. Means size() grows by 2 for the first dynamic addition, but that's fine.
-
   for(auto token : sent) {
     if(vocab_)
       vocab_->at(token); // access the Token to ensure it is contained in vocabulary (throws exception otherwise)
@@ -132,7 +142,7 @@ Sentence<Token>::Sentence() : corpus_(nullptr), sid_(0), begin_(nullptr), size_(
 template<class Token>
 Sentence<Token>::Sentence(const Corpus<Token> &corpus, Sid sid) : corpus_(&corpus), sid_(sid) {
   begin_ = corpus.begin(sid);
-  size_ = corpus.begin(sid + 1) - begin_;
+  size_ = corpus.end(sid) - begin_;
 }
 
 template<class Token>

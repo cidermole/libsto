@@ -40,11 +40,12 @@ public:
   /** Load corpus from mtt-build .mtt format or from split corpus/sentidx. */
   Corpus(const std::string &filename, const Vocabulary *vocab = nullptr);
 
-  /**
-   * begin of sentence (points into sequence of vocabulary IDs in corpus track)
-   * Has a trailing sentinel so you can query begin(sid+1) for the end) position
-   */
+  /**Begin of sentence (points into sequence of vocabulary IDs in the corpus track) */
   const Vid *begin(Sid sid) const;
+  // should be friended to Sentence
+
+  /**End of sentence (points past the last vocabulary ID of the sentence in the corpus track) */
+  const Vid *end(Sid sid) const;
   // should be friended to Sentence
 
   /** retrieve Sentence, a lightweight reference to a sentence's location. Last token is the EOS symbol </s>. */
