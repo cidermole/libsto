@@ -75,7 +75,7 @@ const typename Corpus<Token>::Vid* Corpus<Token>::begin(Sid sid) const {
   }
 
   // dynamic track
-  sid -= sentIndexHeader_.idxSize + 1;
+  sid -= sentIndexHeader_.idxSize;
   assert(sid < dyn_sentIndex_.size()); // dyn_sentIndex_ includes the trailing sentinel
   return dyn_track_.data() + dyn_sentIndex_[sid];
 }
@@ -87,6 +87,9 @@ Sentence<Token> Corpus<Token>::sentence(Sid sid) const {
 
 template<class Token>
 void Corpus<Token>::AddSentence(const std::vector<Token> &sent) {
+  if(dyn_sentIndex_.size() == 1)
+    dyn_sentIndex_.push_back(0); // pretend there is a zero-length sentence at [static.size()]. Since that is the static trailing sentinel, it can never be read as a dyn sentence. Means size() grows by 2 for the first dynamic addition, but that's fine.
+
   for(auto token : sent) {
     if(vocab_)
       vocab_->at(token); // access the Token to ensure it is contained in vocabulary (throws exception otherwise)

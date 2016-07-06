@@ -526,3 +526,17 @@ TEST_F(TokenIndexTests, query_positions_valid_eim_small) {
     }
   }
 }
+
+TEST_F(TokenIndexTests, add_to_loaded_eim_small) {
+  Vocab<SrcToken> vocab("/home/david/MMT/engines/default/models/phrase_tables/model.en.tdx");
+  Corpus<SrcToken> corpus("/home/david/MMT/engines/default/models/phrase_tables/model.en.mct", &vocab);
+  TokenIndex<SrcToken> staticIndex("/home/david/MMT/engines/default/models/phrase_tables/model.en.sfa", corpus); // built with mtt-build
+
+  std::vector<std::string> src = {"magyarul", "egesz", "biztosan", "nem", "tudsz"};
+  std::vector<SrcToken> sent;
+  for(auto w : src)
+    sent.push_back(vocab[w]);
+  corpus.AddSentence(sent);
+
+  staticIndex.AddSentence(corpus.sentence(corpus.size()-1));
+}

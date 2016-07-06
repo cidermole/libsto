@@ -30,7 +30,7 @@ TEST(CorpusTests, empty_add) {
 
   EXPECT_EQ(0, sc.size()) << "empty Corpus must have size() == 0";
   sc.AddSentence(sentence);
-  EXPECT_EQ(1, sc.size()) << "after adding single Sentence, Corpus must have size() == 1";
+  EXPECT_EQ(2, sc.size()) << "after adding single Sentence, Corpus must have size() == 2 (quirk in handling static trailing sentinel)";
 
   // retrieve Sentence from Corpus
   Sentence<SrcToken> sent = sc.sentence(0);
