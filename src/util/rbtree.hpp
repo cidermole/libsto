@@ -16,6 +16,7 @@
 #include <sstream>
 
 #include <memory>
+#include <vector>
 #include <cstddef>
 #include <cassert>
 #include <utility>
@@ -127,6 +128,105 @@ class RBTree {
   void Walk(Func func) {
     Walk(root_, func);
   }
+
+  /** Walking keys in ascending order, supporting standard operations (range-based for loop over RBTree). */
+  class Iterator {
+  public:
+    Iterator &operator++() {
+      /*
+       * Essentially implements in-order traversal, i.e. the following:
+       *
+       * Iter traverse_inorder(node) {
+       *   // kLeft
+       *   yield traverse_inorder(node->left);
+       *   // kYield
+       *   yield node;
+       *   // kRight
+       *   yield traverse_inorder(node->right);
+       *   // kDone
+       * }
+       */
+
+      while(true) {
+        assert(path_.size() > 0); // else, we went beyond end()
+        auto *top = &path_.back();
+
+        switch(top->second) {
+          case kLeft:
+            top->second = kYield;
+            if(top->first->left != nil_) {
+              path_.push_back(std::make_pair(top->first->left, kLeft));
+            }
+            break;
+
+          case kYield:
+            top->second = kRight;
+            cur_ = top->first;
+            return *this;
+            break;
+
+          case kRight:
+            top->second = kDone;
+            if(top->first->right != nil_) {
+              path_.push_back(std::make_pair(top->first->right, kLeft));
+            } else {
+              path_.pop_back();
+              if(path_.size() == 0) {
+                // reached end() at depth = 0 -- with single-entry tree
+                cur_.reset();
+                return *this;
+              }
+            }
+            break;
+
+          case kDone:
+            // reached end() in some depth > 0
+            cur_.reset();
+            return *this;
+            break;
+
+          default:
+            /* // debug prints in case of failure -- remove later
+            std::cerr << "path_.size() = " << path_.size() << std::endl;
+            for(size_t i = 0; i < path_.size(); i++)
+              std::cerr << path_[i].second << std::endl;
+              */
+            assert(0);
+        }
+      }
+    }
+
+    KeyType& operator*() { return cur_->key; }
+
+    bool operator!=(const Iterator &other) const { return cur_ != other.cur_; }
+
+  private:
+    typedef typename RBTree<KeyType,ValueType>::Node Node;
+    friend class RBTree<KeyType,ValueType>;
+
+    enum IterState { kLeft, kYield, kRight, kDone };
+
+    std::vector<std::pair<std::shared_ptr<Node>, IterState>> path_; /** tree path from the root (a stack substitute) */
+    std::shared_ptr<Node> cur_; /** current node, nullptr for end() */
+    std::shared_ptr<Node> nil_;
+
+
+    /** constructs begin() iterator */
+    Iterator(std::shared_ptr<Node> root, std::shared_ptr<Node> nil) : nil_(nil) {
+      if(root != nil) {
+        path_.push_back(std::make_pair(root, kLeft));
+        operator++();
+      }
+    }
+
+    /** constructs end() iterator */
+    Iterator() {}
+  };
+
+  Iterator begin() { return Iterator(root_, nil_); }
+  Iterator end() { return Iterator(); }
+
+
 
  protected:
   enum Color { kRed, kBlack };
@@ -409,8 +509,8 @@ class RBTree {
   size_type count_;
 
   // disallow copy and assign
-  RBTree(const RBTree<KeyType, ValueType>&);
-  void operator=(const RBTree<KeyType, ValueType>&);
+  RBTree(const RBTree<KeyType, ValueType>&) = delete;
+  void operator=(const RBTree<KeyType, ValueType>&) = delete;
 };
 
 /* Public */
