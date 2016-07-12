@@ -14,5 +14,8 @@ set(SOURCES
         util/Time.h
         util/usage.cpp
         util/usage.h
-)
-add_library(src_objs OBJECT ${SOURCES})  # no real lib, just collection of objs
+        IndexSpan.cpp
+        IndexSpan.h
+        TreeNode.cpp
+        TreeNode.h)
+add_library(sto OBJECT ${SOURCES})  # no real lib, just collection of objs

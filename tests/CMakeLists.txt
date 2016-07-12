@@ -11,6 +11,6 @@ file(COPY ${RESOURCES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/res/)
 
 foreach(testSrc ${TEST_SOURCES})
     get_filename_component(testName ${testSrc} NAME_WE)
-    add_executable(run${testName} ${testSrc} $<TARGET_OBJECTS:src_objs>)
+    add_executable(run${testName} ${testSrc} $<TARGET_OBJECTS:sto>)
     target_link_libraries(run${testName} gtest gtest_main  tcmalloc profiler)
 endforeach(testSrc)
