@@ -7,6 +7,9 @@
 #ifndef STO_TREENODE_H
 #define STO_TREENODE_H
 
+#include <memory>
+#include <atomic>
+
 #include "Corpus.h"
 #include "util/rbtree.hpp"
 

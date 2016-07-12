@@ -36,13 +36,12 @@ class IndexSpan {
 public:
   friend class TokenIndex<Token>;
 
-  // use TokenIndex::span() instead
-  IndexSpan(const TokenIndex<Token> &index);
+  // note: use TokenIndex::span() for constructing an IndexSpan
 
   IndexSpan(IndexSpan<Token> &other) = default;
-  IndexSpan<Token>& operator=(IndexSpan<Token> &other) = default;
-
   IndexSpan(IndexSpan<Token> &&other) = default;
+
+  IndexSpan<Token>& operator=(IndexSpan<Token> &other) = default;
   IndexSpan<Token>& operator=(IndexSpan<Token> &&other) = default;
 
   /**
@@ -93,25 +92,28 @@ public:
   /** partial lookup sequence so far, as appended by narrow() */
   const std::vector<Token>& sequence() const { return sequence_; }
 
+protected:
+  /** use TokenIndex::span() for constructing an IndexSpan */
+  IndexSpan(const TokenIndex<Token> &index);
+
 private:
   static constexpr size_t STO_NOT_FOUND = static_cast<size_t>(-1);
 
   const TokenIndex<Token> *index_;
 
-  // these 3 are only kept for debugging; for bookkeeping, we only need tree_path_.back()
   std::vector<Token> sequence_; /** partial lookup sequence so far, as appended by narrow() */
   std::vector<TreeNode<Token> *> tree_path_; /** first part of path from root through the tree */
   std::vector<Range> array_path_; /** second part of path from leaf through the suffix array. These Ranges always index relative to the specific suffix array. */
 
   /** narrow() in suffix array.
-   * returns > 0 on success, NOT_FOUND on failure: for consistency with narrow_tree_() */
+   * returns > 0 on success, STO_NOT_FOUND on failure: for consistency with narrow_tree_() */
   size_t narrow_array_(Token t);
 
   /** find the bounds of an existing Token or insertion point of a new one */
   Range find_bounds_array_(Token t);
 
   /** narrow() in tree.
-   * returns >= 0 on success, NOT_FOUND on failure. (=0 stepping into empty SuffixArray leaf)
+   * returns >= 0 on success, STO_NOT_FOUND on failure. (=0 stepping into empty SuffixArray leaf)
    */
   size_t narrow_tree_(Token t);
 };

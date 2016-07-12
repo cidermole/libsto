@@ -8,10 +8,7 @@
 #define STO_TOKENINDEX_H
 
 #include <iostream>
-#include <map>
 #include <vector>
-#include <memory>
-#include <atomic>
 
 #include "IndexSpan.h"
 #include "Corpus.h"
