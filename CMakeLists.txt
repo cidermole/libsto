@@ -3,8 +3,6 @@ project(sto)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall")
 
-find_package(GTest REQUIRED)
-
 include_directories(src)
 
 add_subdirectory(src)

@@ -1,3 +1,6 @@
+# find_package(Boost) really belongs here.
+# But then we should build a shared lib here.
+
 set(SOURCES
         Vocab.cpp
         Vocab.h
@@ -17,5 +20,7 @@ set(SOURCES
         IndexSpan.cpp
         IndexSpan.h
         TreeNode.cpp
-        TreeNode.h)
+        TreeNode.h
+        )
+
 add_library(sto OBJECT ${SOURCES})  # no real lib, just collection of objs
