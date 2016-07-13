@@ -55,7 +55,7 @@ public:
 
   void DebugPrint(std::ostream &os, const Corpus<Token> &corpus, size_t depth = 0);
 
-private:
+protected:
   std::atomic<bool> is_leaf_; /** whether this is a suffix array (leaf node) */
   ChildMap children_; /** TreeNode children, empty if is_leaf. Additionally carries along partial sums for child sizes. */
   std::shared_ptr<SuffixArray> array_; /** suffix array, only if is_leaf */

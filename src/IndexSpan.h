@@ -92,6 +92,8 @@ public:
   /** partial lookup sequence so far, as appended by narrow() */
   const std::vector<Token>& sequence() const { return sequence_; }
 
+  Corpus<Token> *corpus() const;
+
 protected:
   /** use TokenIndex::span() for constructing an IndexSpan */
   IndexSpan(const TokenIndex<Token> &index);

@@ -169,6 +169,11 @@ bool IndexSpan<Token>::in_array() const {
   return tree_path_.back()->is_leaf();
 }
 
+template<class Token>
+Corpus<Token> *IndexSpan<Token>::corpus() const {
+  return index_->corpus();
+}
+
 // explicit template instantiation
 template class IndexSpan<SrcToken>;
 template class IndexSpan<TrgToken>;

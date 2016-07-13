@@ -21,6 +21,6 @@ set(SOURCES
         IndexSpan.h
         TreeNode.cpp
         TreeNode.h
-        )
+        DiskTreeNode.cpp DiskTreeNode.h)
 
 add_library(sto OBJECT ${SOURCES})  # no real lib, just collection of objs

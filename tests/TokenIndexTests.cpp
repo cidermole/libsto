@@ -540,3 +540,10 @@ TEST_F(TokenIndexTests, add_to_loaded_eim_small) {
 
   staticIndex.AddSentence(corpus.sentence(corpus.size()-1));
 }
+
+#include "DiskTreeNode.h"
+
+TEST_F(TokenIndexTests, DiskTreeNode) {
+  EXPECT_EQ("0007a/0007a120", DiskTreeNode<SrcToken>::child_sub_path(0x7a120));
+  EXPECT_EQ("00000/00000001", DiskTreeNode<SrcToken>::child_sub_path(1));
+}
