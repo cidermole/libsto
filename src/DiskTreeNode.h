@@ -23,11 +23,11 @@ namespace sto {
  * The tree part is currently stored as an open directory structure in the filesystem itself.
  * Leaves (suffix array chunks) can be memory mapped.
  */
-template<class Token>
-class DiskTreeNode : public TreeNode<Token> {
+template<class Token, class SuffixArray>
+class DiskTreeNode : public TreeNode<Token, SuffixArray> {
 public:
-  typedef typename TreeNode<Token>::Vid Vid;
-  typedef typename TreeNode<Token>::SuffixArray SuffixArray; // to do: mmap
+  typedef typename TreeNode<Token, SuffixArray>::Vid Vid;
+  typedef typename TreeNode<Token, SuffixArray>::SuffixArrayT SuffixArrayT; // to do: mmap
 
   /**
    * if path exists: recursively load the subtree rooted at this path.

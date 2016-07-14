@@ -16,7 +16,7 @@
 namespace sto {
 
 template<class Token> class TokenIndex;
-template<class Token> class TreeNode;
+template<class Token, class SuffixArray> class TreeNode;
 
 struct Range {
   size_t begin;
@@ -36,6 +36,8 @@ template<class Token>
 class TokenIndex {
 public:
   typedef typename Corpus<Token>::Offset Offset;
+  typedef std::vector<AtomicPosition<Token>> SuffixArray;
+  typedef TreeNode<Token, SuffixArray> TreeNodeT;
 
   /**
    * IndexSpan represents the matched locations of a partial lookup sequence
@@ -47,6 +49,7 @@ public:
   class Span {
   public:
     friend class TokenIndex<Token>;
+    typedef typename TokenIndex<Token>::TreeNodeT TreeNodeT;
 
     // note: use TokenIndex::span() for constructing an IndexSpan
 
@@ -93,10 +96,10 @@ public:
     size_t tree_depth() const;
 
     /** TreeNode at current depth. */
-    TreeNode<Token> *node();
+    TreeNodeT *node();
 
     /** first part of path from root through the tree, excluding suffix array range choices */
-    const std::vector<TreeNode<Token> *>& tree_path() const { return tree_path_; }
+    const std::vector<TreeNodeT *>& tree_path() const { return tree_path_; }
 
     /** true if span reaches into a suffix array leaf. */
     bool in_array() const;
@@ -116,7 +119,7 @@ public:
     const TokenIndex<Token> *index_;
 
     std::vector<Token> sequence_; /** partial lookup sequence so far, as appended by narrow() */
-    std::vector<TreeNode<Token> *> tree_path_; /** first part of path from root through the tree */
+    std::vector<TreeNodeT *> tree_path_; /** first part of path from root through the tree */
     std::vector<Range> array_path_; /** second part of path from leaf through the suffix array. These Ranges always index relative to the specific suffix array. */
 
     /** narrow() in suffix array.
@@ -171,7 +174,7 @@ private:
   friend class Span;
 
   Corpus<Token> *corpus_;
-  TreeNode<Token> *root_; /** root of the index tree */
+  TreeNodeT *root_; /** root of the index tree */
 
   /** Insert the subsequence from start into this index. Potentially splits. */
   void AddSubsequence_(const Sentence<Token> &sent, Offset start);

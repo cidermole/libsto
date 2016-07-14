@@ -13,20 +13,20 @@
 
 namespace sto {
 
-template<class Token>
-TreeNode<Token>::TreeNode(size_t maxArraySize) : is_leaf_(true), array_(new SuffixArray), kMaxArraySize(maxArraySize)
+template<class Token, class SuffixArray>
+TreeNode<Token, SuffixArray>::TreeNode(size_t maxArraySize) : is_leaf_(true), array_(new SuffixArray), kMaxArraySize(maxArraySize)
 {}
 
-template<class Token>
-TreeNode<Token>::~TreeNode() {
+template<class Token, class SuffixArray>
+TreeNode<Token, SuffixArray>::~TreeNode() {
   // ~RBTree() should do the work. But pointers are opaque to it (ValueType), so it does not, currently.
-  children_.Walk([](Vid vid, TreeNode<Token> *e) {
+  children_.Walk([](Vid vid, TreeNode<Token, SuffixArray> *e) {
     delete e;
   });
 }
 
-template<class Token>
-void TreeNode<Token>::AddPosition(const Sentence<Token> &sent, Offset start, size_t depth) {
+template<class Token, class SuffixArray>
+void TreeNode<Token, SuffixArray>::AddPosition(const Sentence<Token> &sent, Offset start, size_t depth) {
   assert(is_leaf()); // Exclusively for adding to a SA (leaf node).
 
   Position<Token> corpus_pos{sent.sid(), start};
@@ -82,19 +82,19 @@ void TreeNode<Token>::AddPosition(const Sentence<Token> &sent, Offset start, siz
   }
 }
 
-template<class Token>
-void TreeNode<Token>::AddLeaf(Vid vid) {
-  children_[vid] = new TreeNode<Token>();
+template<class Token, class SuffixArray>
+void TreeNode<Token, SuffixArray>::AddLeaf(Vid vid) {
+  children_[vid] = new TreeNode<Token, SuffixArray>();
 }
 
-template<class Token>
-void TreeNode<Token>::AddSize(Vid vid, size_t add_size) {
+template<class Token, class SuffixArray>
+void TreeNode<Token, SuffixArray>::AddSize(Vid vid, size_t add_size) {
   children_.AddSize(vid, add_size);
 }
 
 /** Split this leaf node (suffix array) into a proper TreeNode with children. */
-template<class Token>
-void TreeNode<Token>::SplitNode(const Corpus<Token> &corpus, Offset depth) {
+template<class Token, class SuffixArray>
+void TreeNode<Token, SuffixArray>::SplitNode(const Corpus<Token> &corpus, Offset depth) {
   typedef typename SuffixArray::iterator iter;
 
   assert(is_leaf()); // this method works only on suffix arrays
@@ -116,13 +116,13 @@ void TreeNode<Token>::SplitNode(const Corpus<Token> &corpus, Offset depth) {
     vid_range = std::equal_range(array->begin(), array->end(), pos, comp);
 
     // copy each range into its own suffix array
-    TreeNode<Token> *new_child = new TreeNode<Token>(kMaxArraySize);
+    TreeNode<Token, SuffixArray> *new_child = new TreeNode<Token, SuffixArray>(kMaxArraySize);
     std::shared_ptr<SuffixArray> new_array = new_child->array_;
     new_array->insert(new_array->begin(), vid_range.first, vid_range.second);
     //children_[pos.add(depth, corpus).vid(corpus)] = new_child;
     children_.FindOrInsert(pos.add(depth, corpus).vid(corpus), /* add_size = */ new_array->size()) = new_child;
 
-    TreeNode<Token> *n;
+    TreeNode<Token, SuffixArray> *n;
     assert(children_.Find(pos.add(depth, corpus).vid(corpus), &n));
     assert(n != nullptr);
     assert(children_.ChildSize(pos.add(depth, corpus).vid(corpus)) == new_array->size());
@@ -142,8 +142,8 @@ void TreeNode<Token>::SplitNode(const Corpus<Token> &corpus, Offset depth) {
   // note: array_ null check could replace is_leaf_
 }
 
-template<class Token>
-size_t TreeNode<Token>::size() const {
+template<class Token, class SuffixArray>
+size_t TreeNode<Token, SuffixArray>::size() const {
   // thread safety: obtain reference first, check later, so we are sure to have a valid array -- avoids race with SplitNode()
   std::shared_ptr<SuffixArray> array = array_;
   if(is_leaf())
@@ -152,14 +152,14 @@ size_t TreeNode<Token>::size() const {
     return children_.Size();
 }
 
-template<class Token>
-Position<Token> TreeNode<Token>::At(size_t sa_offset, size_t rel_offset) {
+template<class Token, class SuffixArray>
+Position<Token> TreeNode<Token, SuffixArray>::At(size_t sa_offset, size_t rel_offset) {
   // thread safety: obtain reference first, check later, so we are sure to have a valid array -- avoids race with SplitNode()
   std::shared_ptr<SuffixArray> array = array_;
   if(is_leaf()) {
     return (*array)[sa_offset + rel_offset];
   } else {
-    TreeNode<Token> *child = children_.At(&rel_offset); // note: changes rel_offset
+    TreeNode<Token, SuffixArray> *child = children_.At(&rel_offset); // note: changes rel_offset
     assert(child != nullptr);
     return child->At(sa_offset, rel_offset);
   }
@@ -171,13 +171,13 @@ std::string nspaces(size_t n) {
   return std::string(buf);
 }
 
-template<class Token>
-void TreeNode<Token>::DebugPrint(std::ostream &os, const Corpus<Token> &corpus, size_t depth) {
+template<class Token, class SuffixArray>
+void TreeNode<Token, SuffixArray>::DebugPrint(std::ostream &os, const Corpus<Token> &corpus, size_t depth) {
   std::string spaces = nspaces(depth * 2);
   os << spaces << "TreeNode size=" << size() << " is_leaf=" << (is_leaf() ? "true" : "false") << std::endl;
 
   // for internal TreeNodes (is_leaf=false), these have children_ entries
-  children_.Walk([&corpus, &os, &spaces, depth](Vid vid, TreeNode<Token> *e) {
+  children_.Walk([&corpus, &os, &spaces, depth](Vid vid, TreeNode<Token, SuffixArray> *e) {
     std::string surface = corpus.vocab()[Token{vid}];
     os << spaces << "* '" << surface << "' vid=" << static_cast<int>(vid) << std::endl;
     e->DebugPrint(os, corpus, depth + 1);
@@ -193,7 +193,10 @@ void TreeNode<Token>::DebugPrint(std::ostream &os, const Corpus<Token> &corpus, 
 }
 
 // explicit template instantiation
-template class TreeNode<SrcToken>;
-template class TreeNode<TrgToken>;
+template class TreeNode<SrcToken, std::vector<AtomicPosition<SrcToken>>>;
+template class TreeNode<TrgToken, std::vector<AtomicPosition<TrgToken>>>;
+
+template class TreeNode<SrcToken, DiskSuffixArray<SrcToken>>;
+template class TreeNode<TrgToken, DiskSuffixArray<TrgToken>>;
 
 } // namespace sto

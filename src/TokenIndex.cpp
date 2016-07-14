@@ -20,11 +20,10 @@ namespace sto {
 // --------------------------------------------------------
 
 template<class Token>
-TokenIndex<Token>::TokenIndex(const std::string &filename, Corpus<Token> &corpus, size_t maxLeafSize) : corpus_(&corpus), root_(new TreeNode<Token>(maxLeafSize))
+TokenIndex<Token>::TokenIndex(const std::string &filename, Corpus<Token> &corpus, size_t maxLeafSize) : corpus_(&corpus), root_(new TreeNodeT(maxLeafSize))
 {
   typedef tpt::id_type Sid_t;
   typedef tpt::offset_type Offset_t;
-  typedef typename TreeNode<Token>::SuffixArray SuffixArray;
   typedef tpt::TsaHeader TokenIndexHeader;
 
   MappedFile file(filename);
@@ -49,7 +48,7 @@ TokenIndex<Token>::TokenIndex(const std::string &filename, Corpus<Token> &corpus
 }
 
 template<class Token>
-TokenIndex<Token>::TokenIndex(Corpus<Token> &corpus, size_t maxLeafSize) : corpus_(&corpus), root_(new TreeNode<Token>(maxLeafSize))
+TokenIndex<Token>::TokenIndex(Corpus<Token> &corpus, size_t maxLeafSize) : corpus_(&corpus), root_(new TreeNodeT(maxLeafSize))
 {}
 
 template<class Token>

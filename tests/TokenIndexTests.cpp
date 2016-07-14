@@ -544,6 +544,12 @@ TEST_F(TokenIndexTests, add_to_loaded_eim_small) {
 #include "DiskTreeNode.h"
 
 TEST_F(TokenIndexTests, DiskTreeNode) {
-  EXPECT_EQ("0007a/0007a120", DiskTreeNode<SrcToken>::child_sub_path(0x7a120));
-  EXPECT_EQ("00000/00000001", DiskTreeNode<SrcToken>::child_sub_path(1));
+  // TODO SuffixArray type
+  //typedef std::vector<AtomicPosition<SrcToken>> SuffixArray;
+  typedef DiskSuffixArray<SrcToken> SuffixArray;
+  // macros and multiple template parameters don't like each other in the C++ parser?!
+  std::string csp1 = DiskTreeNode<SrcToken, SuffixArray>::child_sub_path(0x7a120);
+  std::string csp2 = DiskTreeNode<SrcToken, SuffixArray>::child_sub_path(1);
+  EXPECT_EQ("0007a/0007a120", csp1);
+  EXPECT_EQ("00000/00000001", csp2);
 }

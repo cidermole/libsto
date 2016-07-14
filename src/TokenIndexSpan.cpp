@@ -112,7 +112,7 @@ size_t TokenIndex<Token>::Span::narrow_array_(Token t) {
 
 template<class Token>
 size_t TokenIndex<Token>::Span::narrow_tree_(Token t) {
-  TreeNode<Token> *node;
+  TreeNodeT *node;
   if (!tree_path_.back()->children_.Find(t.vid, &node))
     return STO_NOT_FOUND; // do not modify the IndexSpan and signal failure
 
@@ -149,7 +149,7 @@ size_t TokenIndex<Token>::Span::size() const {
 }
 
 template<class Token>
-TreeNode<Token> *TokenIndex<Token>::Span::node() {
+typename TokenIndex<Token>::Span::TreeNodeT *TokenIndex<Token>::Span::node() {
   return tree_path_.back();
 }
 
