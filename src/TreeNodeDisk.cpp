@@ -13,8 +13,8 @@
 
 namespace sto {
 
-template<class Token, class SuffixArray>
-TreeNodeDisk<Token, SuffixArray>::TreeNodeDisk(const std::string &path) : path_(path) {
+template<class Token>
+TreeNodeDisk<Token>::TreeNodeDisk(const std::string &path) : path_(path) {
   using namespace boost::filesystem;
 
   /*
@@ -30,8 +30,8 @@ TreeNodeDisk<Token, SuffixArray>::TreeNodeDisk(const std::string &path) : path_(
   }
 }
 
-template<class Token, class SuffixArray>
-void TreeNodeDisk<Token, SuffixArray>::Merge(typename TokenIndex<Token>::Span &curSpan, typename TokenIndex<Token>::Span &addSpan) {
+template<class Token>
+void TreeNodeDisk<Token>::Merge(typename TokenIndex<Token>::Span &curSpan, typename TokenIndex<Token>::Span &addSpan) {
   size_t addSize = addSpan.size();
   size_t curSize = this->array_->size();
   size_t icur = 0, iadd = 0;
@@ -65,8 +65,8 @@ void TreeNodeDisk<Token, SuffixArray>::Merge(typename TokenIndex<Token>::Span &c
   // TODO: check if split is necessary, and perform split.
 }
 
-template<class Token, class SuffixArray>
-std::string TreeNodeDisk<Token, SuffixArray>::child_sub_path(Vid vid) {
+template<class Token>
+std::string TreeNodeDisk<Token>::child_sub_path(Vid vid) {
   constexpr size_t kVidDigits = sizeof(Vid)*2;
   constexpr size_t kSignificantDigitsDir2 = 3;
   static_assert(kVidDigits > kSignificantDigitsDir2); // for dir1 size to work
@@ -83,7 +83,7 @@ std::string TreeNodeDisk<Token, SuffixArray>::child_sub_path(Vid vid) {
 }
 
 // explicit template instantiation
-template class TreeNodeDisk<SrcToken, SuffixArrayDisk<SrcToken>>;
-template class TreeNodeDisk<TrgToken, SuffixArrayDisk<TrgToken>>;
+template class TreeNodeDisk<SrcToken>;
+template class TreeNodeDisk<TrgToken>;
 
 } // namespace sto
