@@ -50,53 +50,7 @@ size_t TokenIndex<Token>::Span::narrow(Token t) {
 
 template<class Token>
 Range TokenIndex<Token>::Span::find_bounds_array_(Token t) {
-  // for each token position, we need to check if it's long enough to extend as far as we do
-  // (note: lexicographic sort order means shorter stuff is always at the beginning - so if Pos is too short, then Pos < Tok.)
-  // then, we only need to compare at the depth of new_sequence_size, since all tokens before should be equal
-  size_t old_sequence_size = sequence_.size();
-
-  auto array = tree_path_.back()->array_;
-  Range prev_bounds = array_path_.back();
-  Range bounds;
-
-  Corpus<Token> &corpus = *index_->corpus_;
-
-  // binary search for the range containing Token t
-  bounds.begin = std::lower_bound(
-      array->begin() + prev_bounds.begin, array->begin() + prev_bounds.end,
-      //new_sequence,
-      t,
-      [&corpus, old_sequence_size](const Position<Token> &pos, const Token &t) {
-        Sentence<Token> sent = corpus.sentence(pos.sid);
-        // lexicographic sort order means shorter sequences always come first in array
-        // sent.size() + 1: add implicit </s>
-        if (sent.size() + 1 - pos.offset < old_sequence_size + 1)
-          return true;
-        // we only need to compare at the depth of new_sequence_size, since all tokens before are equal
-
-        // note: Token::operator<(Token&) compares by vid (not surface form)
-        return sent[pos.offset + old_sequence_size] < t;
-      }
-  ) - array->begin();
-
-  bounds.end = std::upper_bound(
-      array->begin() + prev_bounds.begin, array->begin() + prev_bounds.end,
-      //new_sequence,
-      t,
-      [&corpus, old_sequence_size](const Token &t, const Position<Token> &pos) {
-        Sentence<Token> sent = corpus.sentence(pos.sid);
-        // lexicographic sort order means shorter sequences always come first in array
-        // sent.size() + 1: add implicit </s>
-        if (sent.size() + 1 - pos.offset < old_sequence_size + 1)
-          return false;
-        // we only need to compare at the depth of new_sequence_size, since all tokens before are equal
-
-        // note: Token::operator<(Token&) compares by vid (not surface form)
-        return t < sent[pos.offset + old_sequence_size];
-      }
-  ) - array->begin();
-
-  return bounds;
+  return tree_path_.back()->find_bounds_array_(*index_->corpus_, array_path_.back(), t, sequence_.size());
 }
 
 template<class Token>
@@ -113,7 +67,7 @@ size_t TokenIndex<Token>::Span::narrow_array_(Token t) {
 template<class Token>
 size_t TokenIndex<Token>::Span::narrow_tree_(Token t) {
   TreeNodeT *node;
-  if (!tree_path_.back()->children_.Find(t.vid, &node))
+  if (!tree_path_.back()->find_child_(t.vid, &node))
     return STO_NOT_FOUND; // do not modify the IndexSpan and signal failure
 
   // note: we also end up here if stepping into an empty, existing SuffixArray leaf

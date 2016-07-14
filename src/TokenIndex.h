@@ -10,19 +10,13 @@
 #include <iostream>
 #include <vector>
 
+#include "Range.h"
 #include "Corpus.h"
 #include "util/rbtree.hpp"
 
 namespace sto {
 
 template<class Token, class SuffixArray> class TreeNode;
-
-struct Range {
-  size_t begin;
-  size_t end;
-
-  size_t size() const { return end - begin; }
-};
 
 template<class Token>
 using SuffixArrayMemory = std::vector<AtomicPosition<Token>>;

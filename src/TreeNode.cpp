@@ -92,6 +92,59 @@ void TreeNode<Token, SuffixArray>::AddSize(Vid vid, size_t add_size) {
   children_.AddSize(vid, add_size);
 }
 
+template<class Token, class SuffixArray>
+Range TreeNode<Token, SuffixArray>::find_bounds_array_(Corpus<Token> &corpus, Range prev_bounds, Token t, size_t depth) {
+  // for each token position, we need to check if it's long enough to extend as far as we do
+  // (note: lexicographic sort order means shorter stuff is always at the beginning - so if Pos is too short, then Pos < Tok.)
+  // then, we only need to compare at the depth of new_sequence_size, since all tokens before should be equal
+  size_t old_sequence_size = depth;
+
+  auto array = array_;
+  Range bounds;
+
+  // binary search for the range containing Token t
+  bounds.begin = std::lower_bound(
+      array->begin() + prev_bounds.begin, array->begin() + prev_bounds.end,
+      //new_sequence,
+      t,
+      [&corpus, old_sequence_size](const Position<Token> &pos, const Token &t) {
+        Sentence<Token> sent = corpus.sentence(pos.sid);
+        // lexicographic sort order means shorter sequences always come first in array
+        // sent.size() + 1: add implicit </s>
+        if (sent.size() + 1 - pos.offset < old_sequence_size + 1)
+          return true;
+        // we only need to compare at the depth of new_sequence_size, since all tokens before are equal
+
+        // note: Token::operator<(Token&) compares by vid (not surface form)
+        return sent[pos.offset + old_sequence_size] < t;
+      }
+  ) - array->begin();
+
+  bounds.end = std::upper_bound(
+      array->begin() + prev_bounds.begin, array->begin() + prev_bounds.end,
+      //new_sequence,
+      t,
+      [&corpus, old_sequence_size](const Token &t, const Position<Token> &pos) {
+        Sentence<Token> sent = corpus.sentence(pos.sid);
+        // lexicographic sort order means shorter sequences always come first in array
+        // sent.size() + 1: add implicit </s>
+        if (sent.size() + 1 - pos.offset < old_sequence_size + 1)
+          return false;
+        // we only need to compare at the depth of new_sequence_size, since all tokens before are equal
+
+        // note: Token::operator<(Token&) compares by vid (not surface form)
+        return t < sent[pos.offset + old_sequence_size];
+      }
+  ) - array->begin();
+
+  return bounds;
+}
+
+template<class Token, class SuffixArray>
+bool TreeNode<Token, SuffixArray>::find_child_(Vid vid, TreeNode<Token, SuffixArray> **child) {
+  return children_.Find(vid, child);
+}
+
 /** Split this leaf node (suffix array) into a proper TreeNode with children. */
 template<class Token, class SuffixArray>
 void TreeNode<Token, SuffixArray>::SplitNode(const Corpus<Token> &corpus, Offset depth) {

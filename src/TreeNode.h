@@ -10,6 +10,7 @@
 #include <memory>
 #include <atomic>
 
+#include "Range.h"
 #include "Corpus.h"
 #include "util/rbtree.hpp"
 
@@ -31,8 +32,6 @@ template<class Token> class TokenIndex;
 template<class Token, class SuffixArray>
 class TreeNode {
 public:
-  friend class TokenIndex<Token>;
-
   typedef typename Corpus<Token>::Vid Vid;
   typedef typename Corpus<Token>::Offset Offset;
   typedef RBTree<Vid, TreeNode<Token, SuffixArray> *> ChildMap;
@@ -56,17 +55,6 @@ public:
 
   void DebugPrint(std::ostream &os, const Corpus<Token> &corpus, size_t depth = 0);
 
-protected:
-  std::atomic<bool> is_leaf_; /** whether this is a suffix array (leaf node) */
-  ChildMap children_; /** TreeNode children, empty if is_leaf. Additionally carries along partial sums for child sizes. */
-  std::shared_ptr<SuffixArray> array_; /** suffix array, only if is_leaf */
-
-  /**
-   * maximum size of suffix array leaf, larger sizes are split up into TreeNodes.
-   * NOTE: the SA leaf of </s> may grow above kMaxArraySize, see AddPosition() implementation.
-   */
-  const size_t kMaxArraySize;
-
   /**
    * Insert the existing Corpus Position into this leaf node (SuffixArray).
    * This potentially splits the SuffixArray into individual TreeNodes,
@@ -84,6 +72,26 @@ protected:
 
   /** Increase the given vid child's size. */
   void AddSize(Vid vid, size_t add_size);
+
+  /** TODO: is there a nicer way? maybe via constructor? (but only TreeNodeMemory) */
+  void SetArray(std::shared_ptr<SuffixArray> array) { array_ = array; }
+
+  /** find the bounds of an existing Token or insertion point of a new one */
+  Range find_bounds_array_(Corpus<Token> &corpus, Range prev_bounds, Token t, size_t depth);
+
+  /** @return true if child with 'vid' as the key was found, and optionally sets 'child'. */
+  bool find_child_(Vid vid, TreeNode<Token, SuffixArray> **child = nullptr);
+
+protected:
+  std::atomic<bool> is_leaf_; /** whether this is a suffix array (leaf node) */
+  ChildMap children_; /** TreeNode children, empty if is_leaf. Additionally carries along partial sums for child sizes. */
+  std::shared_ptr<SuffixArray> array_; /** suffix array, only if is_leaf */
+
+  /**
+   * maximum size of suffix array leaf, larger sizes are split up into TreeNodes.
+   * NOTE: the SA leaf of </s> may grow above kMaxArraySize, see AddPosition() implementation.
+   */
+  const size_t kMaxArraySize;
 
   /**
    * Split this leaf node (SuffixArray) into a proper TreeNode with children.

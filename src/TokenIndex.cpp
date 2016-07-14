@@ -44,7 +44,7 @@ TokenIndex<Token>::TokenIndex(const std::string &filename, Corpus<Token> &corpus
   for(size_t i = 0; i < num_positions; i++, p++) {
     array->push_back(Position<Token>{p->sid, p->offset});
   }
-  root_->array_ = array;
+  root_->SetArray(array);
 }
 
 template<class Token>
