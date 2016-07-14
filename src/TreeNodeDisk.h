@@ -10,7 +10,7 @@
 #include "TreeNode.h"
 #include "TokenIndex.h"
 
-class TokenIndexTests_DiskTreeNode_Test;
+class TokenIndexTests_TreeNodeDisk_Test;
 
 namespace sto {
 
@@ -24,7 +24,7 @@ namespace sto {
  * Leaves (suffix array chunks) can be memory mapped.
  */
 template<class Token, class SuffixArray>
-class DiskTreeNode : public TreeNode<Token, SuffixArray> {
+class TreeNodeDisk : public TreeNode<Token, SuffixArray> {
 public:
   typedef typename TreeNode<Token, SuffixArray>::Vid Vid;
   typedef typename TreeNode<Token, SuffixArray>::SuffixArrayT SuffixArrayT; // to do: mmap
@@ -35,7 +35,7 @@ public:
    *
    * @param path  path to the backing directory
    */
-  DiskTreeNode(const std::string &path);
+  TreeNodeDisk(const std::string &path);
 
   /** Set the path to the directory backing this DiskTreeNode. */
   //void SetPath(const std::string &path) { path_ = path; }
@@ -49,7 +49,7 @@ public:
   void Merge(typename TokenIndex<Token>::Span &curSpan, typename TokenIndex<Token>::Span &addSpan);
 
 private:
-  friend class ::TokenIndexTests_DiskTreeNode_Test;
+  friend class ::TokenIndexTests_TreeNodeDisk_Test;
 
   /**
    * Creates the nested directory name for a given vid.

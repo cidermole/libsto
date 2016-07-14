@@ -20,6 +20,6 @@ set(SOURCES
         TokenIndexSpan.cpp
         TreeNode.cpp
         TreeNode.h
-        DiskTreeNode.cpp DiskTreeNode.h DiskSuffixArray.cpp DiskSuffixArray.h)
+        TreeNodeDisk.cpp TreeNodeDisk.h SuffixArrayDisk.cpp SuffixArrayDisk.h)
 
 add_library(sto OBJECT ${SOURCES})  # no real lib, just collection of objs

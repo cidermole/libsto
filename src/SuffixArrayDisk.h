@@ -28,12 +28,12 @@ struct __attribute__((packed)) SuffixArrayPosition {
 
 
 template<class Token>
-class DiskSuffixArray {
+class SuffixArrayDisk {
 public:
   // TODO: remove. just for testing integration
-  DiskSuffixArray() : array_(nullptr), length_(0) { assert(0); }
+  SuffixArrayDisk() : array_(nullptr), length_(0) { assert(0); }
 
-  DiskSuffixArray(const std::string &filename);
+  SuffixArrayDisk(const std::string &filename);
 
   class Iterator {
   public:
@@ -83,7 +83,7 @@ namespace std {
 //template<class Token>
 template<>
 //struct iterator_traits<typename sto::DiskSuffixArray<Token>::Iterator>
-struct iterator_traits<typename sto::DiskSuffixArray<sto::SrcToken>::Iterator>
+struct iterator_traits<typename sto::SuffixArrayDisk<sto::SrcToken>::Iterator>
 {
   typedef random_access_iterator_tag iterator_category;
   typedef sto::SuffixArrayPosition<sto::SrcToken> value_type;
@@ -93,7 +93,7 @@ struct iterator_traits<typename sto::DiskSuffixArray<sto::SrcToken>::Iterator>
 };
 
 template<>
-struct iterator_traits<typename sto::DiskSuffixArray<sto::TrgToken>::Iterator>
+struct iterator_traits<typename sto::SuffixArrayDisk<sto::TrgToken>::Iterator>
 {
   typedef random_access_iterator_tag iterator_category;
   typedef sto::SuffixArrayPosition<sto::TrgToken> value_type;

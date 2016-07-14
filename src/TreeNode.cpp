@@ -196,7 +196,7 @@ void TreeNode<Token, SuffixArray>::DebugPrint(std::ostream &os, const Corpus<Tok
 template class TreeNode<SrcToken, std::vector<AtomicPosition<SrcToken>>>;
 template class TreeNode<TrgToken, std::vector<AtomicPosition<TrgToken>>>;
 
-template class TreeNode<SrcToken, DiskSuffixArray<SrcToken>>;
-template class TreeNode<TrgToken, DiskSuffixArray<TrgToken>>;
+template class TreeNode<SrcToken, SuffixArrayDisk<SrcToken>>;
+template class TreeNode<TrgToken, SuffixArrayDisk<TrgToken>>;
 
 } // namespace sto

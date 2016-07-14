@@ -13,7 +13,7 @@
 #include "Corpus.h"
 #include "util/rbtree.hpp"
 
-#include "DiskSuffixArray.h"
+#include "SuffixArrayDisk.h"
 
 namespace sto {
 
