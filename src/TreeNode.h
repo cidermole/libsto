@@ -31,7 +31,6 @@ template<class Token> class TokenIndex;
 template<class Token>
 class TreeNode {
 public:
-  friend class IndexSpan<Token>;
   friend class TokenIndex<Token>;
 
   typedef typename Corpus<Token>::Vid Vid;

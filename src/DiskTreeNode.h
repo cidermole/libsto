@@ -8,7 +8,7 @@
 #define STO_DISKTREENODE_H
 
 #include "TreeNode.h"
-#include "IndexSpan.h"
+#include "TokenIndex.h"
 
 class TokenIndexTests_DiskTreeNode_Test;
 
@@ -46,7 +46,7 @@ public:
    * @param curSpan  a span of this entire TreeNode
    * @param addSpan  a span of a TreeNode to be merged in (span over the same vid)
    */
-  void Merge(typename TokenIndex<Token>::IndexSpan &curSpan, typename TokenIndex<Token>::IndexSpan &addSpan);
+  void Merge(typename TokenIndex<Token>::Span &curSpan, typename TokenIndex<Token>::Span &addSpan);
 
 private:
   friend class ::TokenIndexTests_DiskTreeNode_Test;

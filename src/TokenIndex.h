@@ -10,13 +10,10 @@
 #include <iostream>
 #include <vector>
 
-//#include "IndexSpan.h"
 #include "Corpus.h"
 #include "util/rbtree.hpp"
 
 namespace sto {
-
-
 
 template<class Token> class TokenIndex;
 template<class Token> class TreeNode;
@@ -28,8 +25,6 @@ struct Range {
   size_t size() const { return end - begin; }
 };
 
-
-template<class Token> class TreeNode;
 
 /**
  * Indexes a Corpus. The index is implemented as a hybrid suffix tree/array.
@@ -49,17 +44,17 @@ public:
    * You start with the empty lookup sequence from TokenIndex::span() and
    * keep adding tokens to the lookup via narrow().
    */
-  class IndexSpan {
+  class Span {
   public:
     friend class TokenIndex<Token>;
 
     // note: use TokenIndex::span() for constructing an IndexSpan
 
-    IndexSpan(IndexSpan &other) = default;
-    IndexSpan(IndexSpan &&other) = default;
+    Span(Span &other) = default;
+    Span(Span &&other) = default;
 
-    IndexSpan& operator=(IndexSpan &other) = default;
-    IndexSpan& operator=(IndexSpan &&other) = default;
+    Span& operator=(Span &other) = default;
+    Span& operator=(Span &&other) = default;
 
     /**
      * Narrow the span by adding a token to the end of the lookup sequence.
@@ -113,7 +108,7 @@ public:
 
   protected:
     /** use TokenIndex::span() for constructing an IndexSpan */
-    IndexSpan(const TokenIndex<Token> &index);
+    Span(const TokenIndex<Token> &index);
 
   private:
     static constexpr size_t STO_NOT_FOUND = static_cast<size_t>(-1);
@@ -150,7 +145,7 @@ public:
   ~TokenIndex();
 
   /** Returns the whole span of the entire index (empty lookup sequence). */
-  IndexSpan span() const;
+  Span span() const;
 
   Corpus<Token> *corpus() const { return corpus_; }
 
@@ -173,7 +168,7 @@ public:
   void DebugPrint(std::ostream &os);
 
 private:
-  friend class IndexSpan;
+  friend class Span;
 
   Corpus<Token> *corpus_;
   TreeNode<Token> *root_; /** root of the index tree */

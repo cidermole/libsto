@@ -9,14 +9,13 @@
 #include <cassert>
 #include <cstring>
 
-#include "IndexSpan.h"
 #include "TokenIndex.h"
 #include "TreeNode.h"
 
 namespace sto {
 
 template<class Token>
-TokenIndex<Token>::IndexSpan::IndexSpan(const TokenIndex<Token> &index) : index_(&index) {
+TokenIndex<Token>::Span::Span(const TokenIndex<Token> &index) : index_(&index) {
   // starting sentinel
   tree_path_.push_back(index_->root_);
 
@@ -27,7 +26,7 @@ TokenIndex<Token>::IndexSpan::IndexSpan(const TokenIndex<Token> &index) : index_
 }
 
 template<class Token>
-size_t TokenIndex<Token>::IndexSpan::narrow(Token t) {
+size_t TokenIndex<Token>::Span::narrow(Token t) {
   size_t new_span;
 
   if (in_array())
@@ -50,7 +49,7 @@ size_t TokenIndex<Token>::IndexSpan::narrow(Token t) {
 }
 
 template<class Token>
-Range TokenIndex<Token>::IndexSpan::find_bounds_array_(Token t) {
+Range TokenIndex<Token>::Span::find_bounds_array_(Token t) {
   // for each token position, we need to check if it's long enough to extend as far as we do
   // (note: lexicographic sort order means shorter stuff is always at the beginning - so if Pos is too short, then Pos < Tok.)
   // then, we only need to compare at the depth of new_sequence_size, since all tokens before should be equal
@@ -101,7 +100,7 @@ Range TokenIndex<Token>::IndexSpan::find_bounds_array_(Token t) {
 }
 
 template<class Token>
-size_t TokenIndex<Token>::IndexSpan::narrow_array_(Token t) {
+size_t TokenIndex<Token>::Span::narrow_array_(Token t) {
   Range new_range = find_bounds_array_(t);
 
   if (new_range.size() == 0)
@@ -112,7 +111,7 @@ size_t TokenIndex<Token>::IndexSpan::narrow_array_(Token t) {
 }
 
 template<class Token>
-size_t TokenIndex<Token>::IndexSpan::narrow_tree_(Token t) {
+size_t TokenIndex<Token>::Span::narrow_tree_(Token t) {
   TreeNode<Token> *node;
   if (!tree_path_.back()->children_.Find(t.vid, &node))
     return STO_NOT_FOUND; // do not modify the IndexSpan and signal failure
@@ -124,7 +123,7 @@ size_t TokenIndex<Token>::IndexSpan::narrow_tree_(Token t) {
 }
 
 template<class Token>
-Position<Token> TokenIndex<Token>::IndexSpan::operator[](size_t rel) const {
+Position<Token> TokenIndex<Token>::Span::operator[](size_t rel) const {
   assert(rel < size());
 
   // traverses the tree down using binary search on the cumulative counts at each internal TreeNode
@@ -134,12 +133,12 @@ Position<Token> TokenIndex<Token>::IndexSpan::operator[](size_t rel) const {
 }
 
 template<class Token>
-Position<Token> TokenIndex<Token>::IndexSpan::at_unchecked(size_t rel) const {
+Position<Token> TokenIndex<Token>::Span::at_unchecked(size_t rel) const {
   return tree_path_.back()->At(array_path_.size() ? array_path_.back().begin : 0, rel);
 }
 
 template<class Token>
-size_t TokenIndex<Token>::IndexSpan::size() const {
+size_t TokenIndex<Token>::Span::size() const {
   if (in_array()) {
     assert(array_path_.size() > 0);
     return array_path_.back().size();
@@ -150,32 +149,32 @@ size_t TokenIndex<Token>::IndexSpan::size() const {
 }
 
 template<class Token>
-TreeNode<Token> *TokenIndex<Token>::IndexSpan::node() {
+TreeNode<Token> *TokenIndex<Token>::Span::node() {
   return tree_path_.back();
 }
 
 template<class Token>
-size_t TokenIndex<Token>::IndexSpan::depth() const {
+size_t TokenIndex<Token>::Span::depth() const {
   return sequence_.size();
 }
 
 template<class Token>
-size_t TokenIndex<Token>::IndexSpan::tree_depth() const {
+size_t TokenIndex<Token>::Span::tree_depth() const {
   return tree_path_.size() - 1; // exclude sentinel entry for root (for root, tree_depth() == 0)
 }
 
 template<class Token>
-bool TokenIndex<Token>::IndexSpan::in_array() const {
+bool TokenIndex<Token>::Span::in_array() const {
   return tree_path_.back()->is_leaf();
 }
 
 template<class Token>
-Corpus<Token> *TokenIndex<Token>::IndexSpan::corpus() const {
+Corpus<Token> *TokenIndex<Token>::Span::corpus() const {
   return index_->corpus();
 }
 
 // explicit template instantiation
-template class TokenIndex<SrcToken>::IndexSpan;
-template class TokenIndex<TrgToken>::IndexSpan;
+template class TokenIndex<SrcToken>::Span;
+template class TokenIndex<TrgToken>::Span;
 
 } // namespace sto

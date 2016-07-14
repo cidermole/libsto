@@ -17,8 +17,7 @@ set(SOURCES
         util/Time.h
         util/usage.cpp
         util/usage.h
-        IndexSpan.cpp
-        IndexSpan.h
+        TokenIndexSpan.cpp
         TreeNode.cpp
         TreeNode.h
         DiskTreeNode.cpp DiskTreeNode.h DiskSuffixArray.cpp DiskSuffixArray.h)

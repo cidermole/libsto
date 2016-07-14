@@ -31,7 +31,7 @@ DiskTreeNode<Token>::DiskTreeNode(const std::string &path) : path_(path) {
 }
 
 template<class Token>
-void DiskTreeNode<Token>::Merge(typename TokenIndex<Token>::IndexSpan &curSpan, typename TokenIndex<Token>::IndexSpan &addSpan) {
+void DiskTreeNode<Token>::Merge(typename TokenIndex<Token>::Span &curSpan, typename TokenIndex<Token>::Span &addSpan) {
   size_t addSize = addSpan.size();
   size_t curSize = this->array_->size();
   size_t icur = 0, iadd = 0;
