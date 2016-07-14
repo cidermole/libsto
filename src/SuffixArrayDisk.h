@@ -31,9 +31,6 @@ struct __attribute__((packed)) SuffixArrayPosition {
 template<class Token>
 class SuffixArrayDisk {
 public:
-  // TODO: remove. just for testing integration
-  //SuffixArrayDisk() : array_(nullptr), length_(0) { assert(0); }
-
   SuffixArrayDisk(const std::string &filename);
 
   class Iterator {
@@ -59,13 +56,11 @@ public:
   };
   typedef Iterator iterator; // for compatibility with std::vector
 
-  // const these?
-  Iterator begin() { return Iterator(array_); }
-  Iterator end() { return Iterator(array_ + length_); }
+  Iterator begin() const { return Iterator(array_); }
+  Iterator end() const { return Iterator(array_ + length_); }
   size_t size() const { return length_; }
 
-  // const this?
-  Position<Token> operator[](size_t pos) { return array_[pos]; }
+  Position<Token> operator[](size_t pos) const { return array_[pos]; }
 
 private:
   SuffixArrayPosition<Token> *array_; /** pointer to mmapped suffix array on disk */
