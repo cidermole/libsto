@@ -13,6 +13,8 @@
 #include "Corpus.h"
 #include "util/rbtree.hpp"
 
+#include "DiskSuffixArray.h"
+
 namespace sto {
 
 template<class Token> class IndexSpan;
@@ -35,7 +37,8 @@ public:
   typedef typename Corpus<Token>::Vid Vid;
   typedef typename Corpus<Token>::Offset Offset;
   typedef RBTree<Vid, TreeNode<Token> *> ChildMap;
-  typedef std::vector<AtomicPosition<Token>> SuffixArray;
+  //typedef std::vector<AtomicPosition<Token>> SuffixArray;
+  typedef DiskSuffixArray<Token> SuffixArray;
 
   /** Constructs an empty TreeNode, i.e. a leaf with a SuffixArray. */
   TreeNode(size_t maxArraySize = 100000);

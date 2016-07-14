@@ -19,11 +19,14 @@ public:
   MappedFile(const std::string& filename, size_t offset = 0);
   ~MappedFile();
 
+  /** length of the mapping in bytes, may be smaller than the file size if using an offset */
+  size_t size() const { return map_len_; }
+
   char *ptr; /** pointer to mapped area of file data, honors offset */
 
 private:
   int fd_;
-  size_t map_len_; /** length of the mapping, not necessarily the file size if using an offset */
+  size_t map_len_; /** length of the mapping, may be smaller than the file size if using an offset */
   void *page_ptr_; /** file data pointer, points to beginning of mapped page */
 };
 
