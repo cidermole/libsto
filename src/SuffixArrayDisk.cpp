@@ -14,4 +14,8 @@ SuffixArrayDisk<Token>::SuffixArrayDisk(const std::string &filename) : mapping_(
   length_ = mapping_->size() / sizeof(SuffixArrayPosition<Token>);
 }
 
+// explicit template instantiation
+template class SuffixArrayDisk<SrcToken>;
+template class SuffixArrayDisk<TrgToken>;
+
 } // namespace sto

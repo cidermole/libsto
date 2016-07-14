@@ -11,15 +11,14 @@
 #include <vector>
 
 #include "Range.h"
+#include "SuffixArrayMemory.h"
+#include "TreeNodeMemory.h"
 #include "Corpus.h"
 #include "util/rbtree.hpp"
 
 namespace sto {
 
 template<class Token, class SuffixArray> class TreeNode;
-
-template<class Token>
-using SuffixArrayMemory = std::vector<AtomicPosition<Token>>;
 
 /**
  * Indexes a Corpus. The index is implemented as a hybrid suffix tree/array.
@@ -31,8 +30,12 @@ template<class Token>
 class TokenIndex {
 public:
   typedef typename Corpus<Token>::Offset Offset;
+
   typedef SuffixArrayMemory<Token> SuffixArray;
-  typedef TreeNode<Token, SuffixArray> TreeNodeT;
+  typedef TreeNodeMemory<Token> TreeNodeT;
+
+  //typedef SuffixArrayDisk<Token> SuffixArray;
+  //typedef TreeNodeDisk<Token> TreeNodeT;
 
   /**
    * IndexSpan represents the matched locations of a partial lookup sequence

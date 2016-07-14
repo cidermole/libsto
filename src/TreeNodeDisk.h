@@ -8,7 +8,7 @@
 #define STO_DISKTREENODE_H
 
 #include "TreeNode.h"
-#include "TokenIndex.h"
+#include "SuffixArrayDisk.h"
 
 class TokenIndexTests_TreeNodeDisk_Test;
 
@@ -28,6 +28,7 @@ class TreeNodeDisk : public TreeNode<Token, SuffixArrayDisk<Token>> {
 public:
   typedef SuffixArrayDisk<Token> SuffixArray;
   typedef typename TreeNode<Token, SuffixArray>::Vid Vid;
+  typedef typename TreeNode<Token, SuffixArray>::Offset Offset;
   typedef typename TreeNode<Token, SuffixArray>::SuffixArrayT SuffixArrayT; // to do: mmap
 
   /**
@@ -36,7 +37,7 @@ public:
    *
    * @param path  path to the backing directory
    */
-  TreeNodeDisk(const std::string &path);
+  TreeNodeDisk(const std::string &path, size_t maxArraySize = 1000000);
 
   /** Set the path to the directory backing this DiskTreeNode. */
   //void SetPath(const std::string &path) { path_ = path; }
@@ -48,6 +49,11 @@ public:
    * @param addSpan  a span of a TreeNode to be merged in (span over the same vid)
    */
   void Merge(typename TokenIndex<Token>::Span &curSpan, typename TokenIndex<Token>::Span &addSpan);
+
+  void AddPosition(const Sentence<Token> &sent, Offset start, size_t depth) { assert(0); }
+
+  /** @return true if child with 'vid' as the key was found, and optionally sets 'child'. */
+  bool find_child_(Vid vid, TreeNodeDisk<Token> **child = nullptr);
 
 private:
   friend class ::TokenIndexTests_TreeNodeDisk_Test;

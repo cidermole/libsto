@@ -65,7 +65,8 @@ public:
    *
    * depth: distance of TreeNode from the root of this tree, used in splits
    */
-  void AddPosition(const Sentence<Token> &sent, Offset start, size_t depth);
+  // in TreeNodeMemory:
+  //void AddPosition(const Sentence<Token> &sent, Offset start, size_t depth);
 
   /** Add an empty leaf node (SuffixArray) as a child. */
   void AddLeaf(Vid vid);
@@ -92,12 +93,6 @@ protected:
    * NOTE: the SA leaf of </s> may grow above kMaxArraySize, see AddPosition() implementation.
    */
   const size_t kMaxArraySize;
-
-  /**
-   * Split this leaf node (SuffixArray) into a proper TreeNode with children.
-   * depth: distance of TreeNode from the root of this tree
-   */
-  void SplitNode(const Corpus<Token> &corpus, Offset depth);
 };
 
 } // namespace sto

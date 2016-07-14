@@ -5,6 +5,8 @@
  ****************************************************/
 
 #include "TreeNodeDisk.h"
+#include "SuffixArrayMemory.h"
+#include "TokenIndex.h"
 
 #include <sstream>
 #include <iomanip>
@@ -14,7 +16,9 @@
 namespace sto {
 
 template<class Token>
-TreeNodeDisk<Token>::TreeNodeDisk(const std::string &path) : path_(path) {
+TreeNodeDisk<Token>::TreeNodeDisk(const std::string &path, size_t maxArraySize) :
+    TreeNode<Token, SuffixArrayDisk<Token>>(maxArraySize), path_(path)
+{
   using namespace boost::filesystem;
 
   /*
@@ -28,6 +32,12 @@ TreeNodeDisk<Token>::TreeNodeDisk(const std::string &path) : path_(path) {
     ofstream(array_path().c_str()); // create empty suffix array
     this->is_leaf_ = true;
   }
+  this->array_.reset(new SuffixArrayDisk<Token>(array_path()));
+}
+
+template<class Token>
+bool TreeNodeDisk<Token>::find_child_(Vid vid, TreeNodeDisk<Token> **child) {
+  return TreeNode<Token, SuffixArray>::find_child_(vid, reinterpret_cast<TreeNode<Token, SuffixArray> **>(child));
 }
 
 template<class Token>
@@ -39,7 +49,7 @@ void TreeNodeDisk<Token>::Merge(typename TokenIndex<Token>::Span &curSpan, typen
   assert(this->array_->size() == curSpan.size()); // curSpan should be a full span
   // TODO: assert: (span over the same vid) -> each Position (at depth) should have the same vid.
 
-  std::shared_ptr<SuffixArray> newArray = std::make_shared<SuffixArray>();
+  std::shared_ptr<SuffixArrayMemory<Token>> newArray = std::make_shared<SuffixArrayMemory<Token>>();
   Corpus<Token> &corpus = *curSpan.corpus();
 
   Position<Token> cur = (curSize > 0) ? curSpan[icur++] : Position<Token>();
@@ -62,6 +72,7 @@ void TreeNodeDisk<Token>::Merge(typename TokenIndex<Token>::Span &curSpan, typen
     newArray->push_back(add);
     add = addSpan[iadd++];
   }
+  // TODO: put newArray.
   // TODO: check if split is necessary, and perform split.
 }
 
