@@ -39,6 +39,20 @@ public:
   //typedef SuffixArrayDisk<Token> SuffixArray;
   //typedef TreeNodeDisk<Token> TreeNodeT;
 
+
+  /**
+   * Load TokenIndex from mtt-build *.sfa file for the associated corpus.
+   *
+   * Currently, this creates one big suffix array (not memory mapped) regardless of maxLeafSize, but subsequent calls to
+   * AddSentence() will honor maxLeafSize and split where necessary (so the first additions will be expensive).
+   */
+  TokenIndex(const std::string &filename, Corpus<Token> &corpus, size_t maxLeafSize = 10000);
+
+  /** Construct an empty TokenIndex, i.e. this does not index the Corpus by itself. */
+  TokenIndex(Corpus<Token> &corpus, size_t maxLeafSize = 10000);
+  ~TokenIndex();
+
+
   /**
    * IndexSpan represents the matched locations of a partial lookup sequence
    * within TokenIndex.
@@ -134,18 +148,6 @@ public:
      */
     size_t narrow_tree_(Token t);
   };
-
-  /**
-   * Load TokenIndex from mtt-build *.sfa file for the associated corpus.
-   *
-   * Currently, this creates one big suffix array (not memory mapped) regardless of maxLeafSize, but subsequent calls to
-   * AddSentence() will honor maxLeafSize and split where necessary (so the first additions will be expensive).
-   */
-  TokenIndex(const std::string &filename, Corpus<Token> &corpus, size_t maxLeafSize = 10000);
-
-  /** Construct an empty TokenIndex, i.e. this does not index the Corpus by itself. */
-  TokenIndex(Corpus<Token> &corpus, size_t maxLeafSize = 10000);
-  ~TokenIndex();
 
   /** Returns the whole span of the entire index (empty lookup sequence). */
   Span span() const;
