@@ -58,8 +58,8 @@ TokenIndex<Token>::~TokenIndex() {
 }
 
 template<class Token>
-IndexSpan<Token> TokenIndex<Token>::span() const {
-  return IndexSpan<Token>(*this);
+typename TokenIndex<Token>::IndexSpan TokenIndex<Token>::span() const {
+  return IndexSpan(*this);
 }
 
 template<class Token>
@@ -111,7 +111,7 @@ void TokenIndex<Token>::AddSubsequence_(const Sentence<Token> &sent, Offset star
 
 
   // track the position to insert at
-  IndexSpan<Token> cur_span = span();
+  IndexSpan cur_span = span();
   size_t span_size;
   Offset i;
   bool finished = false;

@@ -16,7 +16,7 @@
 namespace sto {
 
 template<class Token>
-IndexSpan<Token>::IndexSpan(const TokenIndex<Token> &index) : index_(&index) {
+TokenIndex<Token>::IndexSpan::IndexSpan(const TokenIndex<Token> &index) : index_(&index) {
   // starting sentinel
   tree_path_.push_back(index_->root_);
 
@@ -27,7 +27,7 @@ IndexSpan<Token>::IndexSpan(const TokenIndex<Token> &index) : index_(&index) {
 }
 
 template<class Token>
-size_t IndexSpan<Token>::narrow(Token t) {
+size_t TokenIndex<Token>::IndexSpan::narrow(Token t) {
   size_t new_span;
 
   if (in_array())
@@ -50,7 +50,7 @@ size_t IndexSpan<Token>::narrow(Token t) {
 }
 
 template<class Token>
-Range IndexSpan<Token>::find_bounds_array_(Token t) {
+Range TokenIndex<Token>::IndexSpan::find_bounds_array_(Token t) {
   // for each token position, we need to check if it's long enough to extend as far as we do
   // (note: lexicographic sort order means shorter stuff is always at the beginning - so if Pos is too short, then Pos < Tok.)
   // then, we only need to compare at the depth of new_sequence_size, since all tokens before should be equal
@@ -101,7 +101,7 @@ Range IndexSpan<Token>::find_bounds_array_(Token t) {
 }
 
 template<class Token>
-size_t IndexSpan<Token>::narrow_array_(Token t) {
+size_t TokenIndex<Token>::IndexSpan::narrow_array_(Token t) {
   Range new_range = find_bounds_array_(t);
 
   if (new_range.size() == 0)
@@ -112,7 +112,7 @@ size_t IndexSpan<Token>::narrow_array_(Token t) {
 }
 
 template<class Token>
-size_t IndexSpan<Token>::narrow_tree_(Token t) {
+size_t TokenIndex<Token>::IndexSpan::narrow_tree_(Token t) {
   TreeNode<Token> *node;
   if (!tree_path_.back()->children_.Find(t.vid, &node))
     return STO_NOT_FOUND; // do not modify the IndexSpan and signal failure
@@ -124,7 +124,7 @@ size_t IndexSpan<Token>::narrow_tree_(Token t) {
 }
 
 template<class Token>
-Position<Token> IndexSpan<Token>::operator[](size_t rel) const {
+Position<Token> TokenIndex<Token>::IndexSpan::operator[](size_t rel) const {
   assert(rel < size());
 
   // traverses the tree down using binary search on the cumulative counts at each internal TreeNode
@@ -134,12 +134,12 @@ Position<Token> IndexSpan<Token>::operator[](size_t rel) const {
 }
 
 template<class Token>
-Position<Token> IndexSpan<Token>::at_unchecked(size_t rel) const {
+Position<Token> TokenIndex<Token>::IndexSpan::at_unchecked(size_t rel) const {
   return tree_path_.back()->At(array_path_.size() ? array_path_.back().begin : 0, rel);
 }
 
 template<class Token>
-size_t IndexSpan<Token>::size() const {
+size_t TokenIndex<Token>::IndexSpan::size() const {
   if (in_array()) {
     assert(array_path_.size() > 0);
     return array_path_.back().size();
@@ -150,32 +150,32 @@ size_t IndexSpan<Token>::size() const {
 }
 
 template<class Token>
-TreeNode<Token> *IndexSpan<Token>::node() {
+TreeNode<Token> *TokenIndex<Token>::IndexSpan::node() {
   return tree_path_.back();
 }
 
 template<class Token>
-size_t IndexSpan<Token>::depth() const {
+size_t TokenIndex<Token>::IndexSpan::depth() const {
   return sequence_.size();
 }
 
 template<class Token>
-size_t IndexSpan<Token>::tree_depth() const {
+size_t TokenIndex<Token>::IndexSpan::tree_depth() const {
   return tree_path_.size() - 1; // exclude sentinel entry for root (for root, tree_depth() == 0)
 }
 
 template<class Token>
-bool IndexSpan<Token>::in_array() const {
+bool TokenIndex<Token>::IndexSpan::in_array() const {
   return tree_path_.back()->is_leaf();
 }
 
 template<class Token>
-Corpus<Token> *IndexSpan<Token>::corpus() const {
+Corpus<Token> *TokenIndex<Token>::IndexSpan::corpus() const {
   return index_->corpus();
 }
 
 // explicit template instantiation
-template class IndexSpan<SrcToken>;
-template class IndexSpan<TrgToken>;
+template class TokenIndex<SrcToken>::IndexSpan;
+template class TokenIndex<TrgToken>::IndexSpan;
 
 } // namespace sto

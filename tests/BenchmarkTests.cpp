@@ -92,7 +92,7 @@ TEST_F(BenchmarkTests, asdf) {
 void BenchmarkTests::create_random_queries(TokenIndex<SrcToken> &tokenIndex, std::vector<std::vector<SrcToken>> &queries, size_t num) {
   std::random_device rd;
   std::mt19937 gen(rd());
-  IndexSpan<SrcToken> span = tokenIndex.span();
+  TokenIndex<SrcToken>::IndexSpan span = tokenIndex.span();
   std::uniform_int_distribution<size_t> dist(0, span.size()-1); // spans all corpus positions
 
   for(size_t i = 0; i < num; i++) {
@@ -166,7 +166,7 @@ TEST_F(BenchmarkTests, index_eim_small) {
     size_t dummy = 0, nsamples_total = 0;
 
     for(auto query : queries) {
-      IndexSpan<SrcToken> span = tokenIndex.span();
+      TokenIndex<SrcToken>::IndexSpan span = tokenIndex.span();
       for(auto token : query)
         EXPECT_GT(span.narrow(token), 0) << "queries for existing locations must succeed"; // since we just randomly sampled them, they must be in the corpus.
 
@@ -236,7 +236,7 @@ TEST_F(BenchmarkTests, index_100k) {
     size_t dummy = 0, nsamples_total = 0;
 
     for(auto query : queries) {
-      IndexSpan<SrcToken> span = tokenIndex.span();
+      TokenIndex<SrcToken>::IndexSpan span = tokenIndex.span();
       for(auto token : query)
         EXPECT_GT(span.narrow(token), 0) << "queries for existing locations must succeed"; // since we just randomly sampled them, they must be in the corpus.
 
@@ -324,7 +324,7 @@ TEST_F(BenchmarkTests, index_b11) {
     size_t dummy = 0, nsamples_total = 0;
 
     for(auto query : queries) {
-      IndexSpan<SrcToken> span = tokenIndex.span();
+      TokenIndex<SrcToken>::IndexSpan span = tokenIndex.span();
       for(auto token : query)
         EXPECT_GT(span.narrow(token), 0) << "queries for existing locations must succeed"; // since we just randomly sampled them, they must be in the corpus.
 

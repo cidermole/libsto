@@ -46,7 +46,7 @@ public:
    * @param curSpan  a span of this entire TreeNode
    * @param addSpan  a span of a TreeNode to be merged in (span over the same vid)
    */
-  void Merge(IndexSpan<Token> &curSpan, IndexSpan<Token> &addSpan);
+  void Merge(typename TokenIndex<Token>::IndexSpan &curSpan, typename TokenIndex<Token>::IndexSpan &addSpan);
 
 private:
   friend class ::TokenIndexTests_DiskTreeNode_Test;

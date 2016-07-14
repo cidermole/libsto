@@ -59,7 +59,7 @@ TEST_F(TokenIndexTests, get_word) {
 TEST_F(TokenIndexTests, add_sentence) {
   sentence = AddSentence({"this", "is", "an", "example"});
   tokenIndex.AddSentence(sentence);
-  IndexSpan<SrcToken> span = tokenIndex.span();
+  TokenIndex<SrcToken>::IndexSpan span = tokenIndex.span();
   EXPECT_EQ(4, span.size()) << "the Sentence should have added 4 tokens to the IndexSpan";
 }
 
@@ -77,7 +77,7 @@ TEST_F(TokenIndexTests, suffix_array_paper_example) {
   std::vector<std::string> sent_words = {"the", "dog", "bit", "the", "cat", "on", "the", "mat"};
   sentence = AddSentence(sent_words);
   tokenIndex.AddSentence(sentence);
-  IndexSpan<SrcToken> span = tokenIndex.span();
+  TokenIndex<SrcToken>::IndexSpan span = tokenIndex.span();
   EXPECT_EQ(sent_words.size(), span.size()) << "the Sentence should have added its tokens to the IndexSpan";
 
   // ideas:
@@ -113,8 +113,8 @@ TEST_F(TokenIndexTests, load_v2) {
   TokenIndex<SrcToken> dynamicIndex(sc); // building dynamically
   dynamicIndex.AddSentence(sc.sentence(0));
 
-  IndexSpan<SrcToken> staticSpan = staticIndex.span();
-  IndexSpan<SrcToken> dynamicSpan = dynamicIndex.span();
+  TokenIndex<SrcToken>::IndexSpan staticSpan = staticIndex.span();
+  TokenIndex<SrcToken>::IndexSpan dynamicSpan = dynamicIndex.span();
 
   EXPECT_EQ(staticSpan.size(), dynamicSpan.size()) << "two ways of indexing the same corpus must be equivalent";
 
@@ -143,7 +143,7 @@ TEST_F(TokenIndexTests, suffix_array_split) {
   // however, the hash function % ensures that our vids are still in order, even though the API doesn't guarantee this.
   // so this is not a good test.
 
-  IndexSpan<SrcToken> span = tokenIndex.span();
+  TokenIndex<SrcToken>::IndexSpan span = tokenIndex.span();
   //tokenIndex.DebugPrint(std::cerr);
   // we should check here if it's really split, i.e. root_->is_leaf() == false.
   EXPECT_EQ(sent_words.size(), span.size()) << "the Sentence should have added its tokens to the IndexSpan";
@@ -328,7 +328,7 @@ void TokenIndexTests::tree_2level_common_prefix_the_m(size_t maxLeafSize) {
   };
 
   std::vector<Position<SrcToken>> actual_pos;
-  IndexSpan<SrcToken> span = tokenIndex.span();
+  TokenIndex<SrcToken>::IndexSpan span = tokenIndex.span();
   // IndexSpan could support iteration...
   for(size_t i = 0; i < span.size(); i++)
     actual_pos.push_back(span[i]);
@@ -372,8 +372,8 @@ TEST_F(TokenIndexTests, static_vs_dynamic_eim) {
     dynamicIndex.AddSentence(sc.sentence(i));
   std::cerr << "building dynamicIndex done." << std::endl;
 
-  IndexSpan<SrcToken> staticSpan = staticIndex.span();
-  IndexSpan<SrcToken> dynamicSpan = dynamicIndex.span();
+  TokenIndex<SrcToken>::IndexSpan staticSpan = staticIndex.span();
+  TokenIndex<SrcToken>::IndexSpan dynamicSpan = dynamicIndex.span();
 
   EXPECT_EQ(staticSpan.size(), dynamicSpan.size()) << "two ways of indexing the same corpus must be equivalent";
 
@@ -415,7 +415,7 @@ TEST_F(TokenIndexTests, static_vs_dynamic_eim) {
 void TokenIndexTests::create_random_queries(TokenIndex<SrcToken> &tokenIndex, std::vector<std::vector<SrcToken>> &queries, size_t num) {
   std::random_device rd;
   std::mt19937 gen(rd());
-  IndexSpan<SrcToken> span = tokenIndex.span();
+  TokenIndex<SrcToken>::IndexSpan span = tokenIndex.span();
   std::uniform_int_distribution<size_t> dist(0, span.size()-1); // spans all corpus positions
 
   for(size_t i = 0; i < num; i++) {
@@ -489,7 +489,7 @@ TEST_F(TokenIndexTests, query_positions_valid_eim_small) {
   std::random_device rd;
   std::mt19937 gen(rd());
 
-  IndexSpan<SrcToken> fullSpan = tokenIndex.span();
+  TokenIndex<SrcToken>::IndexSpan fullSpan = tokenIndex.span();
 
   size_t j = 0, numPrint = 0; // numPrint = 10
 
@@ -499,7 +499,7 @@ TEST_F(TokenIndexTests, query_positions_valid_eim_small) {
     for(size_t i = 0; i < query.size(); i++)
       querySurface << (i == 0 ? "" : " ") << vocab.at(query[i]);
 
-    IndexSpan<SrcToken> span = tokenIndex.span();
+    TokenIndex<SrcToken>::IndexSpan span = tokenIndex.span();
     for(auto token : query)
       EXPECT_GT(span.narrow(token), 0) << "queries for existing locations must succeed"; // since we just randomly sampled them, they must be in the corpus.
 
