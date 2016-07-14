@@ -24,8 +24,11 @@ class TreeNodeMemory : public TreeNode<Token, SuffixArrayMemory<Token>> {
   typedef typename Corpus<Token>::Offset Offset;
 
 public:
-  /** Constructs an empty TreeNode, i.e. a leaf with a SuffixArray. */
-  TreeNodeMemory(size_t maxArraySize = 10000);
+  /**
+   * Constructs an empty TreeNode, i.e. a leaf with a SuffixArray.
+   * @param filename  load mtt-build *.sfa file if specified
+   */
+  TreeNodeMemory(std::string filename, size_t maxArraySize = 10000);
 
   /**
    * Insert the existing Corpus Position into this leaf node (SuffixArray).
@@ -39,6 +42,9 @@ public:
    */
   void AddPosition(const Sentence<Token> &sent, Offset start, size_t depth);
 
+  /** Add an empty leaf node (SuffixArray) as a child. */
+  void AddLeaf(Vid vid);
+
   /** @return true if child with 'vid' as the key was found, and optionally sets 'child'. */
   bool find_child_(Vid vid, TreeNodeMemory<Token> **child = nullptr);
 
@@ -48,6 +54,11 @@ private:
    * depth: distance of TreeNode from the root of this tree
    */
   void SplitNode(const Corpus<Token> &corpus, Offset depth);
+
+  /**
+   * Load this leaf node (SuffixArray) from mtt-build *.sfa file on disk.
+   */
+  void LoadArray(const std::string &filename);
 };
 
 } // namespace sto

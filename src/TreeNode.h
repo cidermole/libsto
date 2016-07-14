@@ -37,8 +37,6 @@ public:
   typedef RBTree<Vid, TreeNode<Token, SuffixArray> *> ChildMap;
   typedef SuffixArray SuffixArrayT;
 
-  /** Constructs an empty TreeNode, i.e. a leaf with a SuffixArray. */
-  TreeNode(size_t maxArraySize = 100000);
   ~TreeNode();
 
   /** true if this is a leaf, i.e. a suffix array. */
@@ -69,7 +67,7 @@ public:
   //void AddPosition(const Sentence<Token> &sent, Offset start, size_t depth);
 
   /** Add an empty leaf node (SuffixArray) as a child. */
-  void AddLeaf(Vid vid);
+  void AddLeaf(Vid vid) { assert(0); }
 
   /** Increase the given vid child's size. */
   void AddSize(Vid vid, size_t add_size);
@@ -93,6 +91,13 @@ protected:
    * NOTE: the SA leaf of </s> may grow above kMaxArraySize, see AddPosition() implementation.
    */
   const size_t kMaxArraySize;
+
+  /**
+   * Constructs an empty TreeNode, i.e. a leaf with a SuffixArray.
+   * Used by TreeNodeDisk() and TreeNodeMemory()
+   */
+  TreeNode(size_t maxArraySize = 100000);
+
 };
 
 } // namespace sto

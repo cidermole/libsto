@@ -5,6 +5,8 @@
  ****************************************************/
 
 #include "TreeNodeMemory.h"
+#include "Corpus.h"
+#include "MappedFile.h"
 
 #include <algorithm>
 
@@ -12,8 +14,10 @@ namespace sto {
 
 
 template<class Token>
-TreeNodeMemory<Token>::TreeNodeMemory(size_t maxArraySize) : TreeNode<Token, SuffixArrayMemory<Token>>(maxArraySize) {
+TreeNodeMemory<Token>::TreeNodeMemory(std::string filename, size_t maxArraySize) : TreeNode<Token, SuffixArrayMemory<Token>>(maxArraySize) {
   this->array_.reset(new SuffixArray);
+  if(filename != "")
+    LoadArray(filename);
 }
 
 template<class Token>
@@ -74,6 +78,11 @@ void TreeNodeMemory<Token>::AddPosition(const Sentence<Token> &sent, Offset star
 }
 
 template<class Token>
+void TreeNodeMemory<Token>::AddLeaf(Vid vid) {
+  this->children_[vid] = new TreeNodeMemory<Token>("", this->kMaxArraySize);
+}
+
+template<class Token>
 bool TreeNodeMemory<Token>::find_child_(Vid vid, TreeNodeMemory<Token> **child) {
   return TreeNode<Token, SuffixArray>::find_child_(vid, reinterpret_cast<TreeNode<Token, SuffixArray> **>(child));
 }
@@ -102,7 +111,7 @@ void TreeNodeMemory<Token>::SplitNode(const Corpus<Token> &corpus, Offset depth)
     vid_range = std::equal_range(array->begin(), array->end(), pos, comp);
 
     // copy each range into its own suffix array
-    TreeNodeMemory<Token> *new_child = new TreeNodeMemory<Token>(this->kMaxArraySize);
+    TreeNodeMemory<Token> *new_child = new TreeNodeMemory<Token>("", this->kMaxArraySize);
     std::shared_ptr<SuffixArray> new_array = new_child->array_;
     new_array->insert(new_array->begin(), vid_range.first, vid_range.second);
     //children_[pos.add(depth, corpus).vid(corpus)] = new_child;
@@ -126,6 +135,33 @@ void TreeNodeMemory<Token>::SplitNode(const Corpus<Token> &corpus, Offset depth)
   // destroy the suffix array (last reader will clean up)
   this->array_.reset();
   // note: array_ null check could replace is_leaf_
+}
+
+template<class Token>
+void TreeNodeMemory<Token>::LoadArray(const std::string &filename) {
+  typedef tpt::id_type Sid_t;
+  typedef tpt::offset_type Offset_t;
+  typedef tpt::TsaHeader TokenIndexHeader;
+
+  MappedFile file(filename);
+  TokenIndexHeader &header = *reinterpret_cast<TokenIndexHeader *>(file.ptr);
+
+  if(header.versionMagic != tpt::INDEX_V2_MAGIC) {
+    throw std::runtime_error(std::string("unknown version magic in ") + filename);
+  }
+
+  size_t num_positions = (header.idxStart - sizeof(TokenIndexHeader)) / (sizeof(Sid_t) + sizeof(Offset_t));
+  // we could also sanity-check index size against the vocabulary size.
+
+  //std::cerr << "sizeof(TokenIndexHeader) = " << sizeof(TokenIndexHeader) << std::endl;
+  //std::cerr << "num_positions = " << num_positions << std::endl;
+
+  std::shared_ptr<SuffixArray> array = std::make_shared<SuffixArray>();
+  tpt::TsaPosition *p = reinterpret_cast<tpt::TsaPosition *>(file.ptr + sizeof(TokenIndexHeader));
+  for(size_t i = 0; i < num_positions; i++, p++) {
+    array->push_back(Position<Token>{p->sid, p->offset});
+  }
+  this->array_ = array;
 }
 
 // explicit template instantiation

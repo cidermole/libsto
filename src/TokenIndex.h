@@ -13,6 +13,8 @@
 #include "Range.h"
 #include "SuffixArrayMemory.h"
 #include "TreeNodeMemory.h"
+//#include "SuffixArrayDisk.h"
+//#include "TreeNodeDisk.h"
 #include "Corpus.h"
 #include "util/rbtree.hpp"
 

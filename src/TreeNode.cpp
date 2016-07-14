@@ -26,11 +26,6 @@ TreeNode<Token, SuffixArray>::~TreeNode() {
 }
 
 template<class Token, class SuffixArray>
-void TreeNode<Token, SuffixArray>::AddLeaf(Vid vid) {
-  children_[vid] = new TreeNode<Token, SuffixArray>();
-}
-
-template<class Token, class SuffixArray>
 void TreeNode<Token, SuffixArray>::AddSize(Vid vid, size_t add_size) {
   children_.AddSize(vid, add_size);
 }

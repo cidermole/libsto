@@ -4,51 +4,22 @@
  * Licensed under GNU LGPL Version 2.1, see COPYING *
  ****************************************************/
 
-#include <iostream>
+#include "TokenIndex.h"
+
 #include <algorithm>
 #include <cassert>
 #include <cstring>
-
-#include "Corpus.h"
-#include "TokenIndex.h"
-#include "TreeNode.h"
-#include "Types.h"
-#include "MappedFile.h"
 
 namespace sto {
 
 // --------------------------------------------------------
 
 template<class Token>
-TokenIndex<Token>::TokenIndex(const std::string &filename, Corpus<Token> &corpus, size_t maxLeafSize) : corpus_(&corpus), root_(new TreeNodeT(maxLeafSize))
-{
-  typedef tpt::id_type Sid_t;
-  typedef tpt::offset_type Offset_t;
-  typedef tpt::TsaHeader TokenIndexHeader;
-
-  MappedFile file(filename);
-  TokenIndexHeader &header = *reinterpret_cast<TokenIndexHeader *>(file.ptr);
-
-  if(header.versionMagic != tpt::INDEX_V2_MAGIC) {
-    throw std::runtime_error(std::string("unknown version magic in ") + filename);
-  }
-
-  size_t num_positions = (header.idxStart - sizeof(TokenIndexHeader)) / (sizeof(Sid_t) + sizeof(Offset_t));
-  // we could also sanity-check index size against the vocabulary size.
-
-  //std::cerr << "sizeof(TokenIndexHeader) = " << sizeof(TokenIndexHeader) << std::endl;
-  //std::cerr << "num_positions = " << num_positions << std::endl;
-
-  std::shared_ptr<SuffixArray> array = std::make_shared<SuffixArray>();
-  tpt::TsaPosition *p = reinterpret_cast<tpt::TsaPosition *>(file.ptr + sizeof(TokenIndexHeader));
-  for(size_t i = 0; i < num_positions; i++, p++) {
-    array->push_back(Position<Token>{p->sid, p->offset});
-  }
-  root_->SetArray(array);
-}
+TokenIndex<Token>::TokenIndex(const std::string &filename, Corpus<Token> &corpus, size_t maxLeafSize) : corpus_(&corpus), root_(new TreeNodeT(filename, maxLeafSize))
+{}
 
 template<class Token>
-TokenIndex<Token>::TokenIndex(Corpus<Token> &corpus, size_t maxLeafSize) : corpus_(&corpus), root_(new TreeNodeT(maxLeafSize))
+TokenIndex<Token>::TokenIndex(Corpus<Token> &corpus, size_t maxLeafSize) : corpus_(&corpus), root_(new TreeNodeT("", maxLeafSize))
 {}
 
 template<class Token>

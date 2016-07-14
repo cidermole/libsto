@@ -16,7 +16,7 @@
 namespace sto {
 
 template<class Token>
-TreeNodeDisk<Token>::TreeNodeDisk(const std::string &path, size_t maxArraySize) :
+TreeNodeDisk<Token>::TreeNodeDisk(std::string path, size_t maxArraySize) :
     TreeNode<Token, SuffixArrayDisk<Token>>(maxArraySize), path_(path)
 {
   using namespace boost::filesystem;

@@ -37,7 +37,7 @@ public:
    *
    * @param path  path to the backing directory
    */
-  TreeNodeDisk(const std::string &path, size_t maxArraySize = 1000000);
+  TreeNodeDisk(std::string path, size_t maxArraySize = 1000000);
 
   /** Set the path to the directory backing this DiskTreeNode. */
   //void SetPath(const std::string &path) { path_ = path; }
