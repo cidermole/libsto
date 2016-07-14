@@ -10,6 +10,8 @@
 
 #include <sstream>
 #include <iomanip>
+#include <cstdio>
+#include <array>
 
 #include <boost/filesystem.hpp>
 
@@ -44,12 +46,14 @@ template<class Token>
 void TreeNodeDisk<Token>::Merge(typename TokenIndex<Token>::Span &curSpan, typename TokenIndex<Token>::Span &addSpan) {
   size_t addSize = addSpan.size();
   size_t curSize = this->array_->size();
+  size_t newSize = curSize + addSize;
   size_t icur = 0, iadd = 0;
 
   assert(this->array_->size() == curSpan.size()); // curSpan should be a full span
   // TODO: assert: (span over the same vid) -> each Position (at depth) should have the same vid.
 
-  std::shared_ptr<SuffixArrayMemory<Token>> newArray = std::make_shared<SuffixArrayMemory<Token>>();
+  SuffixArrayPosition<Token> *newArray = new SuffixArrayPosition<Token>[newSize];
+  SuffixArrayPosition<Token> *pnew = newArray;
   Corpus<Token> &corpus = *curSpan.corpus();
 
   Position<Token> cur = (curSize > 0) ? curSpan[icur++] : Position<Token>();
@@ -57,23 +61,37 @@ void TreeNodeDisk<Token>::Merge(typename TokenIndex<Token>::Span &curSpan, typen
   while(icur < curSize && iadd < addSize) {
     // assuming that curSpan is much larger, this loop will be most active
     while(cur.compare(add, corpus) && icur < curSize) {
-      newArray->push_back(cur);
+      *pnew++ = cur;
       cur = curSpan[icur++];
     }
-    newArray->push_back(add);
+    *pnew++ = add;
     add = addSpan[iadd++];
   }
   // fill from the side that still has remaining positions
   while(icur < curSize) {
-    newArray->push_back(cur);
+    *pnew++ = cur;
     cur = curSpan[icur++];
   }
   while(iadd < addSize) {
-    newArray->push_back(add);
+    *pnew++ = add;
     add = addSpan[iadd++];
   }
-  // TODO: put newArray.
+
   // TODO: check if split is necessary, and perform split.
+
+  // write newArray to a temp file first
+  std::string array_tmp = array_path() + ".tmp";
+  FILE *tmp = fopen(array_tmp.c_str(), "wb");
+  if(!tmp) {
+    delete[] newArray;
+    throw std::runtime_error(std::string("failed to open array.tmp file for write at ") + array_tmp);
+  }
+  fwrite(newArray, sizeof(SuffixArrayPosition<Token>), newSize, tmp);
+  fclose(tmp);
+  delete[] newArray;
+
+  // move temp file to array
+  boost::filesystem::rename(array_tmp.c_str(), array_path().c_str());
 }
 
 template<class Token>

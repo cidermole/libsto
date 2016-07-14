@@ -24,6 +24,10 @@ struct __attribute__((packed)) SuffixArrayPosition {
   Sid sid;
   Offset offset;
 
+  /** for performance/laziness, a non-initializing constructor */
+  SuffixArrayPosition() {}
+
+  SuffixArrayPosition(const Position<Token> &other) : sid(other.sid), offset(other.offset) {}
   operator Position<Token>() { return Position<Token>(sid, offset); }
 };
 

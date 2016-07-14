@@ -45,6 +45,9 @@ public:
   /**
    * For now, leaves only. Merge the entire IndexSpan into this leaf.
    * Writes to a temporary file first, before moving it to replace the old suffix array.
+   *
+   * Assumes there is at most one writer at all times (one process, and only one writing thread).
+   *
    * @param curSpan  a span of this entire TreeNode
    * @param addSpan  a span of a TreeNode to be merged in (span over the same vid)
    */
