@@ -36,8 +36,6 @@ public:
   typedef typename Corpus<Token>::Vid Vid;
   typedef typename Corpus<Token>::Offset Offset;
   typedef RBTree<Vid, TreeNode<Token, SuffixArray> *> ChildMap;
-  //typedef std::vector<AtomicPosition<Token>> SuffixArray;
-  //typedef DiskSuffixArray<Token> SuffixArray;
   typedef SuffixArray SuffixArrayT;
 
   /** Constructs an empty TreeNode, i.e. a leaf with a SuffixArray. */

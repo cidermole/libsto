@@ -9,7 +9,7 @@
 #include <cstring>
 
 #include "TreeNode.h"
-//#include "TokenIndex.h"
+#include "TokenIndex.h"
 
 namespace sto {
 
@@ -193,8 +193,8 @@ void TreeNode<Token, SuffixArray>::DebugPrint(std::ostream &os, const Corpus<Tok
 }
 
 // explicit template instantiation
-template class TreeNode<SrcToken, std::vector<AtomicPosition<SrcToken>>>;
-template class TreeNode<TrgToken, std::vector<AtomicPosition<TrgToken>>>;
+template class TreeNode<SrcToken, SuffixArrayMemory<SrcToken>>;
+template class TreeNode<TrgToken, SuffixArrayMemory<TrgToken>>;
 
 template class TreeNode<SrcToken, SuffixArrayDisk<SrcToken>>;
 template class TreeNode<TrgToken, SuffixArrayDisk<TrgToken>>;

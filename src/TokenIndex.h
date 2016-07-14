@@ -15,7 +15,6 @@
 
 namespace sto {
 
-template<class Token> class TokenIndex;
 template<class Token, class SuffixArray> class TreeNode;
 
 struct Range {
@@ -25,6 +24,8 @@ struct Range {
   size_t size() const { return end - begin; }
 };
 
+template<class Token>
+using SuffixArrayMemory = std::vector<AtomicPosition<Token>>;
 
 /**
  * Indexes a Corpus. The index is implemented as a hybrid suffix tree/array.
@@ -36,7 +37,7 @@ template<class Token>
 class TokenIndex {
 public:
   typedef typename Corpus<Token>::Offset Offset;
-  typedef std::vector<AtomicPosition<Token>> SuffixArray;
+  typedef SuffixArrayMemory<Token> SuffixArray;
   typedef TreeNode<Token, SuffixArray> TreeNodeT;
 
   /**

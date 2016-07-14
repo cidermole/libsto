@@ -544,8 +544,6 @@ TEST_F(TokenIndexTests, add_to_loaded_eim_small) {
 #include "TreeNodeDisk.h"
 
 TEST_F(TokenIndexTests, TreeNodeDisk) {
-  // TODO SuffixArray type
-  //typedef std::vector<AtomicPosition<SrcToken>> SuffixArray;
   typedef SuffixArrayDisk<SrcToken> SuffixArray;
   // macros and multiple template parameters don't like each other in the C++ parser?!
   std::string csp1 = TreeNodeDisk<SrcToken, SuffixArray>::child_sub_path(0x7a120);
