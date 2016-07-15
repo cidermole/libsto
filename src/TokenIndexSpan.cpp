@@ -128,7 +128,10 @@ Corpus<Token> *TokenIndex<Token, TypeTag>::Span::corpus() const {
 }
 
 // explicit template instantiation
-template class TokenIndex<SrcToken>::Span;
-template class TokenIndex<TrgToken>::Span;
+template class TokenIndex<SrcToken, IndexTypeMemory>::Span;
+template class TokenIndex<TrgToken, IndexTypeMemory>::Span;
+
+template class TokenIndex<SrcToken, IndexTypeDisk>::Span;
+template class TokenIndex<TrgToken, IndexTypeDisk>::Span;
 
 } // namespace sto

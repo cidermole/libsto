@@ -125,7 +125,10 @@ void TokenIndex<Token, TypeTag>::AddSubsequence_(const Sentence<Token> &sent, Of
 }
 
 // explicit template instantiation
-template class TokenIndex<SrcToken>;
-template class TokenIndex<TrgToken>;
+template class TokenIndex<SrcToken, IndexTypeMemory>;
+template class TokenIndex<TrgToken, IndexTypeMemory>;
+
+template class TokenIndex<SrcToken, IndexTypeDisk>;
+template class TokenIndex<TrgToken, IndexTypeDisk>;
 
 } // namespace sto
