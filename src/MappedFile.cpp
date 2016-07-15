@@ -31,6 +31,13 @@ MappedFile::MappedFile(const std::string& filename, size_t offset) {
   }
   map_len_ = static_cast<size_t>(sb.st_size) - offset;
 
+  if(map_len_ == 0) {
+    // special case for handling empty files (MAP_FAILED -> EINVAL if length is 0, see http://linux.die.net/man/2/mmap)
+    page_ptr_ = ptr = nullptr;
+    fd_ = 0;
+    return;
+  }
+
   if((page_ptr_ = mmap(0, map_len_, PROT_READ, MAP_SHARED, fd, offset - offset % page_size)) == MAP_FAILED) {
     close(fd);
     throw std::runtime_error(std::string("mmap(): MAP_FAILED on ") + filename);
@@ -40,8 +47,10 @@ MappedFile::MappedFile(const std::string& filename, size_t offset) {
 }
 
 MappedFile::~MappedFile() {
-  munmap(page_ptr_, map_len_);
-  close(fd_);
+  if(map_len_) {
+    munmap(page_ptr_, map_len_);
+    close(fd_);
+  }
 }
 
 } // namespace sto
