@@ -48,10 +48,12 @@ public:
    *
    * Assumes there is at most one writer at all times (one process, and only one writing thread).
    *
-   * @param curSpan  a span of this entire TreeNode
-   * @param addSpan  a span of a TreeNode to be merged in (span over the same vid)
+   * @param first    begin of TreeNode span to be merged in (span over the same vid)
+   * @param last     end of span
+   * @param corpus   Positions belong to this Corpus
+   * @param depth    distance of this TreeNode from the root
    */
-  void Merge(typename TokenIndex<Token>::Span &curSpan, typename TokenIndex<Token>::Span &addSpan);
+  void Merge(SuffixArrayPosition<Token> *first, SuffixArrayPosition<Token> *last, const Corpus<Token> &corpus, Offset depth);
 
   void AddPosition(const Sentence<Token> &sent, Offset start, size_t depth) { assert(0); }
 
@@ -61,16 +63,34 @@ public:
 private:
   friend class ::TokenIndexTests_TreeNodeDisk_Test;
 
+  std::string path_; /** path to the directory backing this DiskTreeNode */
+
+  /** load child nodes as indicated by directory tree structure in 'path' */
+  void LoadSubtree();
+
+  /**
+   * Split this leaf node (SuffixArray) into a proper TreeNode with children.
+   * depth: distance of TreeNode from the root of this tree
+   */
+  void SplitNode(const Corpus<Token> &corpus, Offset depth);
+
   /**
    * Creates the nested directory name for a given vid.
    * E.g. for vid=0x7a120, "0..07a/0..07a120" (two levels to avoid too many directory entries)
    */
   static std::string child_sub_path(Vid vid);
 
-  /** full path to /array file backing leaves */
+  /** full path to /array file backing the leaf */
   std::string array_path() { return path_ + "/array"; }
 
-  std::string path_; /** path to the directory backing this DiskTreeNode */
+  /** full path to directory backing child with given vid. */
+  std::string child_path(Vid vid) { return path_ + "/" + child_sub_path(vid); }
+
+  /** factory function for TreeNode::SplitNode() */
+  TreeNodeDisk<Token> *make_child_(Vid vid, typename SuffixArray::iterator first, typename SuffixArray::iterator last, const Corpus<Token> &corpus, Offset depth);
+
+  /** Take ownership of 'first', and write array at this node level. */
+  void WriteArray(SuffixArrayPosition<Token> **first, SuffixArrayPosition<Token> *last);
 };
 
 } // namespace sto

@@ -89,17 +89,16 @@ bool TreeNodeMemory<Token>::find_child_(Vid vid, TreeNodeMemory<Token> **child) 
 }
 
 template<class Token>
-TreeNodeMemory<Token> *TreeNodeMemory<Token>::make_child_(typename SuffixArray::iterator first, typename SuffixArray::iterator last) {
+TreeNodeMemory<Token> *TreeNodeMemory<Token>::make_child_(Vid vid, typename SuffixArray::iterator first, typename SuffixArray::iterator last, const Corpus<Token> &corpus, Offset depth) {
   TreeNodeMemory<Token> *new_child = new TreeNodeMemory<Token>("", this->kMaxArraySize);
   std::shared_ptr<SuffixArray> new_array = new_child->array_;
   new_array->insert(new_array->begin(), first, last);
   return new_child;
 }
 
-/** Split this leaf node (suffix array) into a proper TreeNode with children. */
 template<class Token>
 void TreeNodeMemory<Token>::SplitNode(const Corpus<Token> &corpus, Offset depth) {
-  TreeNode<Token, SuffixArrayMemory<Token>>::SplitNode(corpus, depth, std::bind(&TreeNodeMemory<Token>::make_child_, this, std::placeholders::_1, std::placeholders::_2));
+  TreeNode<Token, SuffixArrayMemory<Token>>::SplitNode(corpus, depth, std::bind(&TreeNodeMemory<Token>::make_child_, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
 }
 
 template<class Token>

@@ -67,6 +67,9 @@ public:
 
     // note: use TokenIndex::span() for constructing an IndexSpan
 
+    /** Construct Span over the  */
+    Span(const TokenIndex<Token> &index, TreeNodeT *node);
+
     Span(Span &other) = default;
     Span(Span &&other) = default;
 

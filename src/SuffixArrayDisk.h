@@ -31,7 +31,6 @@ struct __attribute__((packed)) SuffixArrayPosition {
   operator Position<Token>() { return Position<Token>(sid, offset); }
 };
 
-
 template<class Token>
 class SuffixArrayDisk {
 public:
@@ -55,6 +54,8 @@ public:
     Iterator operator+(size_t add) { return Iterator(pos_ + add); }
     Iterator &operator+=(size_t add) { pos_ += add; return *this; }
     size_t operator-(const Iterator &other) { return pos_ - other.pos_; } // note: should be ptrdiff_t instead!?
+
+    SuffixArrayPosition<Token> *ptr() const { return pos_; }
   private:
     SuffixArrayPosition<Token> *pos_;
   };

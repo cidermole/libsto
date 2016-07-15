@@ -61,7 +61,7 @@ private:
   void LoadArray(const std::string &filename);
 
   /** factory function for TreeNode::SplitNode() */
-  TreeNodeMemory<Token> *make_child_(typename SuffixArray::iterator first, typename SuffixArray::iterator last);
+  TreeNodeMemory<Token> *make_child_(Vid vid, typename SuffixArray::iterator first, typename SuffixArray::iterator last, const Corpus<Token> &corpus, Offset depth);
 };
 
 } // namespace sto

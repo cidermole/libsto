@@ -73,9 +73,6 @@ public:
   /** Increase the given vid child's size. */
   void AddSize(Vid vid, size_t add_size);
 
-  /** TODO: is there a nicer way? maybe via constructor? (but only TreeNodeMemory) */
-  void SetArray(std::shared_ptr<SuffixArray> array) { array_ = array; }
-
   /** find the bounds of an existing Token or insertion point of a new one */
   Range find_bounds_array_(Corpus<Token> &corpus, Range prev_bounds, Token t, size_t depth);
 
@@ -130,17 +127,20 @@ void TreeNode<Token, SuffixArray>::SplitNode(const Corpus<Token> &corpus, Offset
   // for each top-level word, find the suffix array range and populate individual split arrays
   while(true) {
     vid_range = std::equal_range(array->begin(), array->end(), pos, comp);
+    Vid vid = pos.add(depth, corpus).vid(corpus);
 
     // copy each range into its own suffix array
-    TreeNode<Token, SuffixArray> *new_child = factory(vid_range.first, vid_range.second);
+    TreeNode<Token, SuffixArray> *new_child = factory(vid, vid_range.first, vid_range.second, corpus, depth); // Span would be easier...
     size_t new_size = vid_range.second - vid_range.first;
-    //children_[pos.add(depth, corpus).vid(corpus)] = new_child;
-    this->children_.FindOrInsert(pos.add(depth, corpus).vid(corpus), /* add_size = */ new_size) = new_child;
+    //children_[vid] = new_child;
+    this->children_.FindOrInsert(vid, /* add_size = */ new_size) = new_child;
 
+#ifndef NDEBUG
     TreeNode<Token, SuffixArray> *n = nullptr;
-    assert(this->children_.Find(pos.add(depth, corpus).vid(corpus), &n));
-    assert(n != nullptr);
-    assert(this->children_.ChildSize(pos.add(depth, corpus).vid(corpus)) == new_size);
+    assert(this->children_.Find(vid, &n));
+    assert(n == new_child);
+    assert(this->children_.ChildSize(vid) == new_size);
+#endif
 
     if(vid_range.second != array->end())
       pos = *vid_range.second; // position with next vid
