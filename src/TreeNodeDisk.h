@@ -48,12 +48,12 @@ public:
    *
    * Assumes there is at most one writer at all times (one process, and only one writing thread).
    *
-   * @param first    begin of TreeNode span to be merged in (span over the same vid)
-   * @param last     end of span
+   * @param addSpan  TreeNode span to be merged in (span over the same vid); either TokenIndex<Token>::Span or SuffixArrayPositionSpan
    * @param corpus   Positions belong to this Corpus
    * @param depth    distance of this TreeNode from the root
    */
-  void Merge(SuffixArrayPosition<Token> *first, SuffixArrayPosition<Token> *last, const Corpus<Token> &corpus, Offset depth);
+  template<class PositionSpan>
+  void MergeLeaf(const PositionSpan &addSpan, const Corpus<Token> &corpus, Offset depth);
 
   void AddPosition(const Sentence<Token> &sent, Offset start, size_t depth) { assert(0); }
 

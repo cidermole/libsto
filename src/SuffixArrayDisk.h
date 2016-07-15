@@ -16,6 +16,7 @@
 
 namespace sto {
 
+/** Position that is byte-packed for efficient disk storage. */
 template<class Token>
 struct __attribute__((packed)) SuffixArrayPosition {
   typedef typename Corpus<Token>::Sid Sid;
@@ -31,9 +32,27 @@ struct __attribute__((packed)) SuffixArrayPosition {
   operator Position<Token>() { return Position<Token>(sid, offset); }
 };
 
+/** Adapter for TreeNodeDisk::Merge(), has an identical interface to TokenIndex::Span */
+template<class Token>
+class SuffixArrayPositionSpan {
+public:
+  SuffixArrayPositionSpan(SuffixArrayPosition<Token> *first, SuffixArrayPosition<Token> *last) : first_(first), last_(last) {}
+  Position<Token> operator[](size_t pos) const { return first_[pos]; }
+  size_t size() const { return last_ - first_; }
+
+private:
+  SuffixArrayPosition<Token> *first_;
+  SuffixArrayPosition<Token> *last_;
+};
+
+/**
+ * Memory-mapped suffix array from disk, used in TreeNodeDisk leaves.
+ * Supports random_access iteration compatible with std::vector for reading.
+ */
 template<class Token>
 class SuffixArrayDisk {
 public:
+  /** Map 'filename' as a suffix array */
   SuffixArrayDisk(const std::string &filename);
 
   class Iterator {
