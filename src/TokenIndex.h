@@ -13,8 +13,8 @@
 #include "Range.h"
 #include "SuffixArrayMemory.h"
 #include "TreeNodeMemory.h"
-//#include "SuffixArrayDisk.h"
-//#include "TreeNodeDisk.h"
+#include "SuffixArrayDisk.h"
+#include "TreeNodeDisk.h"
 #include "Corpus.h"
 #include "util/rbtree.hpp"
 
@@ -22,22 +22,46 @@ namespace sto {
 
 template<class Token, class SuffixArray> class TreeNode;
 
+struct IndexTypeMemory {};
+struct IndexTypeDisk {};
+
+/** types for TokenIndex with different backing (Disk or Memory) */
+template<typename Token, typename IndexTypeTag>
+struct IndexTypes {
+  // specialized below
+  typedef void SuffixArray;
+  typedef void TreeNode;
+};
+
+/** partial specialization: types for IndexTypeDisk */
+template<>
+template<typename Token>
+struct IndexTypes<Token, IndexTypeDisk> {
+  typedef SuffixArrayDisk<Token> SuffixArray;
+  typedef TreeNodeDisk<Token> TreeNode;
+};
+
+/** partial specialization: types for IndexTypeMemory */
+template<>
+template<typename Token>
+struct IndexTypes<Token, IndexTypeMemory> {
+  typedef SuffixArrayMemory<Token> SuffixArray;
+  typedef TreeNodeMemory<Token> TreeNode;
+};
+
 /**
  * Indexes a Corpus. The index is implemented as a hybrid suffix tree/array.
  *
  * Vocab note: vid of explicit sentence end delimiting symbol </s> must be at the very beginning of all vocab symbols
  * (sort order matters, shorter sequences must come first)!
  */
-template<class Token>
+template<class Token, typename TypeTag = IndexTypeMemory>
 class TokenIndex {
 public:
   typedef typename Corpus<Token>::Offset Offset;
 
-  typedef SuffixArrayMemory<Token> SuffixArray;
-  typedef TreeNodeMemory<Token> TreeNodeT;
-
-  //typedef SuffixArrayDisk<Token> SuffixArray;
-  //typedef TreeNodeDisk<Token> TreeNodeT;
+  typedef typename IndexTypes<Token, TypeTag>::SuffixArray SuffixArray;
+  typedef typename IndexTypes<Token, TypeTag>::TreeNode TreeNodeT;
 
 
   /**
@@ -62,13 +86,10 @@ public:
    */
   class Span {
   public:
-    friend class TokenIndex<Token>;
-    typedef typename TokenIndex<Token>::TreeNodeT TreeNodeT;
+    friend class TokenIndex<Token, TypeTag>;
+    typedef typename TokenIndex<Token, TypeTag>::TreeNodeT TreeNodeT;
 
     // note: use TokenIndex::span() for constructing an IndexSpan
-
-    /** Construct Span over the  */
-    Span(const TokenIndex<Token> &index, TreeNodeT *node);
 
     Span(Span &other) = default;
     Span(Span &&other) = default;
@@ -128,12 +149,12 @@ public:
 
   protected:
     /** use TokenIndex::span() for constructing an IndexSpan */
-    Span(const TokenIndex<Token> &index);
+    Span(const TokenIndex<Token, TypeTag> &index);
 
   private:
     static constexpr size_t STO_NOT_FOUND = static_cast<size_t>(-1);
 
-    const TokenIndex<Token> *index_;
+    const TokenIndex<Token, TypeTag> *index_;
 
     std::vector<Token> sequence_; /** partial lookup sequence so far, as appended by narrow() */
     std::vector<TreeNodeT *> tree_path_; /** first part of path from root through the tree */

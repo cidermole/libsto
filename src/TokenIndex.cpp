@@ -14,39 +14,39 @@ namespace sto {
 
 // --------------------------------------------------------
 
-template<class Token>
-TokenIndex<Token>::TokenIndex(const std::string &filename, Corpus<Token> &corpus, size_t maxLeafSize) : corpus_(&corpus), root_(new TreeNodeT(filename, maxLeafSize))
+template<class Token, typename TypeTag>
+TokenIndex<Token, TypeTag>::TokenIndex(const std::string &filename, Corpus<Token> &corpus, size_t maxLeafSize) : corpus_(&corpus), root_(new TreeNodeT(filename, maxLeafSize))
 {}
 
-template<class Token>
-TokenIndex<Token>::TokenIndex(Corpus<Token> &corpus, size_t maxLeafSize) : corpus_(&corpus), root_(new TreeNodeT("", maxLeafSize))
+template<class Token, typename TypeTag>
+TokenIndex<Token, TypeTag>::TokenIndex(Corpus<Token> &corpus, size_t maxLeafSize) : corpus_(&corpus), root_(new TreeNodeT("", maxLeafSize))
 {}
 
-template<class Token>
-TokenIndex<Token>::~TokenIndex() {
+template<class Token, typename TypeTag>
+TokenIndex<Token, TypeTag>::~TokenIndex() {
   delete root_;
 }
 
-template<class Token>
-typename TokenIndex<Token>::Span TokenIndex<Token>::span() const {
+template<class Token, typename TypeTag>
+typename TokenIndex<Token, TypeTag>::Span TokenIndex<Token, TypeTag>::span() const {
   return Span(*this);
 }
 
-template<class Token>
-void TokenIndex<Token>::AddSentence(const Sentence<Token> &sent) {
+template<class Token, typename TypeTag>
+void TokenIndex<Token, TypeTag>::AddSentence(const Sentence<Token> &sent) {
   // start a subsequence at each sentence position
   // each subsequence only goes as deep as necessary to hit a SA
   for(Offset i = 0; i < sent.size(); i++)
     AddSubsequence_(sent, i);
 }
 
-template<class Token>
-void TokenIndex<Token>::DebugPrint(std::ostream &os) {
+template<class Token, typename TypeTag>
+void TokenIndex<Token, TypeTag>::DebugPrint(std::ostream &os) {
   root_->DebugPrint(os, *corpus_);
 }
 
-template<class Token>
-void TokenIndex<Token>::AddSubsequence_(const Sentence<Token> &sent, Offset start) {
+template<class Token, typename TypeTag>
+void TokenIndex<Token, TypeTag>::AddSubsequence_(const Sentence<Token> &sent, Offset start) {
   /*
    * A hybrid suffix trie / suffix array implementation.
    *

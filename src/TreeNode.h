@@ -20,7 +20,7 @@
 namespace sto {
 
 template<class Token> class IndexSpan;
-template<class Token> class TokenIndex;
+template<class Token, typename TypeTag> class TokenIndex;
 
 /**
  * A TreeNode belongs to a TokenIndex and represents a word and its possible
