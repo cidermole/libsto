@@ -36,8 +36,10 @@ public:
   typedef typename Corpus<Token>::Vid Vid;
   typedef typename Corpus<Token>::Offset Offset;
   typedef RBTree<Vid, TreeNode<Token, SuffixArray> *> ChildMap;
+  typedef typename ChildMap::Iterator Iterator;
   typedef SuffixArray SuffixArrayT;
 
+  // TreeNode() is protected: construct a TreeNodeMemory() or TreeNodeDisk()
   ~TreeNode();
 
   /** true if this is a leaf, i.e. a suffix array. */
@@ -78,6 +80,10 @@ public:
 
   /** @return true if child with 'vid' as the key was found, and optionally sets 'child'. */
   bool find_child_(Vid vid, TreeNode<Token, SuffixArray> **child = nullptr);
+
+  /** iterator over vids of children of internal nodes */
+  Iterator begin() const { return children_.begin(); }
+  Iterator end() const { return children_.end(); }
 
 protected:
   std::atomic<bool> is_leaf_; /** whether this is a suffix array (leaf node) */

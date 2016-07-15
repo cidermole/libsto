@@ -146,6 +146,32 @@ void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<To
 }
 
 template<class Token>
+template<class IndexSpanMemory, class IndexSpanDisk>
+void TreeNodeDisk<Token>::Merge(const IndexSpanMemory &spanMemory, IndexSpanDisk &spanDisk) {
+  // iterate through children, recursively calling Merge() until we reach the TreeNodeDisk leaf level.
+  // the memorySpan may not hit leaves at the same depth, but we can still iterate over the entire span to merge it.
+
+  //const typename TokenIndex<Token>::Span &spanMemory = spanMemory_x; // TODO temp
+  //typename TokenIndex<Token>::Span &spanDisk = spanDisk_x; // TODO temp
+
+  auto node = spanDisk.node();
+  for(auto vid : *node) {
+    typename TokenIndex<Token>::Span spanm = spanMemory;
+    size_t num_new = spanm.narrow(Token{vid});
+    if(num_new == 0)
+      continue;
+
+    typename TokenIndex<Token>::Span spand = spanDisk;
+    spand.narrow(Token{vid});
+    if(spand.node()->is_leaf()) {
+      MergeLeaf(spanMemory, *spand.corpus(), (Offset) spand.depth());
+    } else {
+      Merge(spanm, spand);
+    }
+  }
+}
+
+template<class Token>
 void TreeNodeDisk<Token>::SplitNode(const Corpus<Token> &corpus, Offset depth) {
   TreeNode<Token, SuffixArray>::SplitNode(corpus, depth, std::bind(&TreeNodeDisk<Token>::make_child_, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
 }

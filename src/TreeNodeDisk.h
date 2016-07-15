@@ -55,6 +55,9 @@ public:
   template<class PositionSpan>
   void MergeLeaf(const PositionSpan &addSpan, const Corpus<Token> &corpus, Offset depth);
 
+  template<class IndexSpanMemory, class IndexSpanDisk>
+  void Merge(const IndexSpanMemory &spanMemory, IndexSpanDisk &spanDisk);
+
   void AddPosition(const Sentence<Token> &sent, Offset start, size_t depth) { assert(0); }
 
   /** @return true if child with 'vid' as the key was found, and optionally sets 'child'. */

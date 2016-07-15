@@ -196,7 +196,7 @@ class RBTree {
       }
     }
 
-    KeyType& operator*() { return cur_->key; }
+    const KeyType& operator*() { return cur_->key; }
 
     bool operator!=(const Iterator &other) const { return cur_ != other.cur_; }
 
@@ -223,9 +223,8 @@ class RBTree {
     Iterator() {}
   };
 
-  Iterator begin() { return Iterator(root_, nil_); }
-  Iterator end() { return Iterator(); }
-
+  Iterator begin() const { return Iterator(root_, nil_); }
+  Iterator end() const { return Iterator(); }
 
 
  protected:
