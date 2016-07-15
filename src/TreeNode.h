@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <atomic>
+#include <algorithm>
 
 #include "Range.h"
 #include "Corpus.h"
@@ -98,7 +99,64 @@ protected:
    */
   TreeNode(size_t maxArraySize = 100000);
 
+  /**
+   * Split this leaf node (SuffixArray) into a proper TreeNode with children.
+   * depth: distance of TreeNode from the root of this tree
+   */
+  template<class NodeFactory>
+  void SplitNode(const Corpus<Token> &corpus, Offset depth, NodeFactory factory);
 };
+
+
+template<class Token, class SuffixArray>
+template<class NodeFactory>
+void TreeNode<Token, SuffixArray>::SplitNode(const Corpus<Token> &corpus, Offset depth, NodeFactory factory) {
+  typedef typename SuffixArray::iterator iter;
+
+  assert(this->is_leaf()); // this method works only on suffix arrays
+
+  auto comp = [&corpus, depth](const Position<Token> &a, const Position<Token> &b) {
+    // the suffix array at this depth should only contain positions that continue long enough without the sentence ending
+    return a.add(depth, corpus).vid(corpus) < b.add(depth, corpus).vid(corpus);
+  };
+
+  assert(this->size() > 0);
+  std::pair<iter, iter> vid_range;
+  std::shared_ptr<SuffixArray> array = this->array_;
+  Position<Token> pos = (*array)[0]; // first position with first vid
+
+  // thread safety: we build the TreeNode while is_leaf_ == true, so children_ is not accessed while being modified
+
+  // for each top-level word, find the suffix array range and populate individual split arrays
+  while(true) {
+    vid_range = std::equal_range(array->begin(), array->end(), pos, comp);
+
+    // copy each range into its own suffix array
+    TreeNode<Token, SuffixArray> *new_child = factory(vid_range.first, vid_range.second);
+    size_t new_size = vid_range.second - vid_range.first;
+    //children_[pos.add(depth, corpus).vid(corpus)] = new_child;
+    this->children_.FindOrInsert(pos.add(depth, corpus).vid(corpus), /* add_size = */ new_size) = new_child;
+
+    TreeNode<Token, SuffixArray> *n = nullptr;
+    assert(this->children_.Find(pos.add(depth, corpus).vid(corpus), &n));
+    assert(n != nullptr);
+    assert(this->children_.ChildSize(pos.add(depth, corpus).vid(corpus)) == new_size);
+
+    if(vid_range.second != array->end())
+      pos = *vid_range.second; // position with next vid
+    else
+      break;
+  }
+  assert(this->children_.Size() == array->size());
+
+  // release: ensure prior writes to children_ get flushed before the atomic operation
+  this->is_leaf_.store(false, std::memory_order_release);
+
+  // destroy the suffix array (last reader will clean up)
+  this->array_.reset();
+  // note: array_ null check could replace is_leaf_
+}
+
 
 } // namespace sto
 

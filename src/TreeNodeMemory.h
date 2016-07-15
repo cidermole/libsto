@@ -59,6 +59,9 @@ private:
    * Load this leaf node (SuffixArray) from mtt-build *.sfa file on disk.
    */
   void LoadArray(const std::string &filename);
+
+  /** factory function for TreeNode::SplitNode() */
+  TreeNodeMemory<Token> *make_child_(typename SuffixArray::iterator first, typename SuffixArray::iterator last);
 };
 
 } // namespace sto
