@@ -58,6 +58,8 @@ struct IndexTypes<Token, IndexTypeMemory> {
 template<class Token, typename TypeTag = IndexTypeMemory>
 class TokenIndex {
 public:
+  typedef Token TokenT;
+  typedef TypeTag TypeTagT;
   typedef typename Corpus<Token>::Offset Offset;
 
   typedef typename IndexTypes<Token, TypeTag>::SuffixArray SuffixArray;

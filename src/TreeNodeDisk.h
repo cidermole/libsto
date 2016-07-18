@@ -11,8 +11,6 @@
 #include "SuffixArrayDisk.h"
 //#include "TokenIndex.h"
 
-class TokenIndexTests_TreeNodeDisk_Test;
-
 namespace sto {
 
 struct IndexTypeMemory;
@@ -67,8 +65,6 @@ public:
   bool find_child_(Vid vid, TreeNodeDisk<Token> **child = nullptr);
 
 private:
-  friend class ::TokenIndexTests_TreeNodeDisk_Test;
-
   std::string path_; /** path to the directory backing this DiskTreeNode */
 
   /** load child nodes as indicated by directory tree structure in 'path' */
