@@ -92,6 +92,33 @@ void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<To
 
   SuffixArray &curSpan = *this->array_;
 
+  // disallow splits of </s> - as argued in TreeNodeMemory::AddPosition()
+  // bool allow_split = sent.size() + 1 > start + depth; // +1 for implicit </s>
+  bool allow_split = curSize > 0 && corpus.sentence(curSpan[0].sid).size() + 1 > curSpan[0].offset + depth;
+
+  if(!allow_split) {
+    // optimized case: we can just append to the file instead of building newArray in RAM
+
+    SuffixArrayPosition<Token> *addArray = new SuffixArrayPosition<Token>[addSize];
+    for(iadd = 0; iadd < addSize; iadd++)
+      addArray[iadd] = addSpan[iadd];
+
+    FILE *fout = fopen(array_path().c_str(), "rb+");
+    if(!fout) {
+      delete[] addArray;
+      throw std::runtime_error(std::string("failed to open array file for append at ") + array_path());
+    }
+    fseek(fout, sizeof(SuffixArrayPosition<Token>) * this->array_->size(), SEEK_SET);
+    fwrite(addArray, sizeof(SuffixArrayPosition<Token>), addSize, fout);
+    fclose(fout);
+    delete[] addArray;
+
+    // map the newly written array, and atomically replace the old array_
+    this->array_.reset(new SuffixArrayDisk<Token>(array_path()));
+
+    return;
+  }
+
   SuffixArrayPosition<Token> *newArray = new SuffixArrayPosition<Token>[newSize];
   SuffixArrayPosition<Token> *pnew = newArray;
 
@@ -126,7 +153,7 @@ void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<To
 
 #ifndef NDEBUG
   // postconditions
-  assert(pnew - newArray == newSize); // filled the entire array
+  assert(pnew - newArray == (ptrdiff_t) newSize); // filled the entire array
 
   // array is sorted in ascending order
   for(size_t i = 0; i < newSize - 1; i++) {
@@ -142,21 +169,18 @@ void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<To
   // map the newly written array, and atomically replace the old array_
   this->array_.reset(new SuffixArrayDisk<Token>(array_path()));
 
-  // disallow splits of </s> - as argued in TreeNodeMemory::AddPosition()
-  // bool allow_split = sent.size() + 1 > start + depth; // +1 for implicit </s>
-  bool allow_split = corpus.sentence(newArray[0].sid).size() + 1 > newArray[0].offset + depth;
-
   /*
    * note: should it become necessary to split </s> array, a simple sharding concept
    * would involve fixed-size blocks. For that, we need to change Merge() to deal with shards
    * and SuffixArrayDisk to transparently map access to several blocks as one sequence.
    *
-   * TODO:
-   * A much easier workaround: for allow_split=false arrays (like ". </s>"), appending the new
+   * We implement a much easier workaround: for allow_split=false arrays (like ". </s>"), appending the new
    * Positions will always be legal. Therefore, don't build in RAM, and just append to the file on disk.
+   * See above at if(!allow_split) "optimized case".
    */
 
-  if(this->array_->size() > this->kMaxArraySize && allow_split) {
+  assert(allow_split);
+  if(this->array_->size() > this->kMaxArraySize) {
     SplitNode(corpus, depth);
   }
 }
