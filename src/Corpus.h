@@ -145,7 +145,7 @@ public:
 
   Position(AtomicPosition<Token> &atomic_pos) : Position(atomic_pos.load()) {}
 
-  /** like operator<(this, other) */
+  /** like operator>(this, other) */
   bool compare(const Position<Token> &other, const Corpus<Token> &corpus) const;
 
   /** directly compares (sid,offset) pair */

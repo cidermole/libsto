@@ -13,6 +13,9 @@
 
 namespace sto {
 
+struct IndexTypeMemory;
+struct IndexTypeDisk;
+
 /**
  * See TreeNode: an internal representation used by TokenIndex,
  * represents a word and its possible suffix extensions.
@@ -29,6 +32,14 @@ public:
    * @param filename  load mtt-build *.sfa file if specified
    */
   TreeNodeMemory(std::string filename, size_t maxArraySize = 10000);
+
+  /*
+  template<class IndexSpanMemory, class IndexSpanDisk>
+  void Merge(const IndexSpanMemory &spanMemory, IndexSpanDisk &spanDisk) { assert(0); }
+   */
+
+  // not implemented
+  void Merge(const typename TokenIndex<Token, IndexTypeMemory>::Span &spanMemory, typename TokenIndex<Token, IndexTypeMemory>::Span &spanUs);
 
   /**
    * Insert the existing Corpus Position into this leaf node (SuffixArray).

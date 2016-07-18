@@ -11,6 +11,8 @@
 
 #include <gtest/gtest.h>
 
+#include <boost/filesystem.hpp>
+
 #include "Vocab.h"
 #include "Corpus.h"
 #include "TokenIndex.h"
@@ -540,6 +542,49 @@ TEST_F(TokenIndexTests, add_to_loaded_eim_small) {
 
   staticIndex.AddSentence(corpus.sentence(corpus.size()-1));
 }
+
+
+TEST_F(TokenIndexTests, TokenIndexDisk) {
+  using namespace boost::filesystem;
+  boost::system::error_code ec;
+  path base("res/TokenIndexTests_TokenIndexDisk");
+  remove_all(base, ec); // ensure no leftovers
+
+  ////create_directories(base);
+
+  TokenIndex<SrcToken, IndexTypeDisk> indexDisk(base.native(), corpus);
+  // fill_tree_2level_common_prefix_the(indexDisk);
+
+  sentence = AddSentence({"this", "is", "an", "example"});
+  //indexDisk.AddSentence(sentence); // not supported by IndexTypeDisk
+
+  tokenIndex.AddSentence(sentence);
+  indexDisk.Merge(tokenIndex); // merge of 'sentence' into empty TokenIndex
+
+  TokenIndex<SrcToken, IndexTypeDisk>::Span span = indexDisk.span();
+  EXPECT_EQ(4, span.size()) << "the Sentence should have added 4 tokens to the IndexSpan";
+
+  TokenIndex<SrcToken>::Span refSpan = tokenIndex.span();
+  for(size_t i = 0; i < span.size(); i++) {
+    EXPECT_EQ(refSpan[i], span[i]) << "index entry at i=" << i << " should be equal to reference";
+  }
+
+  Sentence<SrcToken> sent2 = AddSentence({"this", "is", "not", "an", "example"});
+  TokenIndex<SrcToken> index2(corpus);
+  tokenIndex.AddSentence(sent2);
+  index2.AddSentence(sent2);
+  indexDisk.Merge(index2);
+
+  // this check happens to work because equal positions get appended in both cases, so the order is stable
+  // otherwise, we would have to check buckets
+  TokenIndex<SrcToken>::Span refSpan2 = tokenIndex.span();
+  for(size_t i = 0; i < span.size(); i++) {
+    EXPECT_EQ(refSpan2[i], span[i]) << "index entry at i=" << i << " should be equal to reference";
+  }
+
+  //remove_all(base, ec); // clean up if possible // TODO except if debugging
+}
+
 
 #include "TreeNodeDisk.h"
 

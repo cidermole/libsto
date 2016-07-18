@@ -40,6 +40,18 @@ void TokenIndex<Token, TypeTag>::AddSentence(const Sentence<Token> &sent) {
     AddSubsequence_(sent, i);
 }
 
+/*
+  template<class IndexSpanMemory, class IndexSpanDisk>
+  void Merge(const IndexSpanMemory &spanMemory, IndexSpanDisk &spanDisk);
+  */
+
+template<class Token, typename TypeTag>
+void TokenIndex<Token, TypeTag>::Merge(const TokenIndex<Token, IndexTypeMemory> &add) {
+  auto span = this->span();
+  auto as = add.span();
+  root_->Merge(as, span);
+}
+
 template<class Token, typename TypeTag>
 void TokenIndex<Token, TypeTag>::DebugPrint(std::ostream &os) {
   root_->DebugPrint(os, *corpus_);

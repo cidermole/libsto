@@ -185,7 +185,7 @@ bool Position<Token>::compare(const Position<Token> &other, const Corpus<Token> 
   Sentence<Token> sentThis(corpus, sid);
   Sentence<Token> sentOther(corpus, other.sid);
 
-  // this uses Token::operator<(), which sorts by vid (not by surface form)
+  // this uses Token::operator<(other, this), which sorts by vid (not by surface form)
   return std::lexicographical_compare(sentOther.begin_ + other.offset, sentOther.begin_ + sentOther.size_,
                                       sentThis.begin_ + offset, sentThis.begin_ + sentThis.size_);
 }

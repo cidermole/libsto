@@ -91,10 +91,10 @@ public:
 
     // note: use TokenIndex::span() for constructing an IndexSpan
 
-    Span(Span &other) = default;
+    Span(const Span &other) = default;
     Span(Span &&other) = default;
 
-    Span& operator=(Span &other) = default;
+    Span& operator=(const Span &other) = default;
     Span& operator=(Span &&other) = default;
 
     /**
@@ -193,6 +193,13 @@ public:
    * do not result in invalid state being read.
    */
   void AddSentence(const Sentence<Token> &sent);
+
+/*
+  template<class IndexSpanMemory, class IndexSpanDisk>
+  void Merge(const IndexSpanMemory &spanMemory, IndexSpanDisk &spanDisk);
+  */
+
+  void Merge(const TokenIndex<Token, IndexTypeMemory> &add);
 
   void DebugPrint(std::ostream &os);
 

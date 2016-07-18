@@ -9,10 +9,14 @@
 
 #include "TreeNode.h"
 #include "SuffixArrayDisk.h"
+//#include "TokenIndex.h"
 
 class TokenIndexTests_TreeNodeDisk_Test;
 
 namespace sto {
+
+struct IndexTypeMemory;
+struct IndexTypeDisk;
 
 /**
  * Like TreeNode, an internal representation used by TokenIndex,
@@ -55,8 +59,7 @@ public:
   template<class PositionSpan>
   void MergeLeaf(const PositionSpan &addSpan, const Corpus<Token> &corpus, Offset depth);
 
-  template<class IndexSpanMemory, class IndexSpanDisk>
-  void Merge(const IndexSpanMemory &spanMemory, IndexSpanDisk &spanDisk);
+  void Merge(typename TokenIndex<Token, IndexTypeMemory>::Span &spanMemory, typename TokenIndex<Token, IndexTypeDisk>::Span &spanDisk);
 
   void AddPosition(const Sentence<Token> &sent, Offset start, size_t depth) { assert(0); }
 

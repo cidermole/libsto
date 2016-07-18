@@ -96,30 +96,46 @@ void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<To
   SuffixArrayPosition<Token> *pnew = newArray;
 
   assert(addSize > 0);
-  Vid vid = Position<Token>(addSpan[0]).add(depth, corpus).vid(corpus);
+  Vid vid = depth > 0 ? Position<Token>(addSpan[0]).add(depth-1, corpus).vid(corpus) : 0;
 
-  Position<Token> cur = (curSize > 0) ? curSpan[icur++] : Position<Token>();
-  Position<Token> add = addSpan[iadd++];
+  // to do: if Span had an iterator, we could use std::merge() here.
+
+  Position<Token> cur;
+  Position<Token> add;
   while(icur < curSize && iadd < addSize) {
     // assuming that curSpan is much larger, this loop will be most active
-    while(cur.compare(add, corpus) && icur < curSize) {
-      assert(cur.add(depth, corpus).vid(corpus) == vid); // since span over the same vid -> each Position (at depth) should have the same vid.
+    add = addSpan[iadd];
+    while(icur < curSize && add.compare((cur = curSpan[icur]), corpus)) { // add > cur
+      assert(depth == 0 || cur.add(depth-1, corpus).vid(corpus) == vid); // since span over the same vid -> each Position (at depth-1) should have the same vid.
       *pnew++ = cur;
-      cur = curSpan[icur++];
+      icur++;
     }
-    assert(add.add(depth, corpus).vid(corpus) == vid); // since span over the same vid -> each Position (at depth) should have the same vid.
+    assert(depth == 0 || add.add(depth-1, corpus).vid(corpus) == vid); // since span over the same vid -> each Position (at depth-1) should have the same vid.
     *pnew++ = add;
-    add = addSpan[iadd++];
+    iadd++;
   }
   // fill from the side that still has remaining positions
   while(icur < curSize) {
-    *pnew++ = cur;
     cur = curSpan[icur++];
+    *pnew++ = cur;
   }
   while(iadd < addSize) {
-    *pnew++ = add;
     add = addSpan[iadd++];
+    *pnew++ = add;
   }
+
+#ifndef NDEBUG
+  // postconditions
+  assert(pnew - newArray == newSize); // filled the entire array
+
+  // array is sorted in ascending order
+  for(size_t i = 0; i < newSize - 1; i++) {
+    Position<Token> p = newArray[i], q = newArray[i+1];
+    //assert(p <= q) == assert(!(p > q));
+    assert(!p.compare(q, corpus));
+  }
+#endif
+
 
   // the existing mmap continues to point to the old file data afterwards (since the file remains open)
   WriteArray(&newArray, newArray + newSize);
@@ -146,28 +162,28 @@ void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<To
 }
 
 template<class Token>
-template<class IndexSpanMemory, class IndexSpanDisk>
-void TreeNodeDisk<Token>::Merge(const IndexSpanMemory &spanMemory, IndexSpanDisk &spanDisk) {
+void TreeNodeDisk<Token>::Merge(typename TokenIndex<Token, IndexTypeMemory>::Span &spanMemory, typename TokenIndex<Token, IndexTypeDisk>::Span &spanDisk) {
   // iterate through children, recursively calling Merge() until we reach the TreeNodeDisk leaf level.
   // the memorySpan may not hit leaves at the same depth, but we can still iterate over the entire span to merge it.
 
   //const typename TokenIndex<Token>::Span &spanMemory = spanMemory_x; // TODO temp
   //typename TokenIndex<Token>::Span &spanDisk = spanDisk_x; // TODO temp
 
-  auto node = spanDisk.node();
+  if(spanDisk.node()->is_leaf()) {
+    MergeLeaf(spanMemory, *spanDisk.corpus(), (Offset) spanDisk.depth());
+    return;
+  }
+
+  auto node = spanMemory.node();
   for(auto vid : *node) {
-    typename TokenIndex<Token>::Span spanm = spanMemory;
+    typename TokenIndex<Token, IndexTypeMemory>::Span spanm = spanMemory;
     size_t num_new = spanm.narrow(Token{vid});
     if(num_new == 0)
       continue;
 
-    typename TokenIndex<Token>::Span spand = spanDisk;
+    typename TokenIndex<Token, IndexTypeDisk>::Span spand = spanDisk;
     spand.narrow(Token{vid});
-    if(spand.node()->is_leaf()) {
-      MergeLeaf(spanMemory, *spand.corpus(), (Offset) spand.depth());
-    } else {
-      Merge(spanm, spand);
-    }
+    Merge(spanm, spand);
   }
 }
 

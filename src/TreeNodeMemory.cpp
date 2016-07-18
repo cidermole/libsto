@@ -7,6 +7,7 @@
 #include "TreeNodeMemory.h"
 #include "Corpus.h"
 #include "MappedFile.h"
+#include "TokenIndex.h"
 
 #include <algorithm>
 #include <functional>
@@ -19,6 +20,11 @@ TreeNodeMemory<Token>::TreeNodeMemory(std::string filename, size_t maxArraySize)
   this->array_.reset(new SuffixArray);
   if(filename != "")
     LoadArray(filename);
+}
+
+template<class Token>
+void TreeNodeMemory<Token>::Merge(const typename TokenIndex<Token, IndexTypeMemory>::Span &spanMemory, typename TokenIndex<Token, IndexTypeMemory>::Span &spanUs) {
+  assert(0);
 }
 
 template<class Token>
