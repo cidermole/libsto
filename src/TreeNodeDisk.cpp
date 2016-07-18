@@ -143,8 +143,8 @@ void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<To
   this->array_.reset(new SuffixArrayDisk<Token>(array_path()));
 
   // disallow splits of </s> - as argued in TreeNodeMemory::AddPosition()
-  // TODO: check if the depth is correctly assumed here
-  bool allow_split = (vid != Token::Vocabulary::kEOS);
+  // bool allow_split = sent.size() + 1 > start + depth; // +1 for implicit </s>
+  bool allow_split = corpus.sentence(newArray[0].sid).size() + 1 > newArray[0].offset + depth;
 
   /*
    * note: should it become necessary to split </s> array, a simple sharding concept
