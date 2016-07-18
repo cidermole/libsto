@@ -33,12 +33,33 @@ typename TokenIndex<Token, TypeTag>::Span TokenIndex<Token, TypeTag>::span() con
 }
 
 template<class Token, typename TypeTag>
+struct AddSentenceImpl {
+  void operator()(TokenIndex<Token, TypeTag> &index, const Sentence<Token> &sent) {
+    typedef typename Corpus<Token>::Offset Offset;
+    // start a subsequence at each sentence position
+    // each subsequence only goes as deep as necessary to hit a SA
+    for(Offset i = 0; i < sent.size(); i++)
+      index.AddSubsequence_(sent, i);
+  }
+};
+
+template<class Token>
+struct AddSentenceImpl<Token, IndexTypeDisk> {
+  void operator()(TokenIndex<Token, IndexTypeDisk> &index, const Sentence<Token> &sent) {
+    // add to memory index, then merge in
+    // (workaround for testing IndexTypeDisk using AddSentence())
+    TokenIndex<Token, IndexTypeMemory> add(*index.corpus());
+    add.AddSentence(sent);
+    index.Merge(add);
+  }
+};
+
+template<class Token, typename TypeTag>
 void TokenIndex<Token, TypeTag>::AddSentence(const Sentence<Token> &sent) {
-  // start a subsequence at each sentence position
-  // each subsequence only goes as deep as necessary to hit a SA
-  for(Offset i = 0; i < sent.size(); i++)
-    AddSubsequence_(sent, i);
+  // work around C++ lacking partial specialization of member functions
+  AddSentenceImpl<Token, TypeTag>()(*this, sent);
 }
+
 
 /*
   template<class IndexSpanMemory, class IndexSpanDisk>

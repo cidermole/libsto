@@ -203,14 +203,14 @@ public:
 
   void DebugPrint(std::ostream &os);
 
+  /** Insert the subsequence from start into this index. Potentially splits. */
+  void AddSubsequence_(const Sentence<Token> &sent, Offset start);
+
 private:
   friend class Span;
 
   Corpus<Token> *corpus_;
   TreeNodeT *root_; /** root of the index tree */
-
-  /** Insert the subsequence from start into this index. Potentially splits. */
-  void AddSubsequence_(const Sentence<Token> &sent, Offset start);
 };
 
 } // namespace sto

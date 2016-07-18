@@ -559,7 +559,8 @@ TEST_F(TokenIndexTests, TokenIndexDisk) {
   //indexDisk.AddSentence(sentence); // not supported by IndexTypeDisk
 
   tokenIndex.AddSentence(sentence);
-  indexDisk.Merge(tokenIndex); // merge of 'sentence' into empty TokenIndex
+  //indexDisk.Merge(tokenIndex); // merge of 'sentence' into empty TokenIndex
+  indexDisk.AddSentence(sentence);
 
   TokenIndex<SrcToken, IndexTypeDisk>::Span span = indexDisk.span();
   EXPECT_EQ(4, span.size()) << "the Sentence should have added 4 tokens to the IndexSpan";
