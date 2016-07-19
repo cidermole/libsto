@@ -266,6 +266,11 @@ void TreeNodeDisk<Token>::WriteArray(SuffixArrayPosition<Token> **first, SuffixA
   if(!tmp) {
     delete[] *first;
     first = nullptr;
+
+    // note: this error may happen if we run out of file handles. On my Linux system, this is 4096 by default (way too low).
+    // see  $ ulimit -Sn  and  /etc/security/limits.conf
+    // 1000000 seems like a good limit
+    // 2000000 is too much and Linux fails to log me in:  pam_limits(systemd-user:session): Could not set limit for 'nofile': Operation not permitted
     throw std::runtime_error(std::string("failed to open array.tmp file for write at ") + array_tmp);
   }
   fwrite(*first, sizeof(SuffixArrayPosition<Token>), last - *first, tmp);
