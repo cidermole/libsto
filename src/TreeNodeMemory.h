@@ -27,6 +27,8 @@ class TreeNodeMemory : public TreeNode<Token, SuffixArrayMemory<Token>> {
   typedef typename Corpus<Token>::Offset Offset;
 
 public:
+  typedef typename TreeNode<Token, SuffixArray>::Iterator Iterator;
+
   /**
    * Constructs an empty TreeNode, i.e. a leaf with a SuffixArray.
    * @param filename  load mtt-build *.sfa file if specified

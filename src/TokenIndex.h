@@ -88,8 +88,8 @@ public:
    */
   class Span {
   public:
-    friend class TokenIndex<Token, TypeTag>;
-    typedef typename TokenIndex<Token, TypeTag>::TreeNodeT TreeNodeT;
+    friend class TokenIndex;
+    typedef typename TokenIndex::TreeNodeT TreeNodeT;
 
     // note: use TokenIndex::span() for constructing an IndexSpan
 
@@ -98,6 +98,74 @@ public:
 
     Span& operator=(const Span &other) = default;
     Span& operator=(Span &&other) = default;
+
+
+    /**
+     * Iterator over vids (vocabulary IDs) associated with a TreeNode.
+     * Obtain instances from TokenIndex::Span
+     *
+     * TODO: this should really be on TreeNode. TreeNode leaves should know (corpus,depth), then they can return
+     * an iterator interface in begin()/end() which either walks RBTree (internal nodes) or the SA (leaf nodes).
+     */
+    class VidIterator {
+    public:
+      typedef typename TokenIndex::Span IndexSpan;
+      typedef typename TokenIndex::TreeNodeT TreeNodeT;
+      typedef typename Corpus<Token>::Vid Vid;
+
+      VidIterator(const VidIterator &other) = default;
+
+      /** use TokenIndex::Span::begin() / end() instead. */
+      VidIterator(const IndexSpan &span, bool begin = true) : span_(span), index_(begin ? 0 : span.size()), iter_(begin ? span.node()->begin() : span.node()->end()), is_leaf_(span.node()->is_leaf()) {}
+
+      Vid operator*() {
+        if(is_leaf_)
+          return span_[index_].vid(*span_.corpus());
+        else
+          return *iter_;
+      }
+      VidIterator &operator++() {
+        if(is_leaf_)
+          index_ += StepSize();
+        else
+          ++iter_;
+        return *this;
+      }
+      bool operator!=(const VidIterator &other) {
+        if(is_leaf_)
+          return index_ != other.index_;
+        else
+          return iter_ != other.iter_;
+      }
+
+      size_t StepSize() {
+        // much akin to code in TreeNode::SplitNode()... unite?
+        typedef typename TreeNodeT::SuffixArrayT::iterator iter;
+
+        Position<Token> pos = span_[index_];
+
+        Corpus<Token> &corpus = *span_.corpus();
+        size_t depth = span_.depth();
+        auto comp = [&corpus, depth](const Position<Token> &a, const Position<Token> &b) {
+          // the suffix array at this depth should only contain positions that continue long enough without the sentence ending
+          return a.add(depth, corpus).vid(corpus) < b.add(depth, corpus).vid(corpus);
+        };
+
+        std::pair<iter, iter> vid_range = std::equal_range(span_.node()->array()->begin() + index_, span_.node()->array()->end(), pos, comp);
+        size_t step = vid_range.second - vid_range.first;
+        assert(step > 0);
+        return step;
+      }
+
+    private:
+      typedef typename TokenIndex::TreeNodeT::Iterator TreeNodeIterator;
+
+      const IndexSpan &span_;
+      size_t index_;
+      TreeNodeIterator iter_;
+      bool is_leaf_;
+    };
+
 
     /**
      * Narrow the span by adding a token to the end of the lookup sequence.
@@ -136,7 +204,7 @@ public:
     size_t tree_depth() const;
 
     /** TreeNode at current depth. */
-    TreeNodeT *node();
+    TreeNodeT *node() const;
 
     /** first part of path from root through the tree, excluding suffix array range choices */
     const std::vector<TreeNodeT *>& tree_path() const { return tree_path_; }
@@ -149,14 +217,17 @@ public:
 
     Corpus<Token> *corpus() const;
 
+    VidIterator begin() { return VidIterator(*this, /* begin = */ true); }
+    VidIterator end() { return VidIterator(*this, /* begin = */ false); }
+
   protected:
     /** use TokenIndex::span() for constructing an IndexSpan */
-    Span(const TokenIndex<Token, TypeTag> &index);
+    Span(const TokenIndex &index);
 
   private:
     static constexpr size_t STO_NOT_FOUND = static_cast<size_t>(-1);
 
-    const TokenIndex<Token, TypeTag> *index_;
+    const TokenIndex *index_;
 
     std::vector<Token> sequence_; /** partial lookup sequence so far, as appended by narrow() */
     std::vector<TreeNodeT *> tree_path_; /** first part of path from root through the tree */

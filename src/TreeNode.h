@@ -85,6 +85,9 @@ public:
   Iterator begin() const { return children_.begin(); }
   Iterator end() const { return children_.end(); }
 
+  // TODO: temporary
+  std::shared_ptr<SuffixArray> array() { assert(is_leaf()); return array_; }
+
 protected:
   std::atomic<bool> is_leaf_; /** whether this is a suffix array (leaf node) */
   ChildMap children_; /** TreeNode children, empty if is_leaf. Additionally carries along partial sums for child sizes. */

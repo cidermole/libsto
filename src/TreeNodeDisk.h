@@ -32,6 +32,7 @@ public:
   typedef typename TreeNode<Token, SuffixArray>::Vid Vid;
   typedef typename TreeNode<Token, SuffixArray>::Offset Offset;
   typedef typename TreeNode<Token, SuffixArray>::SuffixArrayT SuffixArrayT; // to do: mmap
+  typedef typename TreeNode<Token, SuffixArray>::Iterator Iterator;
 
   /**
    * if path exists: recursively load the subtree rooted at this path.
@@ -60,6 +61,9 @@ public:
   void Merge(typename TokenIndex<Token, IndexTypeMemory>::Span &spanMemory, typename TokenIndex<Token, IndexTypeDisk>::Span &spanDisk);
 
   void AddPosition(const Sentence<Token> &sent, Offset start, size_t depth) { assert(0); }
+
+  /** Add an empty leaf node (SuffixArray) as a child. */
+  void AddLeaf(Vid vid);
 
   /** @return true if child with 'vid' as the key was found, and optionally sets 'child'. */
   bool find_child_(Vid vid, TreeNodeDisk<Token> **child = nullptr);

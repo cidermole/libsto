@@ -103,7 +103,7 @@ size_t TokenIndex<Token, TypeTag>::Span::size() const {
 }
 
 template<class Token, typename TypeTag>
-typename TokenIndex<Token, TypeTag>::Span::TreeNodeT *TokenIndex<Token, TypeTag>::Span::node() {
+typename TokenIndex<Token, TypeTag>::Span::TreeNodeT *TokenIndex<Token, TypeTag>::Span::node() const {
   return tree_path_.back();
 }
 

@@ -132,6 +132,8 @@ class RBTree {
   /** Walking keys in ascending order, supporting standard operations (range-based for loop over RBTree). */
   class Iterator {
   public:
+    Iterator(const Iterator &other) = default;
+
     Iterator &operator++() {
       /*
        * Essentially implements in-order traversal, i.e. the following:

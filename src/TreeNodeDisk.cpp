@@ -85,6 +85,8 @@ bool TreeNodeDisk<Token>::find_child_(Vid vid, TreeNodeDisk<Token> **child) {
 template<class Token>
 template<class PositionSpan>
 void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<Token> &corpus, Offset depth) {
+  assert(this->is_leaf());
+
   size_t addSize = addSpan.size();
   size_t curSize = this->array_->size();
   size_t newSize = curSize + addSize;
@@ -193,22 +195,37 @@ void TreeNodeDisk<Token>::Merge(typename TokenIndex<Token, IndexTypeMemory>::Spa
   //const typename TokenIndex<Token>::Span &spanMemory = spanMemory_x; // TODO temp
   //typename TokenIndex<Token>::Span &spanDisk = spanDisk_x; // TODO temp
 
+  // to do: this is similar to TokenIndex::AddSubsequence_()
+
+  assert(spanDisk.node() == this);
+
   if(spanDisk.node()->is_leaf()) {
     MergeLeaf(spanMemory, *spanDisk.corpus(), (Offset) spanDisk.depth());
     return;
   }
 
-  auto node = spanMemory.node();
-  for(auto vid : *node) {
+  for(auto vid : spanMemory) {
     typename TokenIndex<Token, IndexTypeMemory>::Span spanm = spanMemory;
     size_t num_new = spanm.narrow(Token{vid});
-    if(num_new == 0)
-      continue;
+
+    assert(num_new > 0); // since we iterate precisely spanMemory
 
     typename TokenIndex<Token, IndexTypeDisk>::Span spand = spanDisk;
-    spand.narrow(Token{vid});
-    Merge(spanm, spand);
+    size_t spanSize = spand.narrow(Token{vid});
+    if(spanSize == 0) {
+      // (1) create tree entry (leaf)
+      spand.node()->AddLeaf(vid);
+      spand.narrow(Token{vid}); // step IndexSpan into the node just created (which contains an empty SA)
+      assert(spand.in_array());
+    }
+    spand.node()->Merge(spanm, spand);
+    this->AddSize(vid, num_new);
   }
+}
+
+template<class Token>
+void TreeNodeDisk<Token>::AddLeaf(Vid vid) {
+  this->children_[vid] = new TreeNodeDisk<Token>(child_path(vid), this->kMaxArraySize);
 }
 
 template<class Token>
