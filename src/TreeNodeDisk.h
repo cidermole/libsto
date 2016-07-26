@@ -76,12 +76,12 @@ private:
   std::string path_; /** path to the directory backing this DiskTreeNode */
   rocksdb::DB *db_;
 
-  /** load child nodes as indicated by directory tree structure in 'path' */
-  void LoadSubtree();
+  /** load child nodes below 'path' as indicated by the passed sequence of child vids. */
+  void LoadSubtree(const Vid *children, size_t num_children);
 
   /**
    * Split this leaf node (SuffixArray) into a proper TreeNode with children.
-   * depth: distance of TreeNode from the root of this tree
+   * @param depth: distance of TreeNode from the root of this tree
    */
   void SplitNode(const Corpus<Token> &corpus, Offset depth);
 
@@ -101,7 +101,10 @@ private:
   TreeNodeDisk<Token> *make_child_(Vid vid, typename SuffixArray::iterator first, typename SuffixArray::iterator last, const Corpus<Token> &corpus, Offset depth);
 
   /** Take ownership of 'first', and write array at this node level. */
-  void WriteArray(SuffixArrayPosition<Token> **first, SuffixArrayPosition<Token> *last, rocksdb::DB *db);
+  void WriteArray(SuffixArrayPosition<Token> **first, SuffixArrayPosition<Token> *last);
+
+  /** Write vids of children to persistent storage */
+  void WriteChildren();
 };
 
 } // namespace sto

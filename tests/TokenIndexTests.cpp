@@ -302,7 +302,7 @@ TYPED_TEST(TokenIndexTests, load_v2) {
   Corpus<Token> sc("res/corpus.mct", &sv);
   TokenIndex<Token, IndexTypeMemory> staticIndex("res/index.sfa", sc); // built with mtt-build
 
-  TokenIndexType dynamicIndex(this->basePath, sc); // building dynamically
+  TokenIndexType dynamicIndex(this->basePath, sc, this->db); // building dynamically
   dynamicIndex.AddSentence(sc.sentence(0));
 
   typename TokenIndex<Token, IndexTypeMemory>::Span staticSpan = staticIndex.span();
@@ -573,7 +573,7 @@ TYPED_TEST(TokenIndexTests, static_vs_dynamic_eim) {
   Corpus<Token> sc("/home/david/MMT/engines/default/models/phrase_tables/model.en.mct", &sv);
   TokenIndex<Token, IndexTypeMemory> staticIndex("/home/david/MMT/engines/default/models/phrase_tables/model.en.sfa", sc); // built with mtt-build
 
-  TokenIndexType dynamicIndex(this->basePath, sc); // building dynamically
+  TokenIndexType dynamicIndex(this->basePath, sc, this->db); // building dynamically
 
   std::cerr << "building dynamicIndex..." << std::endl;
   for(size_t i = 0; i < sc.size(); i++)

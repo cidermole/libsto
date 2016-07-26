@@ -17,7 +17,7 @@ SuffixArrayDisk<Token>::SuffixArrayDisk(const std::string &filename, rocksdb::DB
   std::string value;
 
   rocksdb::Status status = db->Get(rocksdb::ReadOptions(), key, &value);
-  std::cerr << "Get on DB=" << db << " key=" << filename << " status.ok()=" << status.ok() << " IsNotFound()=" << status.IsNotFound() << std::endl;
+  //std::cerr << "Get on DB=" << db << " key=" << filename << " status.ok()=" << status.ok() << " IsNotFound()=" << status.IsNotFound() << std::endl;
 
   /*
   if(status.IsNotFound()) {
