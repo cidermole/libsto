@@ -33,7 +33,7 @@ public:
    * Constructs an empty TreeNode, i.e. a leaf with a SuffixArray.
    * @param filename  load mtt-build *.sfa file if specified
    */
-  TreeNodeMemory(std::string filename, size_t maxArraySize = 10000);
+  TreeNodeMemory(std::string filename, void *, size_t maxArraySize = 10000);
 
   /*
   template<class IndexSpanMemory, class IndexSpanDisk>

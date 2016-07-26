@@ -14,6 +14,10 @@
 #include "Corpus.h"
 #include "MappedFile.h"
 
+namespace rocksdb {
+class DB;
+}
+
 namespace sto {
 
 /** Position that is byte-packed for efficient disk storage. */
@@ -53,7 +57,7 @@ template<class Token>
 class SuffixArrayDisk {
 public:
   /** Map 'filename' as a suffix array */
-  SuffixArrayDisk(const std::string &filename);
+  SuffixArrayDisk(const std::string &filename, rocksdb::DB *db);
 
   class Iterator {
   public:
@@ -87,9 +91,9 @@ public:
   Position<Token> operator[](size_t pos) const { return array_[pos]; }
 
 private:
+  std::string value_;
   SuffixArrayPosition<Token> *array_; /** pointer to mmapped suffix array on disk */
   size_t length_; /** length of array in number of entries (SuffixArrayPositions) */
-  std::unique_ptr<MappedFile> mapping_;
 };
 
 } // namespace sto

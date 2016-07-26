@@ -11,6 +11,10 @@
 #include "SuffixArrayDisk.h"
 //#include "TokenIndex.h"
 
+namespace rocksdb {
+class DB;
+}
+
 namespace sto {
 
 struct IndexTypeMemory;
@@ -40,7 +44,7 @@ public:
    *
    * @param path  path to the backing directory
    */
-  TreeNodeDisk(std::string path, size_t maxArraySize = 1000000);
+  TreeNodeDisk(std::string path, rocksdb::DB *db, size_t maxArraySize = 1000000); // TODO: ptr passing is incompatible with TokenIndex contructor.
 
   /** Set the path to the directory backing this DiskTreeNode. */
   //void SetPath(const std::string &path) { path_ = path; }
@@ -70,6 +74,7 @@ public:
 
 private:
   std::string path_; /** path to the directory backing this DiskTreeNode */
+  rocksdb::DB *db_;
 
   /** load child nodes as indicated by directory tree structure in 'path' */
   void LoadSubtree();
@@ -96,7 +101,7 @@ private:
   TreeNodeDisk<Token> *make_child_(Vid vid, typename SuffixArray::iterator first, typename SuffixArray::iterator last, const Corpus<Token> &corpus, Offset depth);
 
   /** Take ownership of 'first', and write array at this node level. */
-  void WriteArray(SuffixArrayPosition<Token> **first, SuffixArrayPosition<Token> *last);
+  void WriteArray(SuffixArrayPosition<Token> **first, SuffixArrayPosition<Token> *last, rocksdb::DB *db);
 };
 
 } // namespace sto

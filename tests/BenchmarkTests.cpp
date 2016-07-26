@@ -201,10 +201,10 @@ TEST_F(BenchmarkTests, index_100k) {
    *
    * 100 k lines, 2.8 M tokens
    */
-  static_assert(sizeof(SrcToken) == 4); // -> ~ 1 MB Corpus track (ep.10k)
+  //static_assert(sizeof(SrcToken) == 4); // -> ~ 1 MB Corpus track (ep.10k)
 
   // Sid (4), Offset (1) is padded up in the struct.
-  static_assert(sizeof(Position<SrcToken>) == 8); // -> ~2 MB TokenIndex, if purely SA based (ep.10k)
+  //static_assert(sizeof(Position<SrcToken>) == 8); // -> ~2 MB TokenIndex, if purely SA based (ep.10k)
 
   util::PrintUsage(std::cerr);
 
@@ -389,10 +389,10 @@ TEST_F(BenchmarkTests, DISABLED_index_b11) {
    *
    * 6.39 M lines, 103 M tokens
    */
-  static_assert(sizeof(SrcToken) == 4);
+  //static_assert(sizeof(SrcToken) == 4);
 
   // Sid (4), Offset (1) is padded up in the struct.
-  static_assert(sizeof(Position<SrcToken>) == 8);
+  //static_assert(sizeof(Position<SrcToken>) == 8);
 
   util::PrintUsage(std::cerr);
 

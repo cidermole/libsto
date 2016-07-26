@@ -16,13 +16,15 @@
 
 #include <boost/filesystem.hpp>
 
+#include "rocksdb/db.h"
+
 #define static_assert(x) static_cast<void>(0)
 
 namespace sto {
 
 template<class Token>
-TreeNodeDisk<Token>::TreeNodeDisk(std::string path, size_t maxArraySize) :
-    TreeNode<Token, SuffixArrayDisk<Token>>(maxArraySize), path_(path)
+TreeNodeDisk<Token>::TreeNodeDisk(std::string path, rocksdb::DB *db, size_t maxArraySize) :
+    TreeNode<Token, SuffixArrayDisk<Token>>(maxArraySize), path_(path), db_(db)
 {
   using namespace boost::filesystem;
 
@@ -31,15 +33,17 @@ TreeNodeDisk<Token>::TreeNodeDisk(std::string path, size_t maxArraySize) :
    * if path does not exist: create an empty leaf node here.
    */
   if(exists(path.c_str())) {
-    this->is_leaf_ = exists(array_path().c_str());
+    //this->is_leaf_ = exists(array_path().c_str());
+    this->is_leaf_ = true; // TODO
   } else {
-    create_directories(path.c_str());
-    ofstream(array_path().c_str()); // create empty suffix array
+    //create_directories(path.c_str());
+    //ofstream(array_path().c_str()); // create empty suffix array
     this->is_leaf_ = true;
+    // TODO
   }
 
   if(this->is_leaf_) {
-    this->array_.reset(new SuffixArrayDisk<Token>(array_path()));
+    this->array_.reset(new SuffixArrayDisk<Token>(array_path(), db_));
   } else {
     LoadSubtree();
   }
@@ -65,7 +69,7 @@ void TreeNodeDisk<Token>::LoadSubtree() {
       Vid vid = static_cast<Vid>(strtoul(p2.filename().native().c_str(), NULL, 16));
       assert(absolute(child_path(vid).c_str()).native() == absolute(p2).native()); // using the vid we just read, we must arrive at the same path
 
-      TreeNodeDisk<Token> *new_child = new TreeNodeDisk<Token>(child_path(vid), this->kMaxArraySize);
+      TreeNodeDisk<Token> *new_child = new TreeNodeDisk<Token>(child_path(vid), this->db_, this->kMaxArraySize);
       size_t new_size = new_child->size();
       this->children_.FindOrInsert(vid, /* add_size = */ new_size) = new_child;
 
@@ -99,29 +103,6 @@ void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<To
   // disallow splits of </s> - as argued in TreeNodeMemory::AddPosition()
   // bool allow_split = sent.size() + 1 > start + depth; // +1 for implicit </s>
   bool allow_split = curSize > 0 && corpus.sentence(curSpan[0].sid).size() + 1 > curSpan[0].offset + depth;
-
-  if(!allow_split) {
-    // optimized case: we can just append to the file instead of building newArray in RAM
-
-    SuffixArrayPosition<Token> *addArray = new SuffixArrayPosition<Token>[addSize];
-    for(iadd = 0; iadd < addSize; iadd++)
-      addArray[iadd] = addSpan[iadd];
-
-    FILE *fout = fopen(array_path().c_str(), "rb+");
-    if(!fout) {
-      delete[] addArray;
-      throw std::runtime_error(std::string("failed to open array file for append at ") + array_path());
-    }
-    fseek(fout, sizeof(SuffixArrayPosition<Token>) * this->array_->size(), SEEK_SET);
-    fwrite(addArray, sizeof(SuffixArrayPosition<Token>), addSize, fout);
-    fclose(fout);
-    delete[] addArray;
-
-    // map the newly written array, and atomically replace the old array_
-    this->array_.reset(new SuffixArrayDisk<Token>(array_path()));
-
-    return;
-  }
 
   SuffixArrayPosition<Token> *newArray = new SuffixArrayPosition<Token>[newSize];
   SuffixArrayPosition<Token> *pnew = newArray;
@@ -169,9 +150,10 @@ void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<To
 
 
   // the existing mmap continues to point to the old file data afterwards (since the file remains open)
-  WriteArray(&newArray, newArray + newSize);
+  WriteArray(&newArray, newArray + newSize, db_);
   // map the newly written array, and atomically replace the old array_
-  this->array_.reset(new SuffixArrayDisk<Token>(array_path()));
+  this->array_.reset(new SuffixArrayDisk<Token>(array_path(), db_));
+  assert(this->array_->size() == newSize);
 
   /*
    * note: should it become necessary to split </s> array, a simple sharding concept
@@ -183,8 +165,8 @@ void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<To
    * See above at if(!allow_split) "optimized case".
    */
 
-  assert(allow_split);
-  if(this->array_->size() > this->kMaxArraySize) {
+  //assert(allow_split);
+  if(allow_split && this->array_->size() > this->kMaxArraySize) {
     SplitNode(corpus, depth);
   }
 }
@@ -227,7 +209,7 @@ void TreeNodeDisk<Token>::Merge(typename TokenIndex<Token, IndexTypeMemory>::Spa
 
 template<class Token>
 void TreeNodeDisk<Token>::AddLeaf(Vid vid) {
-  this->children_[vid] = new TreeNodeDisk<Token>(child_path(vid), this->kMaxArraySize);
+  this->children_[vid] = new TreeNodeDisk<Token>(child_path(vid), this->db_, this->kMaxArraySize);
 }
 
 template<class Token>
@@ -239,7 +221,7 @@ template<class Token>
 std::string TreeNodeDisk<Token>::child_sub_path(Vid vid) {
   constexpr size_t kVidDigits = sizeof(Vid)*2;
   constexpr size_t kSignificantDigitsDir2 = 3;
-  static_assert(kVidDigits > kSignificantDigitsDir2); // for dir1 size to work
+  //static_assert(kVidDigits > kSignificantDigitsDir2); // for dir1 size to work
 
   // e.g. vid=0x0007a120 -> "000007a/0007a120" (dir1/dir2)
   std::stringstream hexVid;
@@ -254,34 +236,33 @@ std::string TreeNodeDisk<Token>::child_sub_path(Vid vid) {
 
 template<class Token>
 TreeNodeDisk<Token> *TreeNodeDisk<Token>::make_child_(Vid vid, typename SuffixArray::iterator first, typename SuffixArray::iterator last, const Corpus<Token> &corpus, Offset depth) {
-  TreeNodeDisk<Token> *new_child = new TreeNodeDisk<Token>(child_path(vid), this->kMaxArraySize);
+  TreeNodeDisk<Token> *new_child = new TreeNodeDisk<Token>(child_path(vid), this->db_, this->kMaxArraySize);
   new_child->MergeLeaf(SuffixArrayPositionSpan<Token>(first.ptr(), last.ptr()), corpus, depth);
   //new_array->insert(new_array->begin(), first, last); // this is the TreeNodeMemory interface. Maybe we could have implemented insert() here on SuffixArrayDisk, and use a common call?
   return new_child;
 }
 
 template<class Token>
-void TreeNodeDisk<Token>::WriteArray(SuffixArrayPosition<Token> **first, SuffixArrayPosition<Token> *last) {
-  // write newArray to a temp file first
-  std::string array_tmp = array_path() + ".tmp";
-  FILE *tmp = fopen(array_tmp.c_str(), "wb");
-  if(!tmp) {
-    delete[] *first;
-    first = nullptr;
+void TreeNodeDisk<Token>::WriteArray(SuffixArrayPosition<Token> **first, SuffixArrayPosition<Token> *last, rocksdb::DB *db) {
+  void *data = *first;
+  size_t size = sizeof(SuffixArrayPosition<Token>) * (last - *first);
 
-    // note: this error may happen if we run out of file handles. On my Linux system, this is 4096 by default (way too low).
-    // see  $ ulimit -Sn  and  /etc/security/limits.conf
-    // 1000000 seems like a good limit
-    // 2000000 is too much and Linux fails to log me in:  pam_limits(systemd-user:session): Could not set limit for 'nofile': Operation not permitted
-    throw std::runtime_error(std::string("failed to open array.tmp file for write at ") + array_tmp);
-  }
-  fwrite(*first, sizeof(SuffixArrayPosition<Token>), last - *first, tmp);
-  fclose(tmp);
-  delete[] *first;
-  first = nullptr;
+  std::cerr << "in WriteArray(), my DB " << " = " << db << std::endl;
 
-  // move temp file to array
-  boost::filesystem::rename(array_tmp.c_str(), array_path().c_str());
+  std::string key_str = array_path();
+  rocksdb::Slice key = key_str; // this is a reference, and as such, it MUST refer to something in this scope (must not be Slice key = array_path())
+  rocksdb::Slice val((const char *) data, size);
+  rocksdb::Status status = db->Put(rocksdb::WriteOptions(), key, val);
+  std::cerr << "Put key=" << key_str << " len=" << size << " ok=" << status.ok() << std::endl;
+
+  // DEBUG:
+
+  //rocksdb::Slice key = filename;
+  std::string value;
+
+  rocksdb::Status status2 = db->Get(rocksdb::ReadOptions(), key, &value);
+  std::cerr << "immediate-Get key=" << key_str << " status.ok()=" << status2.ok() << " IsNotFound()=" << status2.IsNotFound() << std::endl;
+  assert(status2.ok());
 }
 
 // explicit template instantiation

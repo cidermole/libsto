@@ -21,6 +21,8 @@
 #include "util/Time.h"
 #include "util/usage.h"
 
+#include "rocksdb/db.h"
+
 using namespace sto;
 
 template<typename TypeTagT> std::string getBasePath();
@@ -43,7 +45,7 @@ struct TokenIndexTests : ::testing::Test {
   std::string basePath;
   Vocab<Token> vocab;
   Corpus<Token> corpus;
-  TokenIndexType tokenIndex;
+  rocksdb::DB *db;
 
   Sentence<Token> AddSentence(const std::vector<std::string> &surface) {
     std::vector<Token> sent;
@@ -59,20 +61,45 @@ struct TokenIndexTests : ::testing::Test {
   void fill_tree_2level_common_prefix_the(TokenIndexType &tokenIndex);
   void tree_2level_common_prefix_the_m(size_t maxLeafSize);
 
-  TokenIndexTests() : basePath(getCleanBasePath<TypeTag>()), corpus(&vocab), tokenIndex(basePath, corpus) {
+  TokenIndexTests() : basePath(getCleanBasePath<TypeTag>()), corpus(&vocab), db(nullptr) {
     // note: cleaning of basePath needs to happen before tokenIndex construction, hence getCleanBasePath()
+    std::cerr << "TokenIndexTests() ctor..." << std::endl;
+    openDatabase();
+    std::cerr << "TokenIndexTests() ctor done." << std::endl;
   }
   virtual ~TokenIndexTests() {
     //removeTestBase(); // comment this for debugging a single test
+    if(db) {
+      delete db;
+      db = nullptr;
+    }
   }
   void removeTestBase() {
     getCleanBasePath<TypeTag>();
+  }
+  void openDatabase() {
+    std::cerr << "openDatabase() basePath='" << basePath << "'" << std::endl;
+    if(basePath == "")
+      return; // leave db=nullptr for RAM-based index
+
+    rocksdb::Options options;
+    options.create_if_missing = true;
+    options.use_fsync = true;
+    //std::cerr << "opening DB " << basePath << " ..." << std::endl;
+    rocksdb::Status status = rocksdb::DB::Open(options, basePath, &db);
+    std::cerr << "opened DB " << basePath << " = " << db << std::endl;
+    assert(status.ok());
+    EXPECT_TRUE(status.ok());
+    assert(db != nullptr);
+    EXPECT_NE(nullptr, db);
   }
 };
 
 template<typename TypeTagT>
 std::string getCleanBasePath() {
   std::string basePath = getBasePath<TypeTagT>();
+
+  std::cerr << "getCleanBasePath() = '" << basePath << "'" << std::endl;
 
   using namespace boost::filesystem;
   boost::system::error_code ec;
@@ -92,6 +119,116 @@ typedef ::testing::Types<
 > TokenIndexTypes;
 TYPED_TEST_CASE(TokenIndexTests, TokenIndexTypes);
 
+TYPED_TEST(TokenIndexTests, rocksdb) {
+
+  if(this->basePath == "") // RAM variant
+    return;
+
+  std::cerr << "------ starting TokenIndexTests.rocksdb ------" << std::endl;
+
+  //bool alloc_myself = true;
+  bool alloc_myself = false;
+
+  if(alloc_myself && this->db) {
+    // ensure no open DB in directory which we will clean next.
+    delete this->db;
+    this->db = nullptr;
+
+    this->removeTestBase();
+  }
+
+
+  //std::string basePath = this->basePath;
+  std::string basePath = this->basePath;
+  rocksdb::DB *db = nullptr;
+
+  // Open the DB
+
+  if(alloc_myself) {
+    rocksdb::Options options;
+    options.create_if_missing = true;
+    std::cerr << "opening DB " << basePath << " ..." << std::endl;
+    rocksdb::Status status = rocksdb::DB::Open(options, basePath, &db);
+    assert(status.ok());
+    EXPECT_TRUE(status.ok());
+    assert(db != nullptr);
+    EXPECT_NE(nullptr, db);
+  } else {
+    db = this->db;
+  }
+
+  std::string key_str = "res/TokenIndexTests/00000/00000002/array";
+
+  // ensure key does not exist (in empty DB)
+
+  {
+    rocksdb::Slice key = key_str;
+    std::string value;
+
+    rocksdb::Status status = db->Get(rocksdb::ReadOptions(), key, &value);
+    std::cerr << "Get key=" << key_str << " status.ok()=" << status.ok() << " IsNotFound()=" << status.IsNotFound() << std::endl;
+    EXPECT_FALSE(status.ok());
+    EXPECT_TRUE(status.IsNotFound());
+  }
+
+  // insert the key
+
+  {
+    const char buf[] = {1, 2, 3, 4, 5};
+
+    const void *data = buf;
+    size_t size = 5;
+
+    rocksdb::Slice key = key_str;
+    rocksdb::Slice val((const char *) data, size);
+    rocksdb::Status status = db->Put(rocksdb::WriteOptions(), key, val);
+    std::cerr << "Put key=" << key_str << " len=" << size << " ok=" << status.ok() << std::endl;
+
+  }
+
+  // try close and re-open
+  {
+
+    if(alloc_myself) {
+      delete this->db;
+      this->db = nullptr;
+    } else {
+      delete db;
+      db = nullptr;
+    }
+
+    rocksdb::Options options;
+    options.create_if_missing = true;
+    std::cerr << "opening DB " << basePath << " ..." << std::endl;
+    rocksdb::Status status = rocksdb::DB::Open(options, basePath, &db);
+    assert(status.ok());
+    EXPECT_TRUE(status.ok());
+    assert(db != nullptr);
+    EXPECT_NE(nullptr, db);
+  }
+
+  // ensure key exists
+
+  {
+    // DEBUG:
+
+    rocksdb::Slice key = key_str;
+    std::string value;
+
+    rocksdb::Status status2 = db->Get(rocksdb::ReadOptions(), key, &value);
+    std::cerr << "immediate-Get key=" << key_str << " status.ok()=" << status2.ok() << " IsNotFound()=" << status2.IsNotFound() << std::endl;
+    EXPECT_TRUE(status2.ok());
+    EXPECT_FALSE(status2.IsNotFound());
+    EXPECT_EQ(5, value.size());
+    EXPECT_EQ(2, value[1]);
+  }
+
+  if(alloc_myself)
+    delete db;
+
+  std::cerr << "------ ending TokenIndexTests.rocksdb ------" << std::endl;
+}
+
 // demo Test Fixture
 TYPED_TEST(TokenIndexTests, get_word) {
   typedef typename TypeParam::TokenT Token;
@@ -103,9 +240,10 @@ TYPED_TEST(TokenIndexTests, add_sentence) {
   typedef TypeParam TokenIndexType;
   typedef typename TypeParam::TokenT Token;
 
+  TokenIndexType tokenIndex(this->basePath, this->corpus, this->db);
   Sentence<Token> sentence = this->AddSentence({"this", "is", "an", "example"});
-  this->tokenIndex.AddSentence(sentence);
-  typename TokenIndexType::Span span = this->tokenIndex.span();
+  tokenIndex.AddSentence(sentence);
+  typename TokenIndexType::Span span = tokenIndex.span();
   EXPECT_EQ(4, span.size()) << "the Sentence should have added 4 tokens to the IndexSpan";
 }
 
@@ -125,9 +263,10 @@ TYPED_TEST(TokenIndexTests, suffix_array_paper_example) {
   // '", "'.join(['"'] + 'the dog bit the cat on the mat </s>'.split() + ['"'])
   //                                     0      1      2      3      4      5     6      7
   std::vector<std::string> sent_words = {"the", "dog", "bit", "the", "cat", "on", "the", "mat"};
+  TokenIndexType tokenIndex(this->basePath, this->corpus, this->db);
   Sentence<Token> sentence = this->AddSentence(sent_words);
-  this->tokenIndex.AddSentence(sentence);
-  typename TokenIndexType::Span span = this->tokenIndex.span();
+  tokenIndex.AddSentence(sentence);
+  typename TokenIndexType::Span span = tokenIndex.span();
   EXPECT_EQ(sent_words.size(), span.size()) << "the Sentence should have added its tokens to the IndexSpan";
 
   // ideas:
@@ -188,7 +327,7 @@ TYPED_TEST(TokenIndexTests, suffix_array_split) {
     this->vocab[s]; // vocabulary insert (in this ID order, so sort by vid is intuitive)
 
 
-  TokenIndexType tokenIndex(this->basePath, this->corpus, /* maxLeafSize = */ 7);
+  TokenIndexType tokenIndex(this->basePath, this->corpus, this->db, /* maxLeafSize = */ 7);
 
   //                                     0      1      2      3      4      5     6      7
   std::vector<std::string> sent_words = {"the", "dog", "bit", "the", "cat", "on", "the", "mat"};
@@ -241,7 +380,7 @@ TYPED_TEST(TokenIndexTests, tree_common_prefix) {
     this->vocab[s]; // vocabulary insert (in this ID order, so sort by vid is intuitive)
 
 
-  TokenIndexType tokenIndex(this->basePath, this->corpus, /* maxLeafSize = */ 7);
+  TokenIndexType tokenIndex(this->basePath, this->corpus, this->db, /* maxLeafSize = */ 7);
 
   //                                      0      1      2      3      4      5     6      7
   std::vector<std::string> sent0_words = {"the", "dog", "bit", "the", "cat", "on", "the", "mat"};
@@ -326,7 +465,7 @@ void TokenIndexTests<TokenIndexType>::fill_tree_2level_common_prefix_the(TokenIn
 TYPED_TEST(TokenIndexTests, tree_2level_common_prefix_the) {
   typedef TypeParam TokenIndexType;
 
-  TokenIndexType tokenIndex(this->basePath, this->corpus, /* maxLeafSize = */ 4);
+  TokenIndexType tokenIndex(this->basePath, this->corpus, this->db, /* maxLeafSize = */ 4);
   this->fill_tree_2level_common_prefix_the(tokenIndex);
 
   std::stringstream actual_tree;
@@ -373,7 +512,7 @@ TYPED_TEST(TokenIndexTests, tree_2level_common_prefix_the) {
 
 template<typename TokenIndexType>
 void TokenIndexTests<TokenIndexType>::tree_2level_common_prefix_the_m(size_t maxLeafSize) {
-  TokenIndexType tokenIndex(this->basePath, this->corpus, maxLeafSize);
+  TokenIndexType tokenIndex(this->basePath, this->corpus, this->db, maxLeafSize);
   fill_tree_2level_common_prefix_the(tokenIndex);
 
   std::vector<Position<Token>> expected_pos = {

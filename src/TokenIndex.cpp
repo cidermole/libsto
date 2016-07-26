@@ -15,11 +15,11 @@ namespace sto {
 // --------------------------------------------------------
 
 template<class Token, typename TypeTag>
-TokenIndex<Token, TypeTag>::TokenIndex(const std::string &filename, Corpus<Token> &corpus, size_t maxLeafSize) : corpus_(&corpus), root_(new TreeNodeT(filename, maxLeafSize))
+TokenIndex<Token, TypeTag>::TokenIndex(const std::string &filename, Corpus<Token> &corpus, rocksdb::DB *db, size_t maxLeafSize) : corpus_(&corpus), root_(new TreeNodeT(filename, db, maxLeafSize))
 {}
 
 template<class Token, typename TypeTag>
-TokenIndex<Token, TypeTag>::TokenIndex(Corpus<Token> &corpus, size_t maxLeafSize) : corpus_(&corpus), root_(new TreeNodeT("", maxLeafSize))
+TokenIndex<Token, TypeTag>::TokenIndex(Corpus<Token> &corpus, size_t maxLeafSize) : corpus_(&corpus), root_(new TreeNodeT("", nullptr, maxLeafSize))
 {}
 
 template<class Token, typename TypeTag>
