@@ -16,6 +16,8 @@
 
 #include <boost/filesystem.hpp>
 
+#define static_assert(x) static_cast<void>(0)
+
 namespace sto {
 
 template<class Token>

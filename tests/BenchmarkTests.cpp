@@ -21,6 +21,8 @@
 #include "util/Time.h"
 #include "util/usage.h"
 
+#define static_assert(x) static_cast<void>(0)
+
 using namespace sto;
 
 /**
