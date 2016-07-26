@@ -63,9 +63,7 @@ struct TokenIndexTests : ::testing::Test {
 
   TokenIndexTests() : basePath(getCleanBasePath<TypeTag>()), corpus(&vocab), db(nullptr) {
     // note: cleaning of basePath needs to happen before tokenIndex construction, hence getCleanBasePath()
-    std::cerr << "TokenIndexTests() ctor..." << std::endl;
     openDatabase();
-    std::cerr << "TokenIndexTests() ctor done." << std::endl;
   }
   virtual ~TokenIndexTests() {
     //removeTestBase(); // comment this for debugging a single test
@@ -78,7 +76,6 @@ struct TokenIndexTests : ::testing::Test {
     getCleanBasePath<TypeTag>();
   }
   void openDatabase() {
-    std::cerr << "openDatabase() basePath='" << basePath << "'" << std::endl;
     if(basePath == "")
       return; // leave db=nullptr for RAM-based index
 
@@ -87,7 +84,6 @@ struct TokenIndexTests : ::testing::Test {
     options.use_fsync = true;
     //std::cerr << "opening DB " << basePath << " ..." << std::endl;
     rocksdb::Status status = rocksdb::DB::Open(options, basePath, &db);
-    std::cerr << "opened DB " << basePath << " = " << db << std::endl;
     assert(status.ok());
     EXPECT_TRUE(status.ok());
     assert(db != nullptr);
@@ -98,8 +94,6 @@ struct TokenIndexTests : ::testing::Test {
 template<typename TypeTagT>
 std::string getCleanBasePath() {
   std::string basePath = getBasePath<TypeTagT>();
-
-  std::cerr << "getCleanBasePath() = '" << basePath << "'" << std::endl;
 
   using namespace boost::filesystem;
   boost::system::error_code ec;
@@ -124,7 +118,7 @@ TYPED_TEST(TokenIndexTests, rocksdb) {
   if(this->basePath == "") // RAM variant
     return;
 
-  std::cerr << "------ starting TokenIndexTests.rocksdb ------" << std::endl;
+  //std::cerr << "------ starting TokenIndexTests.rocksdb ------" << std::endl;
 
   //bool alloc_myself = true;
   bool alloc_myself = false;
@@ -147,7 +141,7 @@ TYPED_TEST(TokenIndexTests, rocksdb) {
   if(alloc_myself) {
     rocksdb::Options options;
     options.create_if_missing = true;
-    std::cerr << "opening DB " << basePath << " ..." << std::endl;
+    //std::cerr << "opening DB " << basePath << " ..." << std::endl;
     rocksdb::Status status = rocksdb::DB::Open(options, basePath, &db);
     assert(status.ok());
     EXPECT_TRUE(status.ok());
@@ -166,7 +160,7 @@ TYPED_TEST(TokenIndexTests, rocksdb) {
     std::string value;
 
     rocksdb::Status status = db->Get(rocksdb::ReadOptions(), key, &value);
-    std::cerr << "Get key=" << key_str << " status.ok()=" << status.ok() << " IsNotFound()=" << status.IsNotFound() << std::endl;
+    //std::cerr << "Get key=" << key_str << " status.ok()=" << status.ok() << " IsNotFound()=" << status.IsNotFound() << std::endl;
     EXPECT_FALSE(status.ok());
     EXPECT_TRUE(status.IsNotFound());
   }
@@ -182,7 +176,7 @@ TYPED_TEST(TokenIndexTests, rocksdb) {
     rocksdb::Slice key = key_str;
     rocksdb::Slice val((const char *) data, size);
     rocksdb::Status status = db->Put(rocksdb::WriteOptions(), key, val);
-    std::cerr << "Put key=" << key_str << " len=" << size << " ok=" << status.ok() << std::endl;
+    //std::cerr << "Put key=" << key_str << " len=" << size << " ok=" << status.ok() << std::endl;
 
   }
 
@@ -199,7 +193,7 @@ TYPED_TEST(TokenIndexTests, rocksdb) {
 
     rocksdb::Options options;
     options.create_if_missing = true;
-    std::cerr << "opening DB " << basePath << " ..." << std::endl;
+    //std::cerr << "opening DB " << basePath << " ..." << std::endl;
     rocksdb::Status status = rocksdb::DB::Open(options, basePath, &db);
     assert(status.ok());
     EXPECT_TRUE(status.ok());
@@ -216,7 +210,7 @@ TYPED_TEST(TokenIndexTests, rocksdb) {
     std::string value;
 
     rocksdb::Status status2 = db->Get(rocksdb::ReadOptions(), key, &value);
-    std::cerr << "immediate-Get key=" << key_str << " status.ok()=" << status2.ok() << " IsNotFound()=" << status2.IsNotFound() << std::endl;
+    //std::cerr << "immediate-Get key=" << key_str << " status.ok()=" << status2.ok() << " IsNotFound()=" << status2.IsNotFound() << std::endl;
     EXPECT_TRUE(status2.ok());
     EXPECT_FALSE(status2.IsNotFound());
     EXPECT_EQ(5, value.size());
@@ -226,7 +220,7 @@ TYPED_TEST(TokenIndexTests, rocksdb) {
   if(alloc_myself)
     delete db;
 
-  std::cerr << "------ ending TokenIndexTests.rocksdb ------" << std::endl;
+  //std::cerr << "------ ending TokenIndexTests.rocksdb ------" << std::endl;
 }
 
 // demo Test Fixture
