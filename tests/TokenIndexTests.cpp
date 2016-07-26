@@ -22,6 +22,8 @@
 #include "util/usage.h"
 
 #include "rocksdb/db.h"
+#include "rocksdb/slice_transform.h"
+
 
 using namespace sto;
 
@@ -81,7 +83,8 @@ struct TokenIndexTests : ::testing::Test {
 
     rocksdb::Options options;
     options.create_if_missing = true;
-    options.use_fsync = true;
+    //options.use_fsync = true;
+    options.prefix_extractor.reset(rocksdb::NewFixedPrefixTransform(4)); // needs to match up with actual type prefix sizes TODO: make a constant
     //std::cerr << "opening DB " << basePath << " ..." << std::endl;
     rocksdb::Status status = rocksdb::DB::Open(options, basePath, &db);
     assert(status.ok());

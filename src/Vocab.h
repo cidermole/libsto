@@ -11,6 +11,10 @@
 #include <cassert>
 #include <unordered_map>
 
+namespace rocksdb {
+class DB;
+}
+
 namespace sto {
 
 /**
@@ -22,12 +26,13 @@ class Vocab {
 public:
   typedef typename Token::Vid Vid;
   static constexpr typename Token::Vid kEOS = 1; /** vocabulary ID for </s>, the end-of-sentence sentinel token */
+  static constexpr char kEOSSurface[] = "</s>"; // to do: call kEOS kEosVid, this kEosSurface
 
   /** Create empty vocabulary */
-  Vocab();
+  Vocab(rocksdb::DB *db = nullptr);
 
   /** Load vocabulary from mtt-build .tdx format */
-  Vocab(const std::string &filename);
+  Vocab(const std::string &filename, rocksdb::DB *db = nullptr);
 
   /** Returns the surface form of `token`. */
   const std::string& operator[](const Token token) const;
@@ -51,9 +56,17 @@ private:
   std::unordered_map<Vid, std::string> id2surface_;
   std::unordered_map<std::string, Vid> surface2id_;
   Vid size_;
+  rocksdb::DB *db_;
 
   /** Load vocabulary from mtt-build .tdx format */
   void load_ugsapt_tdx(const std::string &filename);
+
+  static std::string vid_key(Vid vid);
+  static std::string surface_key(const std::string &surface);
+
+  void db_put_pair(Vid vid, const std::string &surface);
+
+  void db_load();
 };
 
 /** Empty vocabulary interface without implementations, to provide as a template argument. */
