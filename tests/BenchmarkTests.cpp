@@ -21,6 +21,9 @@
 #include "util/Time.h"
 #include "util/usage.h"
 
+#include <boost/filesystem.hpp>
+#include "DB.h"
+
 #define static_assert(x) static_cast<void>(0)
 
 using namespace sto;
@@ -121,6 +124,63 @@ void BenchmarkTests::create_random_queries(TokenIndex<SrcToken> &tokenIndex, std
   }
 }
 
+
+static std::string getBasePath() {
+  return "res/BenchmarkTests";
+}
+
+static std::string getCleanBasePath() {
+  std::string basePath = getBasePath();
+
+  using namespace boost::filesystem;
+  boost::system::error_code ec;
+  path base(basePath);
+  remove_all(base, ec); // ensure no leftovers
+
+  return basePath;
+}
+
+static void removeTestBase() {
+  getCleanBasePath();
+}
+
+
+TEST_F(BenchmarkTests, dynamic_memory_vs_disk) {
+  typedef SrcToken Token;
+
+  Vocab<Token> sv("/home/david/MMT/engines/default/models/phrase_tables/model.en.tdx");
+  Corpus<Token> sc("/home/david/MMT/engines/default/models/phrase_tables/model.en.mct", &sv);
+  TokenIndex<Token, IndexTypeMemory> staticIndex("/home/david/MMT/engines/default/models/phrase_tables/model.en.sfa",
+                                                 sc); // built with mtt-build
+
+  TokenIndex<Token, IndexTypeMemory> dynamicIndexMemory("", sc); // building dynamically
+
+  benchmark_time([&sc, &dynamicIndexMemory]() {
+    std::cerr << "building dynamicIndex..." << std::endl;
+    for (size_t i = 0; i < sc.size(); i++) {
+      if (i % 1000 == 0)
+        std::cerr << "dynamicIndex @ AddSentence(i=" << i << ")..." << std::endl;
+      dynamicIndexMemory.AddSentence(sc.sentence(i));
+    }
+    std::cerr << "building dynamicIndex (memory) done." << std::endl;
+  }, "dynamicIndexMemory");
+
+  std::shared_ptr<DB<Token>> db(new DB<Token>(getCleanBasePath()));
+
+  TokenIndex<Token, IndexTypeDisk> dynamicIndexDisk(getBasePath(), sc, db); // building dynamically
+
+  benchmark_time([&sc, &dynamicIndexDisk]() {
+    std::cerr << "building dynamicIndex..." << std::endl;
+    for (size_t i = 0; i < sc.size(); i++) {
+      if (i % 1000 == 0)
+        std::cerr << "dynamicIndex @ AddSentence(i=" << i << ")..." << std::endl;
+      dynamicIndexDisk.AddSentence(sc.sentence(i));
+    }
+    std::cerr << "building dynamicIndex (disk) done." << std::endl;
+  }, "dynamicIndexDisk");
+
+  //removeTestBase();
+}
 
 TEST_F(BenchmarkTests, index_eim_small) {
   Vocab<SrcToken> vocab;

@@ -46,11 +46,11 @@ TEST(VocabTests, load) {
   ASSERT_THROW(sv.at("banana"), std::out_of_range) << "out-of-range access must throw an exception";
 }
 
-std::string getBasePath() {
+static std::string getBasePath() {
   return "res/VocabTests";
 }
 
-std::string getCleanBasePath() {
+static std::string getCleanBasePath() {
   std::string basePath = getBasePath();
 
   using namespace boost::filesystem;
@@ -61,7 +61,7 @@ std::string getCleanBasePath() {
   return basePath;
 }
 
-void removeTestBase() {
+static void removeTestBase() {
   getCleanBasePath();
 }
 
