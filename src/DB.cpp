@@ -25,7 +25,7 @@ DB<Token>::DB(const std::string &basePath) {
   //options.use_fsync = true;
   options.prefix_extractor.reset(rocksdb::NewFixedPrefixTransform(DB::KEY_PREFIX_LEN));
 
-  std::cerr << "opening DB " << basePath << " ..." << std::endl;
+  //std::cerr << "opening DB " << basePath << " ..." << std::endl;
   rocksdb::Status status = rocksdb::DB::Open(options, basePath, &db);
 
   assert(status.ok());
@@ -34,7 +34,7 @@ DB<Token>::DB(const std::string &basePath) {
 
 template<class Token>
 DB<Token>::~DB() {
-  std::cerr << "closing DB." << std::endl;
+  //std::cerr << "closing DB." << std::endl;
 }
 
 /*
