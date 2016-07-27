@@ -90,9 +90,6 @@ public:
    */
   NodeType IsNodeLeaf(const std::string &path);
 
-  // temporary
-  rocksdb::DB *get() { return db_.get(); }
-
 private:
   std::unique_ptr<rocksdb::DB> db_;
 

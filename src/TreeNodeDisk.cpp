@@ -33,26 +33,6 @@ TreeNodeDisk<Token>::TreeNodeDisk(std::string path, std::shared_ptr<DB<Token>> d
   // TODO: no need for SuffixArrayDisk. We keep everything in memory anyway.
   // (we could unify SuffixArrayDisk and SuffixArrayMemory)
 
-/*
-  std::string array_key_str = array_path();
-  std::string children_key_str = path;
-  std::string value_discarded;
-  std::string children;
-
-
-  if (db->get()->Get(rocksdb::ReadOptions(), array_key_str, &value_discarded).ok()) {
-    // has array -> leaf
-    this->is_leaf_ = true;
-  } else if (db->get()->Get(rocksdb::ReadOptions(), children_key_str, &children).ok()) {
-    // has children -> internal node
-    this->is_leaf_ = false;
-  } else {
-    // no array, no children -> new empty leaf node
-    std::string empty;
-    db->get()->Put(rocksdb::WriteOptions(), array_key_str, empty);
-    this->is_leaf_ = true;
-  }
-*/
   this->is_leaf_ = db_->IsNodeLeaf(path_) ? true : false;
 
   if(this->is_leaf_) {
