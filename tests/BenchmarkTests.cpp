@@ -315,6 +315,37 @@ TEST_F(BenchmarkTests, index_100k) {
 }
 
 
+TEST_F(BenchmarkTests, index_100k_disk) {
+  Vocab<SrcToken> vocab;
+  Corpus<SrcToken> corpus(&vocab);
+
+  std::string textFile = kTextFile;
+  const size_t nlines = 100000;
+
+  util::PrintUsage(std::cerr);
+
+  benchmark_time([&corpus, &vocab, &textFile, &nlines](){
+    ReadTextFile(corpus, vocab, textFile, nlines);
+  }, "read");
+  util::PrintUsage(std::cerr);
+
+  ///////////////////////////
+
+  std::shared_ptr<DB<SrcToken>> db(new DB<SrcToken>(getCleanBasePath()));
+
+  TokenIndex<SrcToken, IndexTypeDisk> tokenIndex(getBasePath(), corpus, db, /* maxLeafSize = */ 10000);
+
+  benchmark_time([&corpus, &tokenIndex](){
+    for(size_t i = 0; i < corpus.size(); i++) {
+      if(i % 1000 == 0)
+        std::cerr << "tokenIndex @ AddSentence(i=" << i << ")..." << std::endl;
+      tokenIndex.AddSentence(corpus.sentence(i));
+    }
+  }, "build_index");
+  util::PrintUsage(std::cerr);
+}
+
+
 TEST_F(BenchmarkTests, nosplit_eos) {
   // verify that </s> does not get split even if we add more sentences than maxLeafSize.
   // TokenIndex would fail with an assertion if the split should happen.

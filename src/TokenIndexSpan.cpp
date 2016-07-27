@@ -45,6 +45,9 @@ size_t TokenIndex<Token, TypeTag>::Span::narrow(Token t) {
   if (in_array() && array_path_.size() == 0)
     array_path_.push_back(Range{0, tree_path_.back()->size()});
 
+  //                                                    v == in_array()
+  assert(sequence_.size() == (tree_path_.size() - 1) + (array_path_.size() ? (array_path_.size() - 1) : 0));
+
   return new_span;
 }
 
