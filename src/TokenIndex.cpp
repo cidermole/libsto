@@ -15,7 +15,7 @@ namespace sto {
 // --------------------------------------------------------
 
 template<class Token, typename TypeTag>
-TokenIndex<Token, TypeTag>::TokenIndex(const std::string &filename, Corpus<Token> &corpus, rocksdb::DB *db, size_t maxLeafSize) : corpus_(&corpus), root_(new TreeNodeT(filename, db, maxLeafSize))
+TokenIndex<Token, TypeTag>::TokenIndex(const std::string &filename, Corpus<Token> &corpus, std::shared_ptr<DB<Token>> db, size_t maxLeafSize) : corpus_(&corpus), root_(new TreeNodeT(filename, db, maxLeafSize))
 {}
 
 template<class Token, typename TypeTag>

@@ -7,15 +7,14 @@
 #ifndef STO_DISKTREENODE_H
 #define STO_DISKTREENODE_H
 
+#include <memory>
+
 #include "TreeNode.h"
 #include "SuffixArrayDisk.h"
-//#include "TokenIndex.h"
-
-namespace rocksdb {
-class DB;
-}
 
 namespace sto {
+
+template<class Token> class DB;
 
 struct IndexTypeMemory;
 struct IndexTypeDisk;
@@ -44,7 +43,9 @@ public:
    *
    * @param path  path to the backing directory
    */
-  TreeNodeDisk(std::string path, rocksdb::DB *db, size_t maxArraySize = 1000000); // TODO: ptr passing is incompatible with TokenIndex contructor.
+  TreeNodeDisk(std::string path, std::shared_ptr<DB<Token>> db, size_t maxArraySize = 1000000); // TODO: ptr passing is incompatible with TokenIndex contructor.
+
+  virtual ~TreeNodeDisk() = default;
 
   /** Set the path to the directory backing this DiskTreeNode. */
   //void SetPath(const std::string &path) { path_ = path; }
@@ -74,7 +75,7 @@ public:
 
 private:
   std::string path_; /** path to the directory backing this DiskTreeNode */
-  rocksdb::DB *db_;
+  std::shared_ptr<DB<Token>> db_;
 
   /** load child nodes below 'path' as indicated by the passed sequence of child vids. */
   void LoadSubtree(const Vid *children, size_t num_children);

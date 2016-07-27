@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 #include <unordered_map>
 
 #include "Types.h"
@@ -18,6 +19,16 @@ class DB;
 }
 
 namespace sto {
+
+template<class Token> struct SuffixArrayPosition;
+template<class Token> struct SuffixArrayDisk;
+
+/** indicates TreeNodeDisk type, returned by DB::IsNodeLeaf() */
+enum NodeType {
+  NT_INTERNAL = 0,    /** internal node */
+  NT_LEAF_EXISTS = 1, /** existing leaf node */
+  NT_LEAF_MISSING = 2 /** should be a leaf node */
+};
 
 /**
  * Persistence methods for TokenIndex and Vocab.
@@ -34,11 +45,50 @@ public:
   DB(const DB &other) = delete;
   ~DB();
 
-  /** load all vocabulary IDs and their surface forms. @returns vocab size = (maxVid + 1) */
+  /**
+   * Load all vocabulary IDs and their surface forms.
+   * @returns vocab size = (maxVid + 1)
+   */
   size_t LoadVocab(std::unordered_map<Vid, std::string> &id2surface);
 
-  /** add a pair of vocabulary ID and surface form. */
-  void AddVocabPair(Vid vid, const std::string &surface);
+  /** Add a pair of vocabulary ID and surface form */
+  void PutVocabPair(Vid vid, const std::string &surface);
+
+  /**
+   * Write the children of an internal TreeNode.
+   * @param path      path from the root to this TreeNode
+   * @param children  vids of children
+   */
+  void PutNodeInternal(const std::string &path, const std::vector<Vid> &children);
+
+  /**
+   * Read the children of an internal TreeNode.
+   * @param path      path from the root to this TreeNode
+   * @param children  vids of children returned here
+   */
+  void GetNodeInternal(const std::string &path, std::vector<Vid> &children);
+
+  /**
+   * Write the suffix array of a leaf node.
+   * @param path  path from the root to this TreeNode
+   * @param data  pointer to array data
+   * @param len   number of entries (positions) in array
+   */
+  void PutNodeLeaf(const std::string &path, const SuffixArrayPosition<Token> *data, size_t len);
+
+  /**
+   * Read the suffix array of a leaf node.
+   * @param path   path from the root to this TreeNode
+   * @param array  data returned here
+   * @returns true if the leaf was found
+   */
+  bool GetNodeLeaf(const std::string &path, SuffixArrayDisk<Token> &array);
+
+  /**
+   * @returns nonzero if this path does not contain an internal node
+   * (= is a leaf, or should be if it does not exist yet)
+   */
+  NodeType IsNodeLeaf(const std::string &path);
 
   // temporary
   rocksdb::DB *get() { return db_.get(); }

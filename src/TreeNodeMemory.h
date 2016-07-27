@@ -7,6 +7,8 @@
 #ifndef STO_TREENODEMEMORY_H
 #define STO_TREENODEMEMORY_H
 
+#include <memory>
+
 #include "TreeNode.h"
 //#include "TokenIndex.h"
 #include "SuffixArrayMemory.h"
@@ -33,7 +35,9 @@ public:
    * Constructs an empty TreeNode, i.e. a leaf with a SuffixArray.
    * @param filename  load mtt-build *.sfa file if specified
    */
-  TreeNodeMemory(std::string filename, void *, size_t maxArraySize = 10000);
+  TreeNodeMemory(std::string filename, std::shared_ptr<void>, size_t maxArraySize = 10000);
+
+  virtual ~TreeNodeMemory() = default;
 
   /*
   template<class IndexSpanMemory, class IndexSpanDisk>

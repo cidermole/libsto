@@ -4,6 +4,7 @@
  * Licensed under GNU LGPL Version 2.1, see COPYING *
  ****************************************************/
 
+#include <memory>
 #include <random>
 #include <sstream>
 #include <utility>
@@ -17,12 +18,10 @@
 #include "Corpus.h"
 #include "TokenIndex.h"
 #include "Types.h"
+#include "DB.h"
 
 #include "util/Time.h"
 #include "util/usage.h"
-
-#include "rocksdb/db.h"
-#include "rocksdb/slice_transform.h"
 
 
 using namespace sto;
@@ -47,7 +46,7 @@ struct TokenIndexTests : ::testing::Test {
   std::string basePath;
   Vocab<Token> vocab;
   Corpus<Token> corpus;
-  rocksdb::DB *db;
+  std::shared_ptr<DB<Token>> db;
 
   Sentence<Token> AddSentence(const std::vector<std::string> &surface) {
     std::vector<Token> sent;
@@ -69,28 +68,14 @@ struct TokenIndexTests : ::testing::Test {
   }
   virtual ~TokenIndexTests() {
     //removeTestBase(); // comment this for debugging a single test
-    if(db) {
-      delete db;
-      db = nullptr;
-    }
   }
   void removeTestBase() {
     getCleanBasePath<TypeTag>();
   }
   void openDatabase() {
-    if(basePath == "")
-      return; // leave db=nullptr for RAM-based index
-
-    rocksdb::Options options;
-    options.create_if_missing = true;
-    //options.use_fsync = true;
-    options.prefix_extractor.reset(rocksdb::NewFixedPrefixTransform(4)); // needs to match up with actual type prefix sizes TODO: make a constant
-    //std::cerr << "opening DB " << basePath << " ..." << std::endl;
-    rocksdb::Status status = rocksdb::DB::Open(options, basePath, &db);
-    assert(status.ok());
-    EXPECT_TRUE(status.ok());
-    assert(db != nullptr);
-    EXPECT_NE(nullptr, db);
+    // db=nullptr for RAM-based index
+    if(basePath != "")
+      db.reset(new DB<Token>(basePath));
   }
 };
 
@@ -116,117 +101,6 @@ typedef ::testing::Types<
 > TokenIndexTypes;
 TYPED_TEST_CASE(TokenIndexTests, TokenIndexTypes);
 
-TYPED_TEST(TokenIndexTests, rocksdb) {
-
-  if(this->basePath == "") // RAM variant
-    return;
-
-  //std::cerr << "------ starting TokenIndexTests.rocksdb ------" << std::endl;
-
-  //bool alloc_myself = true;
-  bool alloc_myself = false;
-
-  if(alloc_myself && this->db) {
-    // ensure no open DB in directory which we will clean next.
-    delete this->db;
-    this->db = nullptr;
-
-    this->removeTestBase();
-  }
-
-
-  //std::string basePath = this->basePath;
-  std::string basePath = this->basePath;
-  rocksdb::DB *db = nullptr;
-
-  // Open the DB
-
-  if(alloc_myself) {
-    rocksdb::Options options;
-    options.create_if_missing = true;
-    //std::cerr << "opening DB " << basePath << " ..." << std::endl;
-    rocksdb::Status status = rocksdb::DB::Open(options, basePath, &db);
-    assert(status.ok());
-    EXPECT_TRUE(status.ok());
-    assert(db != nullptr);
-    EXPECT_NE(nullptr, db);
-  } else {
-    db = this->db;
-  }
-
-  std::string key_str = "res/TokenIndexTests/00000/00000002/array";
-
-  // ensure key does not exist (in empty DB)
-
-  {
-    rocksdb::Slice key = key_str;
-    std::string value;
-
-    rocksdb::Status status = db->Get(rocksdb::ReadOptions(), key, &value);
-    //std::cerr << "Get key=" << key_str << " status.ok()=" << status.ok() << " IsNotFound()=" << status.IsNotFound() << std::endl;
-    EXPECT_FALSE(status.ok());
-    EXPECT_TRUE(status.IsNotFound());
-  }
-
-  // insert the key
-
-  {
-    const char buf[] = {1, 2, 3, 4, 5};
-
-    const void *data = buf;
-    size_t size = 5;
-
-    rocksdb::Slice key = key_str;
-    rocksdb::Slice val((const char *) data, size);
-    rocksdb::Status status = db->Put(rocksdb::WriteOptions(), key, val);
-    //std::cerr << "Put key=" << key_str << " len=" << size << " ok=" << status.ok() << std::endl;
-
-  }
-
-  // try close and re-open
-  {
-
-    if(alloc_myself) {
-      delete this->db;
-      this->db = nullptr;
-    } else {
-      delete db;
-      db = nullptr;
-    }
-
-    rocksdb::Options options;
-    options.create_if_missing = true;
-    //std::cerr << "opening DB " << basePath << " ..." << std::endl;
-    rocksdb::Status status = rocksdb::DB::Open(options, basePath, &db);
-    assert(status.ok());
-    EXPECT_TRUE(status.ok());
-    assert(db != nullptr);
-    EXPECT_NE(nullptr, db);
-  }
-
-  // ensure key exists
-
-  {
-    // DEBUG:
-
-    rocksdb::Slice key = key_str;
-    std::string value;
-
-    rocksdb::Status status2 = db->Get(rocksdb::ReadOptions(), key, &value);
-    //std::cerr << "immediate-Get key=" << key_str << " status.ok()=" << status2.ok() << " IsNotFound()=" << status2.IsNotFound() << std::endl;
-    EXPECT_TRUE(status2.ok());
-    EXPECT_FALSE(status2.IsNotFound());
-    EXPECT_EQ(5, value.size());
-    EXPECT_EQ(2, value[1]);
-  }
-
-  if(alloc_myself)
-    delete db;
-
-  //std::cerr << "------ ending TokenIndexTests.rocksdb ------" << std::endl;
-}
-
-// demo Test Fixture
 TYPED_TEST(TokenIndexTests, get_word) {
   typedef typename TypeParam::TokenT Token;
   Sentence<Token> sentence = this->AddSentence({"this", "is", "an", "example"});
@@ -573,8 +447,11 @@ TYPED_TEST(TokenIndexTests, static_vs_dynamic_eim) {
   TokenIndexType dynamicIndex(this->basePath, sc, this->db); // building dynamically
 
   std::cerr << "building dynamicIndex..." << std::endl;
-  for(size_t i = 0; i < sc.size(); i++)
+  for(size_t i = 0; i < sc.size(); i++) {
+    if(i % 1000 == 0)
+      std::cerr << "dynamicIndex @ AddSentence(i=" << i << ")..." << std::endl;
     dynamicIndex.AddSentence(sc.sentence(i));
+  }
   std::cerr << "building dynamicIndex done." << std::endl;
 
   typename TokenIndex<Token, IndexTypeMemory>::Span staticSpan = staticIndex.span();

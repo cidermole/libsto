@@ -50,14 +50,14 @@ private:
 };
 
 /**
- * Memory-mapped suffix array from disk, used in TreeNodeDisk leaves.
+ * suffix array from disk, cached in RAM, used in TreeNodeDisk leaves.
  * Supports random_access iteration compatible with std::vector for reading.
  */
 template<class Token>
 class SuffixArrayDisk {
 public:
-  /** Map 'filename' as a suffix array */
-  SuffixArrayDisk(const std::string &filename, rocksdb::DB *db);
+  SuffixArrayDisk();
+  SuffixArrayDisk(const std::string &bytes);
 
   class Iterator {
   public:
@@ -89,6 +89,8 @@ public:
   size_t size() const { return length_; }
 
   Position<Token> operator[](size_t pos) const { return array_[pos]; }
+
+  SuffixArrayDisk &operator=(const std::string &bytes);
 
 private:
   std::string value_;

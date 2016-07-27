@@ -40,7 +40,7 @@ public:
   typedef SuffixArray SuffixArrayT;
 
   // TreeNode() is protected: construct a TreeNodeMemory() or TreeNodeDisk()
-  ~TreeNode();
+  virtual ~TreeNode();
 
   /** true if this is a leaf, i.e. a suffix array. */
   bool is_leaf() const { return is_leaf_.load(); }

@@ -22,7 +22,7 @@ Vocab<Token>::Vocab(std::shared_ptr<DB<Token>> db) : size_(2), db_(db) {
     bool exists = db_load();
     if(!exists) {
       // store </s> sentinel
-      db_->AddVocabPair(kEOS, kEOSSurface);
+      db_->PutVocabPair(kEOS, kEOSSurface);
     }
   }
   put_eos();
@@ -51,7 +51,7 @@ Token Vocab<Token>::operator[](const std::string &surface) {
     surface2id_[surface] = id;
     id2surface_[id] = surface;
     if(db_)
-      db_->AddVocabPair(id, surface);
+      db_->PutVocabPair(id, surface);
     return Token{id};
   }
 }

@@ -16,7 +16,7 @@ namespace sto {
 
 
 template<class Token>
-TreeNodeMemory<Token>::TreeNodeMemory(std::string filename, void *, size_t maxArraySize) : TreeNode<Token, SuffixArrayMemory<Token>>(maxArraySize) {
+TreeNodeMemory<Token>::TreeNodeMemory(std::string filename, std::shared_ptr<void>, size_t maxArraySize) : TreeNode<Token, SuffixArrayMemory<Token>>(maxArraySize) {
   this->array_.reset(new SuffixArray);
   if(filename != "")
     LoadArray(filename);

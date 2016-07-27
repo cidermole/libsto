@@ -9,6 +9,7 @@
 
 #include <iostream>
 #include <vector>
+#include <memory>
 
 #include "Range.h"
 #include "SuffixArrayMemory.h"
@@ -18,14 +19,12 @@
 #include "Corpus.h"
 #include "util/rbtree.hpp"
 
-namespace rocksdb {
-class DB;
-}
-
 
 namespace sto {
 
 template<class Token, class SuffixArray> class TreeNode;
+
+template<class Token> class DB;
 
 struct IndexTypeMemory {};
 struct IndexTypeDisk {};
@@ -77,7 +76,7 @@ public:
    * Currently, this creates one big suffix array (not memory mapped) regardless of maxLeafSize, but subsequent calls to
    * AddSentence() will honor maxLeafSize and split where necessary (so the first additions will be expensive).
    */
-  TokenIndex(const std::string &filename, Corpus<Token> &corpus, rocksdb::DB *db = nullptr, size_t maxLeafSize = 10000);
+  TokenIndex(const std::string &filename, Corpus<Token> &corpus, std::shared_ptr<DB<Token>> db = nullptr, size_t maxLeafSize = 10000);
 
   /** Construct an empty TokenIndex, i.e. this does not index the Corpus by itself. */
   TokenIndex(Corpus<Token> &corpus, size_t maxLeafSize = 10000);

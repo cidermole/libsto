@@ -4,10 +4,6 @@
  * Licensed under GNU LGPL Version 2.1, see COPYING *
  ****************************************************/
 
-#include "TreeNodeDisk.h"
-#include "SuffixArrayMemory.h"
-#include "TokenIndex.h"
-
 #include <cstdlib>
 #include <sstream>
 #include <iomanip>
@@ -16,6 +12,11 @@
 
 #include <boost/filesystem.hpp>
 
+#include "TreeNodeDisk.h"
+#include "SuffixArrayMemory.h"
+#include "TokenIndex.h"
+#include "DB.h"
+
 #include "rocksdb/db.h"
 
 #define static_assert(x) static_cast<void>(0)
@@ -23,37 +24,46 @@
 namespace sto {
 
 template<class Token>
-TreeNodeDisk<Token>::TreeNodeDisk(std::string path, rocksdb::DB *db, size_t maxArraySize) :
+TreeNodeDisk<Token>::TreeNodeDisk(std::string path, std::shared_ptr<DB<Token>> db, size_t maxArraySize) :
     TreeNode<Token, SuffixArrayDisk<Token>>(maxArraySize), path_(path), db_(db) {
   using namespace boost::filesystem;
 
   assert(db != nullptr);
 
   // TODO: no need for SuffixArrayDisk. We keep everything in memory anyway.
+  // (we could unify SuffixArrayDisk and SuffixArrayMemory)
 
+/*
   std::string array_key_str = array_path();
   std::string children_key_str = path;
   std::string value_discarded;
   std::string children;
 
-  if (db->Get(rocksdb::ReadOptions(), array_key_str, &value_discarded).ok()) {
+
+  if (db->get()->Get(rocksdb::ReadOptions(), array_key_str, &value_discarded).ok()) {
     // has array -> leaf
     this->is_leaf_ = true;
-  } else if (db->Get(rocksdb::ReadOptions(), children_key_str, &children).ok()) {
+  } else if (db->get()->Get(rocksdb::ReadOptions(), children_key_str, &children).ok()) {
     // has children -> internal node
     this->is_leaf_ = false;
   } else {
     // no array, no children -> new empty leaf node
     std::string empty;
-    db->Put(rocksdb::WriteOptions(), array_key_str, empty);
+    db->get()->Put(rocksdb::WriteOptions(), array_key_str, empty);
     this->is_leaf_ = true;
   }
+*/
+  this->is_leaf_ = db_->IsNodeLeaf(path_) ? true : false;
 
   if(this->is_leaf_) {
-    this->array_.reset(new SuffixArrayDisk<Token>(array_path(), db_));
+    this->array_.reset(new SuffixArrayDisk<Token>());
+    db_->GetNodeLeaf(array_path(), *this->array_);
   } else {
     // recursively load the subtree rooted at this path
-    LoadSubtree(reinterpret_cast<const Vid *>(children.data()), children.size() / sizeof(Vid));
+    //LoadSubtree(reinterpret_cast<const Vid *>(children.data()), children.size() / sizeof(Vid));
+    std::vector<Vid> children;
+    db_->GetNodeInternal(path_, children);
+    LoadSubtree(children.data(), children.size());
   }
 }
 
@@ -147,7 +157,9 @@ void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<To
   // overwrite the DB key now; the existing array_ continues to hold the old data afterwards
   WriteArray(&newArray, newArray + newSize);
   // map the newly written array, and atomically replace the old array_
-  this->array_.reset(new SuffixArrayDisk<Token>(array_path(), db_));
+  this->array_.reset(new SuffixArrayDisk<Token>());
+  this->db_->GetNodeLeaf(array_path(), *this->array_);
+  // to do: if WriteArray() didn't take ownership, we could use the raw data in newArray (instead of reading it back)
   assert(this->array_->size() == newSize);
 
   /*
@@ -246,26 +258,9 @@ TreeNodeDisk<Token> *TreeNodeDisk<Token>::make_child_(Vid vid, typename SuffixAr
 
 template<class Token>
 void TreeNodeDisk<Token>::WriteArray(SuffixArrayPosition<Token> **first, SuffixArrayPosition<Token> *last) {
-  void *data = *first;
-  size_t size = sizeof(SuffixArrayPosition<Token>) * (last - *first);
-
-  //std::cerr << "in WriteArray(), my DB " << " = " << db_ << std::endl;
-
-  std::string key_str = array_path();
-  rocksdb::Slice key = key_str; // this is a reference, and as such, it MUST refer to something in this scope (must not be Slice key = array_path())
-  rocksdb::Slice val((const char *) data, size);
-  rocksdb::Status status = db_->Put(rocksdb::WriteOptions(), key, val);
-  //std::cerr << "Put key=" << key_str << " len=" << size << " ok=" << status.ok() << std::endl;
-
-#ifndef NDEBUG
-
-  //rocksdb::Slice key = filename;
-  std::string value;
-
-  rocksdb::Status status2 = db_->Get(rocksdb::ReadOptions(), key, &value);
-  //std::cerr << "immediate-Get key=" << key_str << " status.ok()=" << status2.ok() << " IsNotFound()=" << status2.IsNotFound() << std::endl;
-  assert(status2.ok());
-#endif
+  db_->PutNodeLeaf(array_path(), *first, (last - *first));
+  delete[] *first;
+  *first = nullptr;
 }
 
 template<class Token>
@@ -273,11 +268,7 @@ void TreeNodeDisk<Token>::WriteChildren() {
   std::vector<Vid> children;
   for(Vid vid : this->children_)
     children.push_back(vid);
-
-  rocksdb::Slice val(reinterpret_cast<const char *>(children.data()), children.size() * sizeof(Vid));
-  std::string key_str = path_;
-  rocksdb::Slice key = key_str;
-  rocksdb::Status status = this->db_->Put(rocksdb::WriteOptions(), key, val);
+  db_->PutNodeInternal(path_, children);
 }
 
 // explicit template instantiation

@@ -12,28 +12,22 @@
 namespace sto {
 
 template<class Token>
-SuffixArrayDisk<Token>::SuffixArrayDisk(const std::string &filename, rocksdb::DB *db) {
-  rocksdb::Slice key = filename;
-  std::string value;
+SuffixArrayDisk<Token>::SuffixArrayDisk() {
+  (*this) = "";
+}
 
-  rocksdb::Status status = db->Get(rocksdb::ReadOptions(), key, &value);
-  //std::cerr << "Get on DB=" << db << " key=" << filename << " status.ok()=" << status.ok() << " IsNotFound()=" << status.IsNotFound() << std::endl;
-
-  /*
-  if(status.IsNotFound()) {
-    std::string empty;
-    db->Put(rocksdb::WriteOptions(), key, empty); // necessary? we can just pretend. assuming that value stays empty then...
-    value = empty;
-  }
-  */
-  if(status.IsNotFound())
-    assert(value.size() == 0);
-
+template<class Token>
+SuffixArrayDisk<Token>::SuffixArrayDisk(const std::string &bytes) {
   // keep data block cached in RAM
-  value_ = value;
+  (*this) = bytes;
+}
 
+template<class Token>
+SuffixArrayDisk<Token> &SuffixArrayDisk<Token>::operator=(const std::string &bytes) {
+  value_ = bytes;
   array_ = reinterpret_cast<SuffixArrayPosition<Token> *>(const_cast<char *>(value_.c_str()));
   length_ = value_.size() / sizeof(SuffixArrayPosition<Token>);
+  return *this;
 }
 
 // explicit template instantiation
