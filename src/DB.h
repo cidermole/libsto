@@ -84,6 +84,9 @@ public:
    */
   bool GetNodeLeaf(const std::string &path, SuffixArrayDisk<Token> &array);
 
+  /** Delete leaf at the given path. */
+  void DeleteNodeLeaf(const std::string &path);
+
   /**
    * @returns nonzero if this path does not contain an internal node
    * (= is a leaf, or should be if it does not exist yet)

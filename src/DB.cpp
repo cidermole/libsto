@@ -136,6 +136,12 @@ bool DB<Token>::GetNodeLeaf(const std::string &path, SuffixArrayDisk<Token> &arr
 }
 
 template<class Token>
+void DB<Token>::DeleteNodeLeaf(const std::string &path) {
+  rocksdb::Slice key = path;
+  db_->Delete(rocksdb::WriteOptions(), key);
+}
+
+template<class Token>
 NodeType DB<Token>::IsNodeLeaf(const std::string &path) {
   // TODO: KEYT_NODE_TYPE  // metadata key with short value. (saves us from reading the whole data blob just for testing if internal/leaf)
 

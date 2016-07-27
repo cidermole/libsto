@@ -209,6 +209,9 @@ void TreeNodeDisk<Token>::SplitNode(const Corpus<Token> &corpus, Offset depth) {
 
   // update the children in persistent storage
   WriteChildren();
+
+  // delete array in persistent storage
+  db_->DeleteNodeLeaf(array_path());
 }
 
 template<class Token>
