@@ -7,15 +7,14 @@
 #ifndef STO_VOCAB_H
 #define STO_VOCAB_H
 
+#include <memory>
 #include <string>
 #include <cassert>
 #include <unordered_map>
 
-namespace rocksdb {
-class DB;
-}
-
 namespace sto {
+
+template<class Token> class DB;
 
 /**
  * Vocabulary mapping between surface forms and Tokens (holding vocabulary IDs).
@@ -28,11 +27,11 @@ public:
   static constexpr typename Token::Vid kEOS = 1; /** vocabulary ID for </s>, the end-of-sentence sentinel token */
   static constexpr char kEOSSurface[] = "</s>"; // to do: call kEOS kEosVid, this kEosSurface
 
-  /** Create empty vocabulary */
-  Vocab(rocksdb::DB *db = nullptr);
+  /** Load vocabulary from db, or create empty vocabulary */
+  Vocab(std::shared_ptr<DB<Token>> db = nullptr);
 
   /** Load vocabulary from mtt-build .tdx format */
-  Vocab(const std::string &filename, rocksdb::DB *db = nullptr);
+  Vocab(const std::string &filename);
 
   /** Returns the surface form of `token`. */
   const std::string& operator[](const Token token) const;
@@ -56,17 +55,16 @@ private:
   std::unordered_map<Vid, std::string> id2surface_;
   std::unordered_map<std::string, Vid> surface2id_;
   Vid size_;
-  rocksdb::DB *db_;
+  std::shared_ptr<DB<Token>> db_;
 
   /** Load vocabulary from mtt-build .tdx format */
-  void load_ugsapt_tdx(const std::string &filename);
+  void ugsapt_load(const std::string &filename);
 
-  static std::string vid_key(Vid vid);
-  static std::string surface_key(const std::string &surface);
+  /** Load vocabulary from database. @returns true if there was a vocabulary. */
+  bool db_load();
 
-  void db_put_pair(Vid vid, const std::string &surface);
-
-  void db_load();
+  /** put the </s> EOS sentinel at the correct vid. */
+  void put_eos();
 };
 
 /** Empty vocabulary interface without implementations, to provide as a template argument. */

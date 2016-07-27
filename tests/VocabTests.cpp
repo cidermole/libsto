@@ -12,8 +12,7 @@
 #include <memory>
 
 #include <boost/filesystem.hpp>
-#include "rocksdb/db.h"
-#include "rocksdb/slice_transform.h"
+#include "DB.h"
 
 
 using namespace sto;
@@ -66,40 +65,32 @@ void removeTestBase() {
   getCleanBasePath();
 }
 
-std::shared_ptr<rocksdb::DB> openDatabase(std::string basePath) {
-  std::shared_ptr<rocksdb::DB> db;
+TEST(VocabTests, persist) {
+  SrcToken apple, orange, ref_end;
 
-  rocksdb::Options options;
-  options.create_if_missing = true;
-  //options.use_fsync = true;
-  options.prefix_extractor.reset(
-      rocksdb::NewFixedPrefixTransform(4)); // needs to match up with actual type prefix sizes TODO: make a constant
-  //std::cerr << "opening DB " << basePath << " ..." << std::endl;
+  // fill an empty vocabulary with some words
   {
-    rocksdb::DB *db_tmp = nullptr;
-    rocksdb::Status status = rocksdb::DB::Open(options, basePath, &db_tmp);
-    db.reset(db_tmp);
-    assert(status.ok());
-    EXPECT_TRUE(status.ok());
+    std::shared_ptr<DB<SrcToken>> db(new DB<SrcToken>(getCleanBasePath()));
+    Vocab<SrcToken> vocab(db);
+
+    apple = vocab["apple"];   // insert apple
+    orange = vocab["orange"]; // insert orange
+
+    ref_end = vocab.end();
+
+    // close and re-open existing DB
+    std::cerr << "ref count before close = " << db.use_count() << std::endl;
+    // aah! vocab still uses it...
+    db.reset(); // close must come before re-opening
+    std::cerr << "close should have come here. ref count = " << db.use_count() << std::endl;
+    // vocab must go out of scope (to release the db reference) so the db is closed
   }
 
-  return db;
-}
+  // verify if the vocab can be loaded from DB
 
-TEST(VocabTests, persist) {
-  std::shared_ptr<rocksdb::DB> db = openDatabase(getCleanBasePath());
-  Vocab<SrcToken> vocab(db.get());
+  std::shared_ptr<DB<SrcToken>> db(new DB<SrcToken>(getBasePath()));
 
-  SrcToken apple = vocab["apple"];   // insert apple
-  SrcToken orange = vocab["orange"]; // insert orange
-
-  SrcToken ref_end = vocab.end();
-
-  // close and re-open existing DB
-  db.reset();
-  db = openDatabase(getBasePath());
-
-  Vocab<SrcToken> sv(db.get()); // load vocabulary from DB
+  Vocab<SrcToken> sv(db); // load vocabulary from DB
 
   EXPECT_EQ(apple, sv.at("apple")) << "comparing apple and apple";
   EXPECT_NE(apple, orange) << "comparing apple and orange";
