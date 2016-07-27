@@ -120,11 +120,11 @@ public:
       VidIterator(const VidIterator &other) = default;
 
       /** use TokenIndex::Span::begin() / end() instead. */
-      VidIterator(const IndexSpan &span, bool begin = true) : span_(span), index_(begin ? 0 : span.size()), iter_(begin ? span.node()->begin() : span.node()->end()), is_leaf_(span.node()->is_leaf()) {}
+      VidIterator(const IndexSpan &span, bool begin = true) : span_(span), index_(begin ? 0 : span.size()), depth_(span.depth()), iter_(begin ? span.node()->begin() : span.node()->end()), is_leaf_(span.node()->is_leaf()) {}
 
       Vid operator*() {
         if(is_leaf_)
-          return span_[index_].vid(*span_.corpus());
+          return span_[index_].add((Offset) depth_, *span_.corpus()).vid(*span_.corpus());
         else
           return *iter_;
       }
@@ -166,6 +166,7 @@ public:
 
       const IndexSpan &span_;
       size_t index_;
+      size_t depth_;
       TreeNodeIterator iter_;
       bool is_leaf_;
     };
