@@ -88,6 +88,9 @@ public:
   // TODO: temporary
   std::shared_ptr<SuffixArray> array() { assert(is_leaf()); return array_; }
 
+  // TODO: temporary
+  ChildMap &children() { return children_; }
+
 protected:
   std::atomic<bool> is_leaf_; /** whether this is a suffix array (leaf node) */
   ChildMap children_; /** TreeNode children, empty if is_leaf. Additionally carries along partial sums for child sizes. */

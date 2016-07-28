@@ -77,6 +77,7 @@ private:
   std::string path_; /** path to the directory backing this DiskTreeNode */
   std::shared_ptr<DB<Token>> db_;
   bool sync_; /** whether to sync writes immediately to the database (causes immense write amplification!) */
+  Vid vid_dbg_ = 0;
 
   /** load child nodes below 'path' as indicated by the passed sequence of child vids. */
   void LoadSubtree(const Vid *children, size_t num_children);
