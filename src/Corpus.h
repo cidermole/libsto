@@ -48,10 +48,10 @@ public:
   const Vid *end(Sid sid) const;
   // should be friended to Sentence
 
-  /** retrieve Sentence, a lightweight reference to a sentence's location. Last token is the EOS symbol </s>. */
+  /** retrieve Sentence, a lightweight reference to a sentence's location. */
   Sentence<Token> sentence(Sid sid) const;
 
-  /** add a sentence to the dynamic part. Last token must be the EOS symbol </s> */
+  /** add a sentence to the dynamic part. */
   void AddSentence(const std::vector<Token> &sent);
 
   const Vocabulary &vocab() const;
