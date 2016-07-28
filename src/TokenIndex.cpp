@@ -76,7 +76,7 @@ struct AddSentenceImpl<Token, IndexTypeDisk> {
 
   std::unique_ptr<TokenIndex<Token, IndexTypeMemory>> memBuffer;
   size_t nsents = 0;
-  size_t kBatchSize = 1000; /** batch size in number of sents */
+  size_t kBatchSize = 10000; /** batch size in number of sents */
 
   Corpus<Token> &corpus_;
 };
