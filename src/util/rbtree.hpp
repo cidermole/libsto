@@ -63,6 +63,7 @@ class RBTree {
     std::shared_ptr<Node> node = FindNodeOrParent(key);
     return !IsNil(node) && node->key == key;
   }
+  /** number of children */
   inline size_type Count() const {
     return count_;
   }
@@ -104,6 +105,7 @@ class RBTree {
     return node->partial_sum;
   }
 
+  /** total number of positions spanned (size sum of this node + its children) */
   size_t Size() const {
     return root_->partial_sum;
   }
@@ -134,6 +136,8 @@ class RBTree {
   public:
     Iterator(const Iterator &other) = default;
 
+#define DBG_PRINT(x) std::cerr << "RB::It " << x << std::endl
+
     Iterator &operator++() {
       /*
        * Essentially implements in-order traversal, i.e. the following:
@@ -149,42 +153,61 @@ class RBTree {
        * }
        */
 
+      DBG_PRINT("operator++()");
+
       while(true) {
         assert(path_.size() > 0); // else, we went beyond end()
         auto *top = &path_.back();
 
         switch(top->second) {
-          case kLeft:
+          case kLeft:  DBG_PRINT("  top->second = kLeft");
             top->second = kYield;
             if(top->first->left != nil_) {
+              DBG_PRINT("  push(left) = " << top->first->left->key);
               path_.push_back(std::make_pair(top->first->left, kLeft));
             }
             break;
 
-          case kYield:
+          case kYield:  DBG_PRINT("  top->second = kYield");
             top->second = kRight;
+            DBG_PRINT("  yield = " << top->first->key);
             cur_ = top->first;
             return *this;
             break;
 
-          case kRight:
+          case kRight:  DBG_PRINT("  top->second = kRight");
             top->second = kDone;
             if(top->first->right != nil_) {
+              DBG_PRINT("  push(right) = " << top->first->right->key);
               path_.push_back(std::make_pair(top->first->right, kLeft));
             } else {
               path_.pop_back();
               if(path_.size() == 0) {
+                DBG_PRINT("  pop(), now reached end() at depth=0");
                 // reached end() at depth = 0 -- with single-entry tree
                 cur_.reset();
                 return *this;
+              } else {
+                DBG_PRINT("  pop(), now at " << path_.back().first->key);
               }
             }
             break;
 
-          case kDone:
-            // reached end() in some depth > 0
-            cur_.reset();
-            return *this;
+          case kDone:  DBG_PRINT("  top->second = kDone");
+            if(path_.size() == 0) {
+              DBG_PRINT("  reached end() at kDone");
+              cur_.reset();
+              return *this;
+            } else {
+              path_.pop_back();
+              if(path_.size()) {
+                DBG_PRINT("  pop(), now at " << path_.back().first->key);
+              } else {
+                DBG_PRINT("  pop(), now reached end()");
+                cur_.reset();
+                return *this;
+              }
+            }
             break;
 
           default:
@@ -197,6 +220,8 @@ class RBTree {
         }
       }
     }
+
+#undef DBG_PRINT
 
     const KeyType& operator*() { return cur_->key; }
 
@@ -507,7 +532,7 @@ class RBTree {
 
   std::shared_ptr<Node> root_;
   std::shared_ptr<Node> nil_;
-  size_type count_;
+  size_type count_; /** number of children */
 
   // disallow copy and assign
   RBTree(const RBTree<KeyType, ValueType>&) = delete;
