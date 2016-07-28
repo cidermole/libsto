@@ -74,7 +74,11 @@ TEST(RBTreeIteratorTests, random_tests) {
   std::vector<size_t> keys;
 
   for(size_t i = 0; i < trials; i++) {
-    random_indices_unsort(num_keys, num_keys, gen, keys);
+    // uniform_int_distribution takes a closed range [a,b]
+    std::uniform_int_distribution<size_t> choose(1, num_keys);
+
+    // generate random number of keys between [1,num_keys]
+    random_indices_unsort(choose(gen), num_keys, gen, keys);
 
     RBTree<size_t, size_t> tree;
 
