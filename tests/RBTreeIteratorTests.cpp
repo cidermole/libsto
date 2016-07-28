@@ -6,6 +6,7 @@
 
 #include <gtest/gtest.h>
 
+#include "fisheryates.h"
 #include "util/rbtree.hpp"
 
 using namespace sto;
@@ -63,4 +64,31 @@ TEST(RBTreeIteratorTests, empty) {
 
   std::vector<int> expected_seq = {};
   EXPECT_EQ(expected_seq, seq);
+}
+
+TEST(RBTreeIteratorTests, random_tests) {
+  const size_t seed = 42;
+  const size_t trials = 10;
+  const size_t num_keys = 100;
+  std::mt19937 gen(seed);
+  std::vector<size_t> keys;
+
+  for(size_t i = 0; i < trials; i++) {
+    random_indices_unsort(num_keys, num_keys, gen, keys);
+
+    RBTree<size_t, size_t> tree;
+
+    for(auto k : keys)
+      tree[k] = k;
+    //tree.Print();
+
+    std::vector<size_t> seq;
+    for(auto k : tree) {
+      //std::cerr << "key " << k << std::endl;
+      seq.push_back(k);
+      EXPECT_EQ(k, tree[k]);
+    }
+
+    EXPECT_EQ(keys, seq);
+  }
 }
