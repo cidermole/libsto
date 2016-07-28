@@ -47,25 +47,32 @@ struct AddSentenceImpl {
 
 template<class Token>
 struct AddSentenceImpl<Token, IndexTypeDisk> {
+  static constexpr size_t kMaxLeafSizeMem = 10000; // work around bugged Merge() when passed a multi-level memory-based index
+
   void operator()(TokenIndex<Token, IndexTypeDisk> &index, const Sentence<Token> &sent) {
     // add to memory index, then merge in
     // (workaround for testing IndexTypeDisk using AddSentence())
 
-    /*
+    assert(index.corpus() == &corpus_);
+
+#if 0
+    // merge every sentence
     TokenIndex<Token, IndexTypeMemory> add(*index.corpus());
     add.AddSentence(sent);
     index.Merge(add);
-     */
-
+#else
+    // merge in batches of kBatchSize
+    // TODO: remaining entries at the end
     memBuffer->AddSentence(sent);
     if(++nsents == kBatchSize) {
       index.Merge(*memBuffer);
       nsents = 0;
-      memBuffer.reset(new TokenIndex<Token, IndexTypeMemory>(corpus_));
+      memBuffer.reset(new TokenIndex<Token, IndexTypeMemory>(corpus_, kMaxLeafSizeMem));
     }
+#endif
   }
 
-  AddSentenceImpl(Corpus<Token> &corpus) : memBuffer(new TokenIndex<Token, IndexTypeMemory>(corpus)), corpus_(corpus) {}
+  AddSentenceImpl(Corpus<Token> &corpus) : memBuffer(new TokenIndex<Token, IndexTypeMemory>(corpus, kMaxLeafSizeMem)), corpus_(corpus) {}
 
   std::unique_ptr<TokenIndex<Token, IndexTypeMemory>> memBuffer;
   size_t nsents = 0;
