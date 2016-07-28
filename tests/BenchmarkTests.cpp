@@ -333,7 +333,7 @@ TEST_F(BenchmarkTests, index_100k_disk) {
 
   std::shared_ptr<DB<SrcToken>> db(new DB<SrcToken>(getCleanBasePath()));
 
-  TokenIndex<SrcToken, IndexTypeDisk> tokenIndex(getBasePath(), corpus, db, /* maxLeafSize = */ 10000);
+  TokenIndex<SrcToken, IndexTypeDisk> tokenIndex(getBasePath(), corpus, db, /* maxLeafSize = */ 1000);
 
   benchmark_time([&corpus, &tokenIndex](){
     for(size_t i = 0; i < corpus.size(); i++) {

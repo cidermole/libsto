@@ -25,7 +25,7 @@ namespace sto {
 
 template<class Token>
 TreeNodeDisk<Token>::TreeNodeDisk(std::string path, std::shared_ptr<DB<Token>> db, size_t maxArraySize) :
-    TreeNode<Token, SuffixArrayDisk<Token>>(maxArraySize), path_(path), db_(db) {
+    TreeNode<Token, SuffixArrayDisk<Token>>(maxArraySize), path_(path), db_(db), sync_(false) {
   using namespace boost::filesystem;
 
   assert(db != nullptr);
@@ -134,12 +134,21 @@ void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<To
   }
 #endif
 
-  // overwrite the DB key now; the existing array_ continues to hold the old data afterwards
-  WriteArray(&newArray, newArray + newSize);
-  // map the newly written array, and atomically replace the old array_
-  this->array_.reset(new SuffixArrayDisk<Token>());
-  this->db_->GetNodeLeaf(array_path(), *this->array_);
-  // to do: if WriteArray() didn't take ownership, we could use the raw data in newArray (instead of reading it back)
+  if(sync_) {
+    // overwrite the DB key now; the existing array_ continues to hold the old data afterwards
+    WriteArray(&newArray, newArray + newSize);
+    // map the newly written array, and atomically replace the old array_
+    this->array_.reset(new SuffixArrayDisk<Token>());
+    this->db_->GetNodeLeaf(array_path(), *this->array_);
+    // to do: if WriteArray() didn't take ownership, we could use the raw data in newArray (instead of reading it back)
+  } else {
+    // this copies twice here, but nevermind -- just for testing, I/O will be much slower anyway
+    std::string bytes(reinterpret_cast<const char *>(newArray), sizeof(SuffixArrayPosition<Token>) * newSize);
+    this->array_.reset(new SuffixArrayDisk<Token>(bytes));
+    delete[] newArray;
+    newArray = nullptr;
+  }
+
   assert(this->array_->size() == newSize);
 
   /*
@@ -199,19 +208,21 @@ void TreeNodeDisk<Token>::AddLeaf(Vid vid) {
   //assert(!this->children_.Find(vid)); // appending to children assumes that this vid is new
   this->children_[vid] = new TreeNodeDisk<Token>(child_path(vid), this->db_, this->kMaxArraySize);
 
-  // (in reality, we could just append to the existing blob of vids... child order does not matter)
-  WriteChildren();
+  if(sync_) {
+    // (in reality, we could just append to the existing blob of vids... child order does not matter)
+    WriteChildren();
+  }
 }
 
 template<class Token>
 void TreeNodeDisk<Token>::SplitNode(const Corpus<Token> &corpus, Offset depth) {
   TreeNode<Token, SuffixArray>::SplitNode(corpus, depth, std::bind(&TreeNodeDisk<Token>::make_child_, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
 
-  // update the children in persistent storage
-  WriteChildren();
-
-  // delete array in persistent storage
-  db_->DeleteNodeLeaf(array_path());
+  if(sync_) {
+    // update the children
+    WriteChildren();
+    db_->DeleteNodeLeaf(array_path());
+  }
 }
 
 template<class Token>
