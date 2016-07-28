@@ -89,6 +89,7 @@ TEST(RBTreeIteratorTests, random_tests) {
       EXPECT_EQ(k, tree[k]);
     }
 
+    std::sort(keys.begin(), keys.end());
     EXPECT_EQ(keys, seq);
   }
 }
