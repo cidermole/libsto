@@ -201,6 +201,10 @@ void TreeNodeDisk<Token>::Merge(typename TokenIndex<Token, IndexTypeMemory>::Spa
     spand.node()->Merge(spanm, spand);
     this->AddSize(vid, num_new);
   }
+
+  if(spanDisk.depth() == 0) {
+    //db_->CompactRange(); // compact the entire database
+  }
 }
 
 template<class Token>

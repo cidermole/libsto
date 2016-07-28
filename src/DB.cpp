@@ -21,6 +21,7 @@ DB<Token>::DB(const std::string &basePath) {
   rocksdb::DB *db = nullptr;
   rocksdb::Options options;
 
+  //options.PrepareForBulkLoad();
   options.create_if_missing = true;
   //options.use_fsync = true;
   options.prefix_extractor.reset(rocksdb::NewFixedPrefixTransform(DB::KEY_PREFIX_LEN));
@@ -161,6 +162,11 @@ NodeType DB<Token>::IsNodeLeaf(const std::string &path) {
     // no array, no children -> need empty leaf node
     return NT_LEAF_MISSING;
   }
+}
+
+template<class Token>
+void DB<Token>::CompactRange() {
+  db_->CompactRange(rocksdb::CompactRangeOptions(), nullptr, nullptr);
 }
 
 // explicit template instantiation

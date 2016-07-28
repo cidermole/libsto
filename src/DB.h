@@ -93,6 +93,9 @@ public:
    */
   NodeType IsNodeLeaf(const std::string &path);
 
+  /** compact the entire database */
+  void CompactRange();
+
 private:
   std::unique_ptr<rocksdb::DB> db_;
 
