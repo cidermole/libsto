@@ -17,13 +17,13 @@
 
 namespace sto {
 
-MappedFile::MappedFile(const std::string& filename, size_t offset) {
+MappedFile::MappedFile(const std::string& filename, size_t offset, int oflag) {
   int fd;
   struct stat sb;
 
   size_t page_size = static_cast<size_t>(sysconf(_SC_PAGESIZE));
 
-  if((fd = open(filename.c_str(), O_RDONLY)) == -1)
+  if((fd = open(filename.c_str(), oflag)) == -1)
     throw std::runtime_error(std::string("open() failed on ") + filename);
   if(fstat(fd, &sb) == -1) {
     close(fd);
@@ -34,7 +34,6 @@ MappedFile::MappedFile(const std::string& filename, size_t offset) {
   if(map_len_ == 0) {
     // special case for handling empty files (MAP_FAILED -> EINVAL if length is 0, see http://linux.die.net/man/2/mmap)
     page_ptr_ = ptr = nullptr;
-    fd_ = 0;
     return;
   }
 
@@ -49,6 +48,8 @@ MappedFile::MappedFile(const std::string& filename, size_t offset) {
 MappedFile::~MappedFile() {
   if(map_len_) {
     munmap(page_ptr_, map_len_);
+  }
+  if(fd_) {
     close(fd_);
   }
 }

@@ -7,6 +7,7 @@
 #ifndef STO_MAPPEDFILE_H
 #define STO_MAPPEDFILE_H
 
+#include <fcntl.h>
 #include <string>
 
 namespace sto {
@@ -16,13 +17,15 @@ namespace sto {
  */
 class MappedFile {
 public:
-  MappedFile(const std::string& filename, size_t offset = 0);
+  MappedFile(const std::string& filename, size_t offset = 0, int oflag = O_RDONLY);
   ~MappedFile();
 
   /** length of the mapping in bytes, may be smaller than the file size if using an offset */
   size_t size() const { return map_len_; }
 
   char *ptr; /** pointer to mapped area of file data, honors offset */
+
+  int fd() { return fd_; }
 
 private:
   int fd_;
