@@ -12,6 +12,7 @@
 #include <sstream>
 #include <random>
 #include <map>
+#include <unordered_set>
 #include <gtest/gtest.h>
 
 #include "Vocab.h"
@@ -145,6 +146,17 @@ static void removeTestBase() {
 }
 
 
+namespace std {
+template<>
+template<typename Token>
+struct hash<Position<Token>> {
+  std::size_t operator()(const Position<Token>& pos) const {
+    return ((hash<typename Position<Token>::Offset>()(pos.offset))
+            ^ (hash<typename Position<Token>::Sid>()(pos.sid) << 8));
+  }
+};
+} // namespace std
+
 TEST_F(BenchmarkTests, dynamic_memory_vs_disk) {
   typedef SrcToken Token;
 
@@ -157,7 +169,8 @@ TEST_F(BenchmarkTests, dynamic_memory_vs_disk) {
 
   benchmark_time([&sc, &dynamicIndexMemory]() {
     std::cerr << "building dynamicIndex..." << std::endl;
-    for (size_t i = 0; i < sc.size(); i++) {
+    // TODO: implementation cannot currently add remainder of batches (currently 1000), see AddSentenceImpl::kBatchSize in TokenIndex.cpp
+    for (size_t i = 0; i < sc.size() - sc.size() % 1000; i++) {
       if (i % 1000 == 0)
         std::cerr << "dynamicIndex @ AddSentence(i=" << i << ")..." << std::endl;
       dynamicIndexMemory.AddSentence(sc.sentence(i));
@@ -171,13 +184,55 @@ TEST_F(BenchmarkTests, dynamic_memory_vs_disk) {
 
   benchmark_time([&sc, &dynamicIndexDisk]() {
     std::cerr << "building dynamicIndex..." << std::endl;
-    for (size_t i = 0; i < sc.size(); i++) {
+    // TODO: remainder of batches
+    for (size_t i = 0; i < sc.size() - sc.size() % 1000; i++) {
       if (i % 1000 == 0)
         std::cerr << "dynamicIndex @ AddSentence(i=" << i << ")..." << std::endl;
       dynamicIndexDisk.AddSentence(sc.sentence(i));
     }
     std::cerr << "building dynamicIndex (disk) done." << std::endl;
   }, "dynamicIndexDisk");
+
+  auto staticSpan = dynamicIndexMemory.span();
+  auto dynamicSpan = dynamicIndexDisk.span();
+
+  /* // fails... sort stability?
+  for(size_t i = 0; i < staticSpan.size(); i++)
+    EXPECT_EQ(staticSpan[i], dynamicSpan[i]) << "position i=" << i << " expected to match between disk and memory indexes";
+    */
+
+
+  auto surface = [&sc](Position<Token> pos){
+    std::stringstream ss;
+    for(size_t j = 0; j + pos.offset <= sc.sentence(pos.sid).size(); j++)
+      ss << (j == 0 ? "" : " ") << pos.add(j, sc).surface(sc);
+    return ss.str();
+  };
+
+  // there is no equality position by position (sort stability?)
+  // however, for each surface form, there must be equality among their positions
+
+  size_t numPos = staticSpan.size();
+  std::unordered_set<Position<Token>> staticBucket, dynamicBucket;
+  std::string currentSurface = "";
+  size_t j = 0, numPrintTop = 10; // numPrintTop = 5;
+  for(size_t i = 0; i < numPos; i++) {
+    if(surface(staticSpan[i]) != currentSurface) {
+      if(j < numPrintTop)
+        std::cerr << "comparing '" << currentSurface << "' with bucket size " << staticBucket.size() << std::endl;
+
+      // compare buckets, empty them
+      EXPECT_EQ(staticBucket, dynamicBucket) << "comparison of '" << currentSurface << "' failed";
+      staticBucket.clear();
+      dynamicBucket.clear();
+      currentSurface = surface(staticSpan[i]);
+      j++;
+    }
+
+    staticBucket.insert(staticSpan[i]);
+    dynamicBucket.insert(dynamicSpan[i]);
+  }
+  EXPECT_EQ(staticBucket, dynamicBucket);
 
   //removeTestBase();
 }
