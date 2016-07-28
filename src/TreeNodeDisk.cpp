@@ -25,7 +25,7 @@ namespace sto {
 
 template<class Token>
 TreeNodeDisk<Token>::TreeNodeDisk(std::string path, std::shared_ptr<DB<Token>> db, size_t maxArraySize) :
-    TreeNode<Token, SuffixArrayDisk<Token>>(maxArraySize), path_(path), db_(db), sync_(false) {
+    TreeNode<Token, SuffixArrayDisk<Token>>(maxArraySize), path_(path), db_(db), sync_(true) {
   using namespace boost::filesystem;
 
   assert(db != nullptr);

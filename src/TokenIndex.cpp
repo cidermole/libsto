@@ -41,6 +41,8 @@ struct AddSentenceImpl {
     for(Offset i = 0; i < sent.size(); i++)
       index.AddSubsequence_(sent, i);
   }
+
+  AddSentenceImpl(Corpus<Token> &corpus) {}
 };
 
 template<class Token>
@@ -48,16 +50,35 @@ struct AddSentenceImpl<Token, IndexTypeDisk> {
   void operator()(TokenIndex<Token, IndexTypeDisk> &index, const Sentence<Token> &sent) {
     // add to memory index, then merge in
     // (workaround for testing IndexTypeDisk using AddSentence())
+
+    /*
     TokenIndex<Token, IndexTypeMemory> add(*index.corpus());
     add.AddSentence(sent);
     index.Merge(add);
+     */
+
+    memBuffer->AddSentence(sent);
+    if(++nsents == kBatchSize) {
+      index.Merge(*memBuffer);
+      nsents = 0;
+      memBuffer.reset(new TokenIndex<Token, IndexTypeMemory>(corpus_));
+    }
   }
+
+  AddSentenceImpl(Corpus<Token> &corpus) : memBuffer(new TokenIndex<Token, IndexTypeMemory>(corpus)), corpus_(corpus) {}
+
+  std::unique_ptr<TokenIndex<Token, IndexTypeMemory>> memBuffer;
+  size_t nsents = 0;
+  size_t kBatchSize = 1000; /** batch size in number of sents */
+
+  Corpus<Token> &corpus_;
 };
 
 template<class Token, typename TypeTag>
 void TokenIndex<Token, TypeTag>::AddSentence(const Sentence<Token> &sent) {
   // work around C++ lacking partial specialization of member functions
-  AddSentenceImpl<Token, TypeTag>()(*this, sent);
+  static AddSentenceImpl<Token, TypeTag> addsents(*corpus_);
+  addsents(*this, sent);
 }
 
 
