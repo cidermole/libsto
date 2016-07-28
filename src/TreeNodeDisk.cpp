@@ -77,8 +77,6 @@ bool TreeNodeDisk<Token>::find_child_(Vid vid, TreeNodeDisk<Token> **child) {
 template<class Token>
 template<class PositionSpan>
 void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<Token> &corpus, Offset depth) {
-  std::cerr << "MergeLeaf(vid=" << this->vid_dbg_ << ", curSize=" << this->array_->size() << ", addSize=" << addSpan.size() << ", depth=" << int(depth) << ")" << std::endl;
-
   assert(this->is_leaf());
 
   size_t addSize = addSpan.size();
@@ -186,19 +184,6 @@ void TreeNodeDisk<Token>::Merge(typename TokenIndex<Token, IndexTypeMemory>::Spa
     return;
   }
 
-  size_t sm_vids = 0;
-  for(auto vid : spanMemory)
-    sm_vids++;
-
-  std::cerr << "Merge() node sm_vids=" << sm_vids << std::endl;
-  std::cerr << "Merge() spanMemory.node()->is_leaf()=" << spanMemory.node()->is_leaf() << ", ";
-  if(!spanMemory.node()->is_leaf()) {
-    std::cerr << "count=" << spanMemory.node()->children().Count();
-    if(spanMemory.node()->children().Count() != sm_vids)
-      std::cerr << "break here" << std::endl;
-  }
-  std::cerr << std::endl;
-
   for(auto vid : spanMemory) {
     typename TokenIndex<Token, IndexTypeMemory>::Span spanm = spanMemory;
     size_t num_new = spanm.narrow(Token{vid});
@@ -221,9 +206,7 @@ void TreeNodeDisk<Token>::Merge(typename TokenIndex<Token, IndexTypeMemory>::Spa
 template<class Token>
 void TreeNodeDisk<Token>::AddLeaf(Vid vid) {
   //assert(!this->children_.Find(vid)); // appending to children assumes that this vid is new
-  TreeNodeDisk<Token> *node = new TreeNodeDisk<Token>(child_path(vid), this->db_, this->kMaxArraySize);
-  node->vid_dbg_ = vid;
-  this->children_[vid] = node;
+  this->children_[vid] = new TreeNodeDisk<Token>(child_path(vid), this->db_, this->kMaxArraySize);
 
   if(sync_) {
     // (in reality, we could just append to the existing blob of vids... child order does not matter)
@@ -262,7 +245,6 @@ std::string TreeNodeDisk<Token>::child_sub_path(Vid vid) {
 template<class Token>
 TreeNodeDisk<Token> *TreeNodeDisk<Token>::make_child_(Vid vid, typename SuffixArray::iterator first, typename SuffixArray::iterator last, const Corpus<Token> &corpus, Offset depth) {
   TreeNodeDisk<Token> *new_child = new TreeNodeDisk<Token>(child_path(vid), this->db_, this->kMaxArraySize);
-  new_child->vid_dbg_ = vid;
   new_child->MergeLeaf(SuffixArrayPositionSpan<Token>(first.ptr(), last.ptr()), corpus, depth);
   //new_array->insert(new_array->begin(), first, last); // this is the TreeNodeMemory interface. Maybe we could have implemented insert() here on SuffixArrayDisk, and use a common call?
   return new_child;
