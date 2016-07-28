@@ -136,8 +136,6 @@ class RBTree {
   public:
     Iterator(const Iterator &other) = default;
 
-#define DBG_PRINT(x) std::cerr << "RB::It " << x << std::endl
-
     Iterator &operator++() {
       /*
        * Essentially implements in-order traversal, i.e. the following:
@@ -153,57 +151,45 @@ class RBTree {
        * }
        */
 
-      DBG_PRINT("operator++()");
-
       while(true) {
         assert(path_.size() > 0); // else, we went beyond end()
         auto *top = &path_.back();
 
         switch(top->second) {
-          case kLeft:  DBG_PRINT("  top->second = kLeft");
+          case kLeft:
             top->second = kYield;
             if(top->first->left != nil_) {
-              DBG_PRINT("  push(left) = " << top->first->left->key);
               path_.push_back(std::make_pair(top->first->left, kLeft));
             }
             break;
 
-          case kYield:  DBG_PRINT("  top->second = kYield");
+          case kYield:
             top->second = kRight;
-            DBG_PRINT("  yield = " << top->first->key);
             cur_ = top->first;
             return *this;
             break;
 
-          case kRight:  DBG_PRINT("  top->second = kRight");
+          case kRight:
             top->second = kDone;
             if(top->first->right != nil_) {
-              DBG_PRINT("  push(right) = " << top->first->right->key);
               path_.push_back(std::make_pair(top->first->right, kLeft));
             } else {
               path_.pop_back();
               if(path_.size() == 0) {
-                DBG_PRINT("  pop(), now reached end() at depth=0");
                 // reached end() at depth = 0 -- with single-entry tree
                 cur_.reset();
                 return *this;
-              } else {
-                DBG_PRINT("  pop(), now at " << path_.back().first->key);
               }
             }
             break;
 
-          case kDone:  DBG_PRINT("  top->second = kDone");
+          case kDone:
             if(path_.size() == 0) {
-              DBG_PRINT("  reached end() at kDone");
               cur_.reset();
               return *this;
             } else {
               path_.pop_back();
-              if(path_.size()) {
-                DBG_PRINT("  pop(), now at " << path_.back().first->key);
-              } else {
-                DBG_PRINT("  pop(), now reached end()");
+              if(path_.size() == 0) {
                 cur_.reset();
                 return *this;
               }
@@ -211,17 +197,10 @@ class RBTree {
             break;
 
           default:
-            /* // debug prints in case of failure -- remove later
-            std::cerr << "path_.size() = " << path_.size() << std::endl;
-            for(size_t i = 0; i < path_.size(); i++)
-              std::cerr << path_[i].second << std::endl;
-              */
             assert(0);
         }
       }
     }
-
-#undef DBG_PRINT
 
     const KeyType& operator*() { return cur_->key; }
 
