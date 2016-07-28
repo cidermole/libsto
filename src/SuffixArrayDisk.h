@@ -56,6 +56,8 @@ private:
 template<class Token>
 class SuffixArrayDisk {
 public:
+  typedef sto::SuffixArrayPosition<Token> value_type;
+
   SuffixArrayDisk();
   SuffixArrayDisk(const std::string &bytes);
 

@@ -143,7 +143,7 @@ public:
   Position &operator=(Position &&other) = default;
   Position &operator=(const Position &other) = default;
 
-  Position(AtomicPosition<Token> &atomic_pos) : Position(atomic_pos.load()) {}
+  Position(const AtomicPosition<Token> &atomic_pos) : Position(atomic_pos.load()) {}
 
   /** like operator>(this, other) */
   bool compare(const Position<Token> &other, const Corpus<Token> &corpus) const;
@@ -186,7 +186,7 @@ struct AtomicPosition {
     return *this;
   }
 
-  Position<Token> load() { return pos.load(order); }
+  Position<Token> load() const { return pos.load(order); }
 
   std::atomic<Position<Token>> pos;
 };

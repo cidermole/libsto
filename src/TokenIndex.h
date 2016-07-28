@@ -142,20 +142,31 @@ public:
           return iter_ != other.iter_;
       }
 
+      /**
+       * @returns the number of Positions comparing equal from the current index_,
+       * aka the number of Positions to skip to get to the next vid at the current depth
+       */
       size_t StepSize() {
         // much akin to code in TreeNode::SplitNode()... unite?
         typedef typename TreeNodeT::SuffixArrayT::iterator iter;
+
+        // note: the real type of the SuffixArrayDisk range are AtomicPosition. But Position<->AtomicPosition are convertible
+        //
+        // #include <type_traits>
+        //bool same = std::is_same<typename TreeNodeT::SuffixArrayT::value_type, AtomicPosition<Token>>::value;
+        //assert(same);
 
         Position<Token> pos = span_[index_];
 
         Corpus<Token> &corpus = *span_.corpus();
         size_t depth = span_.depth();
-        auto comp = [&corpus, depth](const Position<Token> &a, const Position<Token> &b) {
+        auto comp = [&corpus, depth](const Position<Token> a, const Position<Token> b) {
           // the suffix array at this depth should only contain positions that continue long enough without the sentence ending
           return a.add(depth, corpus).vid(corpus) < b.add(depth, corpus).vid(corpus);
         };
 
-        std::pair<iter, iter> vid_range = std::equal_range(span_.node()->array()->begin() + index_, span_.node()->array()->end(), pos, comp);
+        // TODO this too low-level; move into Span.
+        std::pair<iter, iter> vid_range = std::equal_range(span_.node()->array()->begin() + span_.array_range().begin + index_, span_.node()->array()->begin() + span_.array_range().end, pos, comp);
         size_t step = vid_range.second - vid_range.first;
         assert(step > 0);
         return step;
@@ -216,6 +227,8 @@ public:
 
     /** true if span reaches into a suffix array leaf. */
     bool in_array() const;
+
+    Range array_range() const { assert(array_path_.size() > 0); return array_path_.back(); }
 
     /** partial lookup sequence so far, as appended by narrow() */
     const std::vector<Token>& sequence() const { return sequence_; }
