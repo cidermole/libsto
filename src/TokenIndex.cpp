@@ -15,11 +15,11 @@ namespace sto {
 // --------------------------------------------------------
 
 template<class Token, typename TypeTag>
-TokenIndex<Token, TypeTag>::TokenIndex(const std::string &filename, Corpus<Token> &corpus, std::shared_ptr<DB<Token>> db, size_t maxLeafSize) : corpus_(&corpus), root_(new TreeNodeT(filename, db, maxLeafSize))
+TokenIndex<Token, TypeTag>::TokenIndex(const std::string &filename, Corpus<Token> &corpus, std::shared_ptr<DB<Token>> db, size_t maxLeafSize) : corpus_(&corpus), root_(new TreeNodeT(filename, db, maxLeafSize)), add_buffer_(*this)
 {}
 
 template<class Token, typename TypeTag>
-TokenIndex<Token, TypeTag>::TokenIndex(Corpus<Token> &corpus, size_t maxLeafSize) : corpus_(&corpus), root_(new TreeNodeT("", nullptr, maxLeafSize))
+TokenIndex<Token, TypeTag>::TokenIndex(Corpus<Token> &corpus, size_t maxLeafSize) : corpus_(&corpus), root_(new TreeNodeT("", nullptr, maxLeafSize)), add_buffer_(*this)
 {}
 
 template<class Token, typename TypeTag>
@@ -33,59 +33,51 @@ typename TokenIndex<Token, TypeTag>::Span TokenIndex<Token, TypeTag>::span() con
 }
 
 template<class Token, typename TypeTag>
-struct AddSentenceImpl {
-  void operator()(TokenIndex<Token, TypeTag> &index, const Sentence<Token> &sent) {
-    typedef typename Corpus<Token>::Offset Offset;
-    // start a subsequence at each sentence position
-    // each subsequence only goes as deep as necessary to hit a SA
-    for(Offset i = 0; i < sent.size(); i++)
-      index.AddSubsequence_(sent, i);
-  }
+void AddSentenceImpl<Token,TypeTag>::operator()(const Sentence<Token> &sent) {
+  typedef typename Corpus<Token>::Offset Offset;
+  // start a subsequence at each sentence position
+  // each subsequence only goes as deep as necessary to hit a SA
+  for(Offset i = 0; i < sent.size(); i++)
+    index_.AddSubsequence_(sent, i);
+}
 
-  AddSentenceImpl(Corpus<Token> &corpus) {}
-};
+template<class Token, typename TypeTag>
+AddSentenceImpl<Token,TypeTag>::AddSentenceImpl(TokenIndex<Token, TypeTag> &index) : index_(index)
+{}
 
 template<class Token>
-struct AddSentenceImpl<Token, IndexTypeDisk> {
-  static constexpr size_t kMaxLeafSizeMem = 10000; // work around bugged Merge() when passed a multi-level memory-based index
+void AddSentenceImpl<Token, IndexTypeDisk>::operator()(const Sentence<Token> &sent) {
+  // add to memory index, then merge in
+  // (workaround for testing IndexTypeDisk using AddSentence())
 
-  void operator()(TokenIndex<Token, IndexTypeDisk> &index, const Sentence<Token> &sent) {
-    // add to memory index, then merge in
-    // (workaround for testing IndexTypeDisk using AddSentence())
-
-    assert(index.corpus() == &corpus_);
+  Corpus<Token> &corpus = *index_.corpus();
 
 #if 0
-    // merge every sentence
-    TokenIndex<Token, IndexTypeMemory> add(*index.corpus());
-    add.AddSentence(sent);
-    index.Merge(add);
+  // merge every sentence
+  TokenIndex<Token, IndexTypeMemory> add(*index.corpus());
+  add.AddSentence(sent);
+  index.Merge(add);
 #else
-    // merge in batches of kBatchSize
-    // TODO: remaining entries at the end
-    memBuffer->AddSentence(sent);
-    if(++nsents == kBatchSize) {
-      index.Merge(*memBuffer);
-      nsents = 0;
-      memBuffer.reset(new TokenIndex<Token, IndexTypeMemory>(corpus_, kMaxLeafSizeMem));
-    }
-#endif
+  // merge in batches of kBatchSize
+  // TODO: flush remaining entries at the end
+  memBuffer->AddSentence(sent);
+  if(++nsents == kBatchSize) {
+    index_.Merge(*memBuffer);
+    nsents = 0;
+    memBuffer.reset(new TokenIndex<Token, IndexTypeMemory>(corpus, kMaxLeafSizeMem));
   }
+#endif
+}
 
-  AddSentenceImpl(Corpus<Token> &corpus) : memBuffer(new TokenIndex<Token, IndexTypeMemory>(corpus, kMaxLeafSizeMem)), corpus_(corpus) {}
-
-  std::unique_ptr<TokenIndex<Token, IndexTypeMemory>> memBuffer;
-  size_t nsents = 0;
-  size_t kBatchSize = 10000; /** batch size in number of sents */
-
-  Corpus<Token> &corpus_;
-};
+template<class Token>
+AddSentenceImpl<Token, IndexTypeDisk>::AddSentenceImpl(TokenIndex<Token, IndexTypeDisk> &index) :
+    memBuffer(new TokenIndex<Token, IndexTypeMemory>(*index.corpus(), kMaxLeafSizeMem)), index_(index)
+{}
 
 template<class Token, typename TypeTag>
 void TokenIndex<Token, TypeTag>::AddSentence(const Sentence<Token> &sent) {
   // work around C++ lacking partial specialization of member functions
-  static AddSentenceImpl<Token, TypeTag> addsents(*corpus_);
-  addsents(*this, sent);
+  add_buffer_(sent);
 }
 
 

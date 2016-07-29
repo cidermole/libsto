@@ -54,6 +54,41 @@ struct IndexTypes<Token, IndexTypeMemory> {
 };
 
 /**
+ * Implementation of TokenIndex::AddSentence() that can be specialized
+ * for testing IndexTypeDisk.
+ */
+template<class Token, typename TypeTag>
+struct AddSentenceImpl {
+  void operator()(const Sentence<Token> &sent);
+  AddSentenceImpl(TokenIndex<Token, TypeTag> &index);
+private:
+  TokenIndex<Token, TypeTag> &index_;
+};
+
+
+/**
+ * Partial specialization of AddSentenceImpl for IndexTypeDisk.
+ * for testing IndexTypeDisk using AddSentence().
+ */
+template<class Token>
+struct AddSentenceImpl<Token, IndexTypeDisk> {
+  static constexpr size_t kMaxLeafSizeMem = 10000;
+
+  void operator()(const Sentence<Token> &sent);
+
+  AddSentenceImpl(TokenIndex<Token, IndexTypeDisk> &index);
+
+private:
+  std::unique_ptr<TokenIndex<Token, IndexTypeMemory>> memBuffer;
+  size_t nsents = 0;
+  //size_t kBatchSize = 10000; /** batch size in number of sents */  // (used this for individually running BenchmarkTests.index_100k_disk) -- breaks other tests since we don't have a flush at the end
+  size_t kBatchSize = 1; /** batch size in number of sents */
+
+  TokenIndex<Token, IndexTypeDisk> &index_;
+};
+
+
+/**
  * Indexes a Corpus. The index is implemented as a hybrid suffix tree/array.
  *
  * Vocab note: vid of explicit sentence end delimiting symbol </s> must be at the very beginning of all vocab symbols
@@ -302,6 +337,7 @@ private:
 
   Corpus<Token> *corpus_;
   TreeNodeT *root_; /** root of the index tree */
+  AddSentenceImpl<Token, TypeTag> add_buffer_; /** buffer caching AddSentence() calls */
 };
 
 } // namespace sto
