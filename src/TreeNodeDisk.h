@@ -102,9 +102,6 @@ private:
   /** factory function for TreeNode::SplitNode() */
   TreeNodeDisk<Token> *make_child_(Vid vid, typename SuffixArray::iterator first, typename SuffixArray::iterator last, const Corpus<Token> &corpus, Offset depth);
 
-  /** Take ownership of 'first', and write array at this node level. */
-  void WriteArray(SuffixArrayPosition<Token> **first, SuffixArrayPosition<Token> *last);
-
   /** Write vids of children to persistent storage */
   void WriteChildren();
 };

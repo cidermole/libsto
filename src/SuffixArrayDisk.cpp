@@ -23,6 +23,12 @@ SuffixArrayDisk<Token>::SuffixArrayDisk(const std::string &bytes) {
 }
 
 template<class Token>
+SuffixArrayDisk<Token>::SuffixArrayDisk(const SuffixArrayPosition<Token> *data, size_t len) {
+  // keep data block cached in RAM
+  (*this) = std::string(reinterpret_cast<const char *>(data), sizeof(SuffixArrayPosition<Token>) * len);
+}
+
+template<class Token>
 SuffixArrayDisk<Token> &SuffixArrayDisk<Token>::operator=(const std::string &bytes) {
   value_ = bytes;
   array_ = reinterpret_cast<SuffixArrayPosition<Token> *>(const_cast<char *>(value_.c_str()));

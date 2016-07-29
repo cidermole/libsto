@@ -96,8 +96,8 @@ void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<To
   // bool allow_split = sent.size() + 1 > start + depth; // +1 for implicit </s>
   bool allow_split = curSize > 0 && corpus.sentence(curSpan[0].sid).size() + 1 > curSpan[0].offset + depth;
 
-  SuffixArrayPosition<Token> *newArray = new SuffixArrayPosition<Token>[newSize];
-  SuffixArrayPosition<Token> *pnew = newArray;
+  std::unique_ptr<SuffixArrayPosition<Token>[]> newArray(new SuffixArrayPosition<Token>[newSize]);
+  SuffixArrayPosition<Token> *pnew = newArray.get();
 
   assert(addSize > 0);
   Vid vid = depth > 0 ? Position<Token>(addSpan[0]).add(depth-1, corpus).vid(corpus) : 0;
@@ -135,30 +135,25 @@ void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<To
 
 #ifndef NDEBUG
   // postconditions
-  assert(pnew - newArray == (ptrdiff_t) newSize); // filled the entire array
+  assert(pnew - newArray.get() == (ptrdiff_t) newSize); // filled the entire array
 
   // array is sorted in ascending order
   for(size_t i = 0; i < newSize - 1; i++) {
     Position<Token> p = newArray[i], q = newArray[i+1];
-    //assert(p <= q) == assert(!(p > q));
-    assert(!p.compare(q, corpus));
+    //assert(p <= q) == assert(!(p > q)); // equivalent formula if we had > operator
+    assert(!p.compare(q, corpus)); // ascending order
+    assert(!(p == q)); // ensure no duplicates
   }
 #endif
 
   if(sync_) {
     // overwrite the DB key now; the existing array_ continues to hold the old data afterwards
-    WriteArray(&newArray, newArray + newSize);
-    // map the newly written array, and atomically replace the old array_
-    this->array_.reset(new SuffixArrayDisk<Token>());
-    this->db_->GetNodeLeaf(array_path(), *this->array_);
-    // to do: if WriteArray() didn't take ownership, we could use the raw data in newArray (instead of reading it back)
-  } else {
-    // this copies twice here, but nevermind -- just for testing, I/O will be much slower anyway
-    std::string bytes(reinterpret_cast<const char *>(newArray), sizeof(SuffixArrayPosition<Token>) * newSize);
-    this->array_.reset(new SuffixArrayDisk<Token>(bytes));
-    delete[] newArray;
-    newArray = nullptr;
+    db_->PutNodeLeaf(array_path(), newArray.get(), newSize);
   }
+  // atomically replace the old array_
+  this->array_.reset(new SuffixArrayDisk<Token>(newArray.get(), newSize));
+
+  newArray.reset();
 
   assert(this->array_->size() == newSize);
 
@@ -261,13 +256,6 @@ TreeNodeDisk<Token> *TreeNodeDisk<Token>::make_child_(Vid vid, typename SuffixAr
   new_child->MergeLeaf(SuffixArrayPositionSpan<Token>(first.ptr(), last.ptr()), corpus, depth);
   //new_array->insert(new_array->begin(), first, last); // this is the TreeNodeMemory interface. Maybe we could have implemented insert() here on SuffixArrayDisk, and use a common call?
   return new_child;
-}
-
-template<class Token>
-void TreeNodeDisk<Token>::WriteArray(SuffixArrayPosition<Token> **first, SuffixArrayPosition<Token> *last) {
-  db_->PutNodeLeaf(array_path(), *first, (last - *first));
-  delete[] *first;
-  *first = nullptr;
 }
 
 template<class Token>

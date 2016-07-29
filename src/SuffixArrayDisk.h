@@ -60,6 +60,7 @@ public:
 
   SuffixArrayDisk();
   SuffixArrayDisk(const std::string &bytes);
+  SuffixArrayDisk(const SuffixArrayPosition<Token> *data, size_t len);
 
   class Iterator {
   public:
