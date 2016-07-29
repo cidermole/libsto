@@ -96,11 +96,25 @@ public:
   /** compact the entire database */
   void CompactRange();
 
-private:
-  std::unique_ptr<rocksdb::DB> db_;
+  /**
+   * Make a shallow copy referencing a different area in the same underlying rocksdb::DB object.
+   *
+   * @param key_prefix  prefix prepended to all keys, essentially like a global namespace/schema in the database
+   */
+  std::shared_ptr<DB<Token>> PrefixedDB(std::string key_prefix);
 
-  static std::string vid_key_(Vid vid);
-  static std::string surface_key_(const std::string &surface);
+private:
+  std::shared_ptr<rocksdb::DB> db_;
+  std::string key_prefix_; /** prefix prepended to all keys, essentially like a global namespace/schema in the database */
+
+  /** ctor used by PrefixedDB() */
+  DB(const DB &other, std::string key_prefix);
+
+  /** @returns key_prefix_ + key */
+  std::string key_(const std::string &k);
+
+  std::string vid_key_(Vid vid);
+  std::string surface_key_(const std::string &surface);
 };
 
 } // namespace sto

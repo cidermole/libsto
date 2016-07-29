@@ -24,7 +24,8 @@ DB<Token>::DB(const std::string &basePath) {
   //options.PrepareForBulkLoad();
   options.create_if_missing = true;
   //options.use_fsync = true;
-  options.prefix_extractor.reset(rocksdb::NewFixedPrefixTransform(DB::KEY_PREFIX_LEN));
+
+  //options.prefix_extractor.reset(rocksdb::NewFixedPrefixTransform(DB::KEY_PREFIX_LEN)); // cannot use this with variable-length key_prefix_
 
   //std::cerr << "opening DB " << basePath << " ..." << std::endl;
   rocksdb::Status status = rocksdb::DB::Open(options, basePath, &db);
@@ -51,7 +52,7 @@ size_t DB<Token>::LoadVocab(std::unordered_map<Vid, std::string> &id2surface) {
 
   Vid maxVid = 1; // note: affects size of empty Vocab, via Vocab::db_load()
   auto iter = db_->NewIterator(ReadOptions());
-  std::string prefix = "vid_";
+  std::string prefix = key_("vid_");
   for(iter->Seek(prefix); iter->Valid() && iter->key().starts_with(prefix); iter->Next()) {
     std::string surface;
     db_->Get(ReadOptions(), iter->key(), &surface);
@@ -108,17 +109,17 @@ std::string DB<Token>::vid_key_(Vid vid) {
   char key_str[4 + sizeof(Vid)] = "vid_";
   memcpy(&key_str[4], &vid, sizeof(Vid));
   std::string key(key_str, 4 + sizeof(Vid));
-  return key;
+  return key_(key);
 }
 
 template<class Token>
 std::string DB<Token>::surface_key_(const std::string &surface) {
-  return "srf_" + surface;
+  return key_("srf_" + surface);
 }
 
 template<class Token>
 void DB<Token>::PutNodeLeaf(const std::string &path, const SuffixArrayPosition<Token> *data, size_t len) {
-  rocksdb::Slice key = path;
+  std::string key = key_(path);
   rocksdb::Slice val((const char *) data, len * sizeof(SuffixArrayPosition<Token>));
   rocksdb::Status status = db_->Put(rocksdb::WriteOptions(), key, val);
   assert(status.ok());
@@ -126,7 +127,7 @@ void DB<Token>::PutNodeLeaf(const std::string &path, const SuffixArrayPosition<T
 
 template<class Token>
 bool DB<Token>::GetNodeLeaf(const std::string &path, SuffixArrayDisk<Token> &array) {
-  rocksdb::Slice key = path;
+  std::string key = key_(path);
   std::string value;
 
   rocksdb::Status status = db_->Get(rocksdb::ReadOptions(), key, &value);
@@ -138,7 +139,7 @@ bool DB<Token>::GetNodeLeaf(const std::string &path, SuffixArrayDisk<Token> &arr
 
 template<class Token>
 void DB<Token>::DeleteNodeLeaf(const std::string &path) {
-  rocksdb::Slice key = path;
+  std::string key = key_(path);
   db_->Delete(rocksdb::WriteOptions(), key);
 }
 
@@ -148,11 +149,11 @@ NodeType DB<Token>::IsNodeLeaf(const std::string &path) {
 
   // true if this path does not contain an internal node
 
-  rocksdb::Slice key = path;
-  std::string array_key_str = path + "/array";
+  std::string key = key_(path);
+  std::string array_key_str = key_(path + "/array");
   std::string value_discarded;
 
-  if(db_->Get(rocksdb::ReadOptions(), array_key_str , &value_discarded).ok()) {
+  if(db_->Get(rocksdb::ReadOptions(), array_key_str, &value_discarded).ok()) {
     // has array -> leaf
     return NT_LEAF_EXISTS;
   } else if(db_->Get(rocksdb::ReadOptions(), key, &value_discarded).ok()) {
@@ -162,6 +163,20 @@ NodeType DB<Token>::IsNodeLeaf(const std::string &path) {
     // no array, no children -> need empty leaf node
     return NT_LEAF_MISSING;
   }
+}
+
+template<class Token>
+std::shared_ptr<DB<Token>> DB<Token>::PrefixedDB(std::string key_prefix) {
+  return std::shared_ptr<DB<Token>>(new DB<Token>(*this, key_prefix));
+}
+
+template<class Token>
+DB<Token>::DB(const DB &other, std::string key_prefix) : db_(other.db_), key_prefix_(key_prefix)
+{}
+
+template<class Token>
+std::string DB<Token>::key_(const std::string &k) {
+  return key_prefix_ + k;
 }
 
 template<class Token>
