@@ -46,7 +46,7 @@ void remove_all(const std::string &p) {
   boost::filesystem::remove_all(base, ec); // ensure no leftovers
 }
 
-TEST(CorpusTests, write_read) {
+TEST(CorpusTests, write_read_append) {
   Vocab<SrcToken> sv("res/vocab.tdx");
   Corpus<SrcToken> sc(&sv);
 
@@ -66,12 +66,12 @@ TEST(CorpusTests, write_read) {
   remove_all("res/CorpusTests");
   boost::filesystem::create_directory("res/CorpusTests");
 
-  sc.Write("res/CorpusTests/write_read.trk");
+  sc.Write("res/CorpusTests/write_read_append.trk");
 
 
   {
     // load corpus from disk
-    Corpus<SrcToken> loaded("res/CorpusTests/write_read.trk", &sv);
+    Corpus<SrcToken> loaded("res/CorpusTests/write_read_append.trk", &sv);
 
     // retrieve Sentence from Corpus
     EXPECT_EQ(1, loaded.size()) << "after loading from disk, Corpus must have size() == 1";
@@ -87,11 +87,11 @@ TEST(CorpusTests, write_read) {
     loaded.AddSentence(sentence2);
 
     // for binary comparison, write in a different way as well:
-    loaded.Write("res/CorpusTests/ref.trk");
+    //loaded.Write("res/CorpusTests/ref.trk"); // note: will not currently diff correctly, because of uninitialized trailing bytes in structs
   } // Corpus loaded; goes out of scope here -> file closed
 
   // load corpus from disk
-  Corpus<SrcToken> loaded2("res/CorpusTests/write_read.trk", &sv);
+  Corpus<SrcToken> loaded2("res/CorpusTests/write_read_append.trk", &sv);
 
   // retrieve Sentence from Corpus
   EXPECT_EQ(2, loaded2.size()) << "after 2nd loading from disk, Corpus must have size() == 2";
@@ -147,4 +147,63 @@ TEST(CorpusTests, word_alignment_load) {
 
   for(size_t i = 0; i < expected_links.size(); i++)
     EXPECT_EQ(expected_links[i], sent[i]) << "correct entry in loaded word alignment, offset " << i;
+}
+
+// like write_read_append for word alignment
+TEST(CorpusTests, alignment_write_read_append) {
+  Corpus<AlignmentLink> sc;
+
+  std::vector<AlignmentLink> links = {{0,0}, {0,1}, {3,4}};
+
+  EXPECT_EQ(0, sc.size()) << "empty Corpus must have size() == 0";
+  sc.AddSentence(links);
+  EXPECT_EQ(1, sc.size()) << "after adding single Sentence, Corpus must have size() == 1";
+
+  // retrieve Sentence from Corpus
+  Sentence<AlignmentLink> sent = sc.sentence(0);
+
+  EXPECT_EQ(links.size(), sent.size()) << "should have the same number of alignment links";
+  for(size_t i = 0; i < links.size(); i++)
+    EXPECT_EQ(links[i], sent[i]) << "correct entry in word alignment, offset " << i;
+
+  remove_all("res/CorpusTests");
+  boost::filesystem::create_directory("res/CorpusTests");
+
+  sc.Write("res/CorpusTests/alignment_write_read_append.trk");
+
+  std::vector<AlignmentLink> links2 = {{0,3}, {2,5}, {3,1}, {4,4}};
+
+
+  {
+    // load corpus from disk
+    Corpus<AlignmentLink> loaded("res/CorpusTests/alignment_write_read_append.trk");
+
+    // retrieve Sentence from Corpus
+    EXPECT_EQ(1, loaded.size()) << "after loading from disk, Corpus must have size() == 1";
+
+    Sentence<AlignmentLink> sent2 = loaded.sentence(0);
+    EXPECT_EQ(links.size(), sent2.size()) << "should have the same number of alignment links";
+    for(size_t i = 0; i < links.size(); i++)
+      EXPECT_EQ(links[i], sent2[i]) << "correct entry in v3 word alignment loaded from disk, offset " << i;
+
+
+    // this corpus now supports appending
+    loaded.AddSentence(links2);
+
+    // for binary comparison, write in a different way as well:
+    //loaded.Write("res/CorpusTests/ref.trk"); // note: will not currently diff correctly, because of uninitialized trailing bytes in structs
+  } // Corpus loaded; goes out of scope here -> file closed
+
+  // load corpus from disk
+  Corpus<AlignmentLink> loaded2("res/CorpusTests/alignment_write_read_append.trk");
+
+  // retrieve Sentence from Corpus
+  EXPECT_EQ(2, loaded2.size()) << "after 2nd loading from disk, Corpus must have size() == 2";
+
+  Sentence<AlignmentLink> sent3 = loaded2.sentence(1);
+  EXPECT_EQ(links2.size(), sent3.size()) << "should have the same number of alignment links";
+  for(size_t i = 0; i < links2.size(); i++)
+    EXPECT_EQ(links2[i], sent3[i]) << "correct entry in v3 word alignment loaded from disk, offset " << i;
+
+  //remove_all("res/CorpusTests"); // clean up
 }

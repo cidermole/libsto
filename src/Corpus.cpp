@@ -175,14 +175,20 @@ void Corpus<Token>::Write(const std::string &filename) {
   size_t dyn_offset = 0;
   if(sentIndexHeader_.idxSize) {
     // we have a static index
-    if(fwrite(sentIndexEntries_, sizeof(SentIndexEntry), sentIndexHeader_.idxSize, index) != sentIndexHeader_.idxSize)
-      throw std::runtime_error("Corpus: fwrite() failed");
+    auto *end = sentIndexEntries_ + sentIndexHeader_.idxSize;
+    for(auto *p = sentIndexEntries_; p != end; p++) {
+      auto e = *p;
+      e *= sentIndexEntrySize_; // compute the size format for disk
+      if(fwrite(&e, sizeof(SentIndexEntry), 1, index) != 1)
+        throw std::runtime_error("Corpus: fwrite() failed");
+    }
     // trailing sentinel is written below.
     size_t idx_size = sentIndexEntries_[sentIndexHeader_.idxSize] / sentIndexEntrySize_;
     dyn_offset = idx_size;
   }
   for(auto e : dyn_sentIndex_) {
     e += dyn_offset; // add static index size
+    e *= sentIndexEntrySize_; // compute the size format for disk
     if(fwrite(&e, sizeof(SentIndexEntry), 1, index) != 1)
       throw std::runtime_error("Corpus: fwrite() failed");
   }
@@ -215,7 +221,7 @@ void Corpus<Token>::WriteSentence() {
   fsync(track_->fd());
 
   // update index: append first, then update counts in header
-  SentIndexEntry entry = static_cast<SentIndexEntry>(static_ntoks + dyn_ntoks_after);
+  SentIndexEntry entry = static_cast<SentIndexEntry>((static_ntoks + dyn_ntoks_after) * sentIndexEntrySize_);
   size_t idx_nentries_before = sentIndexHeader_.idxSize + 1 + dyn_sentIndex_.size() - 1 - 1; // in entries. trailing sentinels balance out (excluded in static, included in dynamic)
   if(fseek(findex_, sizeof(SentIndexHeader) + idx_nentries_before * sizeof(SentIndexEntry), SEEK_SET))
     throw std::runtime_error("Corpus: fseek() failed on index");
