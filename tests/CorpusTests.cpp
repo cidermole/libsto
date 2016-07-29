@@ -6,6 +6,8 @@
 
 #include <gtest/gtest.h>
 
+#include <boost/filesystem.hpp>
+
 #include "Vocab.h"
 #include "Corpus.h"
 #include "Types.h"
@@ -36,6 +38,70 @@ TEST(CorpusTests, empty_add) {
   Sentence<SrcToken> sent = sc.sentence(0);
   EXPECT_EQ("orange apple and pear", sent.surface()) << "ability to retrieve a dyn stored Sentence";
 }
+
+void remove_all(const std::string &p) {
+  using namespace boost::filesystem;
+  boost::system::error_code ec;
+  path base(p);
+  boost::filesystem::remove_all(base, ec); // ensure no leftovers
+}
+
+TEST(CorpusTests, write_read) {
+  Vocab<SrcToken> sv("res/vocab.tdx");
+  Corpus<SrcToken> sc(&sv);
+
+  std::vector<std::string> surface = {"orange", "apple", "and", "pear"};
+  std::vector<SrcToken> sentence;
+  for(auto s : surface)
+    sentence.push_back(sv.at(s)); // vocabulary lookup
+
+  EXPECT_EQ(0, sc.size()) << "empty Corpus must have size() == 0";
+  sc.AddSentence(sentence);
+  EXPECT_EQ(1, sc.size()) << "after adding single Sentence, Corpus must have size() == 1";
+
+  // retrieve Sentence from Corpus
+  Sentence<SrcToken> sent = sc.sentence(0);
+  EXPECT_EQ("orange apple and pear", sent.surface()) << "ability to retrieve a dyn stored Sentence";
+
+  remove_all("res/CorpusTests");
+  boost::filesystem::create_directory("res/CorpusTests");
+
+  sc.Write("res/CorpusTests/write_read.trk");
+
+
+  {
+    // load corpus from disk
+    Corpus<SrcToken> loaded("res/CorpusTests/write_read.trk", &sv);
+
+    // retrieve Sentence from Corpus
+    EXPECT_EQ(1, loaded.size()) << "after loading from disk, Corpus must have size() == 1";
+    Sentence<SrcToken> sent2 = loaded.sentence(0);
+    EXPECT_EQ("orange apple and pear", sent2.surface()) << "ability to retrieve a dyn stored Sentence from disk";
+
+
+    // this corpus now supports appending
+    std::vector<std::string> surface2 = {"the", "orange", "fox", "painted", "grey", "by", "the", "hazy", "fog"};
+    std::vector<SrcToken> sentence2;
+    for(auto s : surface2)
+      sentence2.push_back(sv[s]); // vocabulary insert
+    loaded.AddSentence(sentence2);
+
+    // for binary comparison, write in a different way as well:
+    loaded.Write("res/CorpusTests/ref.trk");
+  } // Corpus loaded; goes out of scope here -> file closed
+
+  // load corpus from disk
+  Corpus<SrcToken> loaded2("res/CorpusTests/write_read.trk", &sv);
+
+  // retrieve Sentence from Corpus
+  EXPECT_EQ(2, loaded2.size()) << "after 2nd loading from disk, Corpus must have size() == 2";
+  Sentence<SrcToken> sent3 = loaded2.sentence(1);
+  EXPECT_EQ("the orange fox painted grey by the hazy fog", sent3.surface()) << "ability to retrieve an appended Sentence from disk";
+
+
+  //remove_all("res/CorpusTests"); // clean up
+}
+
 
 TEST(CorpusTests, sentence_index_operator) {
   Vocab<SrcToken> sv;

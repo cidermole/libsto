@@ -7,49 +7,62 @@
 #include <cassert>
 #include <algorithm>
 #include <sstream>
+#include <unistd.h>
 
 #include "Corpus.h"
 #include "Types.h"
+
 
 namespace sto {
 
 /* Create empty corpus */
 template<class Token>
-Corpus<Token>::Corpus(const Corpus<Token>::Vocabulary *vocab) : vocab_(vocab), sentIndexEntries_(nullptr), sentIndexEntrySize_(1)
+Corpus<Token>::Corpus(const Corpus<Token>::Vocabulary *vocab) : vocab_(vocab), trackTokens_(nullptr), sentIndexEntries_(nullptr), sentIndexEntrySize_(1), writable_(false)
 {
   dyn_sentIndex_.push_back(0);
   sentIndexHeader_.idxSize = 0; // no static entries
+
+  init_index_type();
 }
 
 /* Load corpus from mtt-build .mtt format or from split corpus/sentidx. */
 template<class Token>
-Corpus<Token>::Corpus(const std::string &filename, const Corpus<Token>::Vocabulary *vocab) : vocab_(vocab) {
-  track_.reset(new MappedFile(filename));
-  CorpusTrackHeader &header = *reinterpret_cast<CorpusTrackHeader*>(track_->ptr);
+Corpus<Token>::Corpus(const std::string &filename, const Corpus<Token>::Vocabulary *vocab) : vocab_(vocab), writable_(false) {
+  track_.reset(new MappedFile(filename, /* offset = */ 0, O_RDWR));
+  CorpusTrackHeader &header = *reinterpret_cast<CorpusTrackHeader *>(track_->ptr);
   trackHeader_ = header;
 
   // read and interpret file header(s), find sentence index
-  if(header.versionMagic == tpt::INDEX_V2_MAGIC) {
+  if (header.versionMagic == tpt::INDEX_V2_MAGIC) {
     // legacy v2 corpus, with concatenated track and sentence index
-    sentIndex_.reset(new MappedFile(filename, header.legacy_startIdx)); // this maps some memory twice, because we leave the index as mapped in track_, but it's shared mem anyway.
+    sentIndex_.reset(new MappedFile(filename,
+                                    header.legacy_startIdx)); // this maps some memory twice, because we leave the index as mapped in track_, but it's shared mem anyway.
     sentIndexHeader_.versionMagic = header.versionMagic;
     sentIndexHeader_.idxSize = header.legacy_idxSize;
-  } else if(header.versionMagic == tpt::INDEX_V3_MAGIC) {
+  } else if (header.versionMagic == tpt::INDEX_V3_MAGIC) {
     // there is a separate sentence index file
     std::string prefix = filename.substr(0, filename.find(".trk"));
-    sentIndex_.reset(new MappedFile(prefix + ".six", header.legacy_startIdx));
-    SentIndexHeader &idxHeader = *reinterpret_cast<SentIndexHeader*>(sentIndex_->ptr);
+    sentIndex_.reset(new MappedFile(prefix + ".six", /* offset = */ 0, O_RDWR));
+    SentIndexHeader &idxHeader = *reinterpret_cast<SentIndexHeader *>(sentIndex_->ptr);
     sentIndexHeader_ = idxHeader;
     sentIndex_->ptr += sizeof(SentIndexHeader);
+    writable_ = true;
+    ftrack_ = fdopen(track_->fd(), "wb+");
+    findex_ = fdopen(sentIndex_->fd(), "wb+");
   } else {
     throw std::runtime_error(std::string("unknown version magic in ") + filename);
   }
-  trackTokens_ = reinterpret_cast<Vid*>(track_->ptr + sizeof(CorpusTrackHeader));
-  sentIndexEntries_ = reinterpret_cast<SentIndexEntry*>(sentIndex_->ptr);
+  trackTokens_ = reinterpret_cast<Vid *>(track_->ptr + sizeof(CorpusTrackHeader));
+  sentIndexEntries_ = reinterpret_cast<SentIndexEntry *>(sentIndex_->ptr);
   // maybe it would be nicer if the headers read themselves, without mmap usage.
 
   dyn_sentIndex_.push_back(0);
 
+  init_index_type();
+}
+
+template<class Token>
+void Corpus<Token>::init_index_type() {
   // hack for byte counts in word alignment: divide each entry in sentIndexEntries_ by sentIndexEntrySize_
   switch(Token::kIndexType) {
     case CorpusIndexAccounting::IDX_CNT_ENTRIES: // corpus track
@@ -61,6 +74,14 @@ Corpus<Token>::Corpus(const std::string &filename, const Corpus<Token>::Vocabula
     default:
       throw std::runtime_error("Corpus: unknown idx_type");
   }
+}
+
+template<class Token>
+Corpus<Token>::~Corpus() {
+  if(ftrack_)
+    fclose(ftrack_);
+  if(findex_)
+    fclose(findex_);
 }
 
 template<class Token>
@@ -106,6 +127,111 @@ void Corpus<Token>::AddSentence(const std::vector<Token> &sent) {
     dyn_track_.push_back(token.vid);
   }
   dyn_sentIndex_.push_back(static_cast<SentIndexEntry>(dyn_track_.size()));
+
+  if(writable_) {
+    WriteSentence();
+  }
+}
+
+/** write out the entire corpus in v3 format */
+template<class Token>
+void Corpus<Token>::Write(const std::string &filename) {
+  std::string prefix = filename.substr(0, filename.find(".trk"));
+  std::string indexfile = prefix + ".six";
+
+  FILE *track = fopen(filename.c_str(), "wb");
+  if(!track)
+    throw std::runtime_error(std::string("failed to open ") + filename + " for writing");
+
+  FILE *index = fopen(indexfile.c_str(), "wb");
+  if(!index) {
+    fclose(track);
+    throw std::runtime_error(std::string("failed to open ") + filename + " for writing");
+  }
+
+  CorpusTrackHeader trkHeader;
+  if(fwrite(&trkHeader, sizeof(CorpusTrackHeader), 1, track) != 1)
+    throw std::runtime_error("Corpus: fwrite() failed");
+  if(sentIndexHeader_.idxSize) {
+    // we have a static index
+    size_t idx_size = sentIndexEntries_[sentIndexHeader_.idxSize] / sentIndexEntrySize_;
+    if(fwrite(begin(0), sizeof(Vid), idx_size, track) != idx_size)
+      throw std::runtime_error("Corpus: fwrite() failed");
+  }
+  if(fwrite(dyn_track_.data(), sizeof(Vid), dyn_track_.size(), track) != dyn_track_.size())
+    throw std::runtime_error("Corpus: fwrite() failed");
+
+  fclose(track);
+
+
+  SentIndexHeader idxHeader;
+  size_t idx_static = sentIndexHeader_.idxSize ? sentIndexHeader_.idxSize + 1 : 0; // +1: trailing sentinel, needed explicitly if there's a static index
+  size_t idx_nentries = idx_static + dyn_sentIndex_.size() - 1; // -1: remove trailing sentinel explicitly included in dyn_sentIndex_
+  idxHeader.idxSize = static_cast<uint32_t>(idx_nentries);
+
+  if(fwrite(&idxHeader, sizeof(SentIndexHeader), 1, index) != 1)
+    throw std::runtime_error("Corpus: fwrite() failed");
+
+  size_t dyn_offset = 0;
+  if(sentIndexHeader_.idxSize) {
+    // we have a static index
+    if(fwrite(sentIndexEntries_, sizeof(SentIndexEntry), sentIndexHeader_.idxSize, index) != sentIndexHeader_.idxSize)
+      throw std::runtime_error("Corpus: fwrite() failed");
+    // trailing sentinel is written below.
+    size_t idx_size = sentIndexEntries_[sentIndexHeader_.idxSize] / sentIndexEntrySize_;
+    dyn_offset = idx_size;
+  }
+  for(auto e : dyn_sentIndex_) {
+    e += dyn_offset; // add static index size
+    if(fwrite(&e, sizeof(SentIndexEntry), 1, index) != 1)
+      throw std::runtime_error("Corpus: fwrite() failed");
+  }
+
+  fclose(index);
+}
+
+template<class Token>
+void Corpus<Token>::WriteSentence() {
+  assert(writable_);
+
+  /*
+   * Write track first, and index afterwards. Index holds the sentence count and offsets,
+   * so if we crash in-between we will later read only the valid, completed sentences.
+   * The next append would then overwrite the partial sentence from the last valid position.
+   */
+
+  // append to track
+  size_t static_ntoks = sentIndexEntries_[sentIndexHeader_.idxSize] / sentIndexEntrySize_; // end at the time of first Corpus construction, in tokens
+  size_t dyn_ntoks_before = dyn_sentIndex_[dyn_sentIndex_.size()-2]; // size (in tokens) of dynamically added tokens, already written
+  size_t dyn_ntoks_after = dyn_sentIndex_[dyn_sentIndex_.size()-1];
+  if(fseek(ftrack_, sizeof(CorpusTrackHeader) + (static_ntoks + dyn_ntoks_before) * sizeof(Vid), SEEK_SET))
+    throw std::runtime_error("Corpus: fseek() failed on track");
+  size_t ntoks = dyn_ntoks_after - dyn_ntoks_before;
+  if(fwrite(&dyn_track_[dyn_ntoks_before], sizeof(Vid), ntoks, ftrack_) != ntoks)
+    throw std::runtime_error("Corpus: fwrite() failed on track");
+
+  // enforce order: track write must be completed
+  fflush(ftrack_);
+  fsync(track_->fd());
+
+  // update index: append first, then update counts in header
+  SentIndexEntry entry = static_cast<SentIndexEntry>(static_ntoks + dyn_ntoks_after);
+  size_t idx_nentries_before = sentIndexHeader_.idxSize + 1 + dyn_sentIndex_.size() - 1 - 1; // in entries. trailing sentinels balance out (excluded in static, included in dynamic)
+  if(fseek(findex_, sizeof(SentIndexHeader) + idx_nentries_before * sizeof(SentIndexEntry), SEEK_SET))
+    throw std::runtime_error("Corpus: fseek() failed on index");
+  if(fwrite(&entry, sizeof(SentIndexEntry), 1, findex_) != 1)
+    throw std::runtime_error("Corpus: fwrite() failed on index");
+
+  // only update header on disk, not in memory (since mmap still contains the old number of sentences)
+  SentIndexHeader header = sentIndexHeader_;
+  header.idxSize = static_cast<uint32_t>(idx_nentries_before);
+  fseek(findex_, 0, SEEK_SET);
+  if(fwrite(&header, sizeof(header), 1, findex_) != 1)
+    throw std::runtime_error("Corpus: fwrite() failed on index");
+
+  // flush write, so we can report completed persistence to upper layer
+  fflush(findex_);
+  fsync(sentIndex_->fd());
 }
 
 template<class Token>

@@ -24,9 +24,11 @@ typedef uint64_t VersionMagic;
  */
 struct CorpusTrackHeader {
   VersionMagic versionMagic;
-  uint64_t legacy_startIdx;  /** Legacy support for loading v2 format. Use SentIndexHeader! */
-  uint32_t legacy_idxSize;   /** Legacy support for loading v2 format. Use SentIndexHeader! */
-  uint32_t totalWords;       /** Total number of tokens in all sentences */
+  uint64_t legacy_startIdx;   /** Legacy support for loading v2 format. Use SentIndexHeader! */
+  uint32_t legacy_idxSize;    /** Legacy support for loading v2 format. Use SentIndexHeader! */
+  uint32_t legacy_totalWords; /** Total number of tokens in all sentences. Not currently updated! */
+
+  CorpusTrackHeader() : versionMagic(tpt::INDEX_V3_MAGIC) {}
 };
 
 /**
@@ -36,6 +38,8 @@ struct CorpusTrackHeader {
 struct SentIndexHeader {
   VersionMagic versionMagic;
   uint32_t idxSize; /** number of sentences. excludes the trailing sentinel */
+
+  SentIndexHeader() : versionMagic(tpt::INDEX_V3_MAGIC) {}
 };
 
 /**

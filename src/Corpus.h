@@ -11,6 +11,7 @@
 #include <string>
 #include <memory>
 #include <atomic>
+#include <cstdio>
 
 #include "Vocab.h"
 #include "MappedFile.h"
@@ -23,8 +24,6 @@ template<class Token> class Sentence;
 
 /**
  * Memory-mapped corpus.
- *
- * Read-only for now.
  */
 template<class Token>
 class Corpus {
@@ -40,6 +39,8 @@ public:
   /** Load corpus from mtt-build .mtt format or from split corpus/sentidx. */
   Corpus(const std::string &filename, const Vocabulary *vocab = nullptr);
 
+  ~Corpus();
+
   /**Begin of sentence (points into sequence of vocabulary IDs in the corpus track) */
   const Vid *begin(Sid sid) const;
   // should be friended to Sentence
@@ -51,7 +52,10 @@ public:
   /** retrieve Sentence, a lightweight reference to a sentence's location. */
   Sentence<Token> sentence(Sid sid) const;
 
-  /** add a sentence to the dynamic part. */
+  /**
+   * Add a sentence to the dynamic part.
+   * If writable (v3), this method will actually append to the corpus on disk.
+   */
   void AddSentence(const std::vector<Token> &sent);
 
   const Vocabulary &vocab() const;
@@ -62,6 +66,9 @@ public:
   /** total number of tokens in the entire corpus */
   size_t numTokens() const;
 
+  /** write out the entire corpus in v3 format. filename suffix must be .trk */
+  void Write(const std::string &filename);
+
 private:
   const Vocabulary *vocab_;
   std::unique_ptr<MappedFile> track_;     /** mapping starts from beginning of file, includes header */
@@ -69,12 +76,24 @@ private:
   Vid *trackTokens_;                      /** static corpus track */
   SentIndexEntry *sentIndexEntries_;      /** indexes sentence start positions in trackTokens_, includes trailing sentinel */
   size_t sentIndexEntrySize_;             /** divide each entry in sentIndexEntries_ by this (hack for byte counts in word alignment, see CorpusIndexAccounting in Types.h) */
+  bool writable_;                         /** true for v3 corpus and index: track_ and sentIndex_ are writable */
+  FILE *ftrack_ = nullptr;                /** write access to track */
+  FILE *findex_ = nullptr;                /** write access to index */
 
   CorpusTrackHeader trackHeader_;
   SentIndexHeader sentIndexHeader_;
 
   std::vector<Vid> dyn_track_; /** dynamic corpus track, located after the last static sentence ID. */
   std::vector<SentIndexEntry> dyn_sentIndex_; /** indexes sentence start positions in dyn_track_, includes trailing sentinel */
+
+  /**
+   * Append the most recently added dynamic sentence to the v3 corpus on disk.
+   * There is (currently) no buffering; the append is guaranteed to be completed by the time we return.
+   */
+  void WriteSentence();
+
+  /** set sentIndexEntrySize_ according to the index type */
+  void init_index_type();
 };
 
 template<class Token> class Position;
