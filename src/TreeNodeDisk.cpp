@@ -79,6 +79,12 @@ template<class PositionSpan>
 void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<Token> &corpus, Offset depth) {
   assert(this->is_leaf());
 
+  // Merge two sorted Position ranges: one from memory (addSpan) and one from disk (this node).
+  // Since this is where we grow, it may be necessary to split this node afterwards.
+
+  // note: for persistence to be crash-safe, we must tolerate it if some Positions have already
+  // been persisted (from a previously crashed run) --> we have to omit duplicate Positions
+
   size_t addSize = addSpan.size();
   size_t curSize = this->array_->size();
   size_t newSize = curSize + addSize;
@@ -106,6 +112,11 @@ void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<To
     while(icur < curSize && add.compare((cur = curSpan[icur]), corpus)) { // add > cur
       assert(depth == 0 || cur.add(depth-1, corpus).vid(corpus) == vid); // since span over the same vid -> each Position (at depth-1) should have the same vid.
       *pnew++ = cur;
+      icur++;
+    }
+    while(icur < curSize && add == (cur = curSpan[icur])) { // add == cur
+      assert(depth == 0 || cur.add(depth-1, corpus).vid(corpus) == vid); // since span over the same vid -> each Position (at depth-1) should have the same vid.
+      // discard equal Positions (there should really ever be just one)
       icur++;
     }
     assert(depth == 0 || add.add(depth-1, corpus).vid(corpus) == vid); // since span over the same vid -> each Position (at depth-1) should have the same vid.
@@ -170,12 +181,7 @@ void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<To
 template<class Token>
 void TreeNodeDisk<Token>::Merge(typename TokenIndex<Token, IndexTypeMemory>::Span &spanMemory, typename TokenIndex<Token, IndexTypeDisk>::Span &spanDisk) {
   // iterate through children, recursively calling Merge() until we reach the TreeNodeDisk leaf level.
-  // the memorySpan may not hit leaves at the same depth, but we can still iterate over the entire span to merge it.
-
-  //const typename TokenIndex<Token>::Span &spanMemory = spanMemory_x; // TODO temp
-  //typename TokenIndex<Token>::Span &spanDisk = spanDisk_x; // TODO temp
-
-  // to do: this is similar to TokenIndex::AddSubsequence_()
+  // spanMemory may not hit leaves at the same depth, but we can still iterate over the entire span to merge it.
 
   assert(spanDisk.node() == this);
 
@@ -213,7 +219,10 @@ void TreeNodeDisk<Token>::AddLeaf(Vid vid) {
   this->children_[vid] = new TreeNodeDisk<Token>(child_path(vid), this->db_, this->kMaxArraySize);
 
   if(sync_) {
-    // (in reality, we could just append to the existing blob of vids... child order does not matter)
+    // (in reality, we could just append to the existing blob of vids [in RAM]... child order does not matter)
+
+    // note: for persistence to be crash-safe, we must tolerate it if some child vids have already
+    // been persisted (from a previously crashed run)
     WriteChildren();
   }
 }
