@@ -20,6 +20,8 @@ typedef uint32_t vid_t;
 typedef uint32_t sid_t; /** sentence ID type */
 typedef uint8_t offset_t; /** type of token offset within sentence */
 
+typedef uint32_t domid_t; /** domain ID type */
+
 /**
  * Accounting type in sentence index of corpus.
  * Hack for loading mmsapt v2 format binary word alignments (*.mam file).
@@ -109,6 +111,29 @@ struct AlignmentLink {
   // these are used in tests
   bool operator==(const AlignmentLink &other) const { return vid == other.vid; }
   bool operator!=(const AlignmentLink &other) const { return vid != other.vid; }
+};
+
+/**
+ * Domain compatible with Corpus and Vocab,
+ * so we can persist domain name/ID mappings (Vocab) and training sentence / domain ID mappings (Corpus).
+ */
+struct Domain {
+  typedef Vocab<Domain> Vocabulary;
+  typedef domid_t Vid; /** vocabulary ID type */
+  //static constexpr offset_t kInvalidOffset = static_cast<offset_t>(-1);
+  static constexpr Vid kInvalidDomain = static_cast<Vid>(-1);
+  static constexpr CorpusIndexAccounting::acc_t kIndexType = CorpusIndexAccounting::IDX_CNT_ENTRIES;
+
+  Vid vid; /** domain ID (called Vid for compatibility with the remaining Corpus/Sentence implementation.) */
+
+  /** construct invalid domain */
+  Domain(): vid(kInvalidDomain) {}
+
+  Domain(Vid d): vid(d) {}
+
+  // these are used in tests
+  bool operator==(const Domain &other) const { return vid == other.vid; }
+  bool operator!=(const Domain &other) const { return vid != other.vid; }
 };
 
 
