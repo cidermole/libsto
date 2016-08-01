@@ -131,6 +131,9 @@ struct Domain {
 
   Domain(Vid d): vid(d) {}
 
+  //Vid id() const { return vid; }
+  operator Vid() const { return vid; }
+
   // these are used in tests
   bool operator==(const Domain &other) const { return vid == other.vid; }
   bool operator!=(const Domain &other) const { return vid != other.vid; }

@@ -264,6 +264,7 @@ size_t Corpus<Token>::numTokens() const {
 template class Corpus<SrcToken>;
 template class Corpus<TrgToken>;
 template class Corpus<AlignmentLink>;
+template class Corpus<Domain>;
 
 // --------------------------------------------------------
 

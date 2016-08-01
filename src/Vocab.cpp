@@ -81,6 +81,11 @@ Token Vocab<Token>::end() const {
   return Token{size_};
 }
 
+template<class Token>
+bool Vocab<Token>::contains(const std::string &surface) const {
+  return surface2id_.find(surface) != surface2id_.end();
+}
+
 struct UGVocabHeader {
   uint32_t size; /** size of vocabulary (and index) */
   uint32_t unk_vid; /** vocabulary ID of UNK word */
@@ -164,6 +169,7 @@ constexpr char Vocab<Token>::kEOSSurface[];
 // explicit template instantiation
 template class Vocab<SrcToken>;
 template class Vocab<TrgToken>;
+template class Vocab<Domain>;
 
 template class DummyVocab<AlignmentLink>;
 

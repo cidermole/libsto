@@ -51,6 +51,11 @@ public:
   Token begin() const;
   Token end() const;
 
+  /** number of word types, excluding special symbols (currently 2: the unmapped vid 0, and vid = kEOS.) */
+  Vid size() const { return size_ - 2; }
+
+  bool contains(const std::string &surface) const;
+
 private:
   std::unordered_map<Vid, std::string> id2surface_;
   std::unordered_map<std::string, Vid> surface2id_;

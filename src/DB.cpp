@@ -187,5 +187,6 @@ void DB<Token>::CompactRange() {
 // explicit template instantiation
 template class DB<SrcToken>;
 template class DB<TrgToken>;
+template class DB<Domain>;
 
 } // namespace sto

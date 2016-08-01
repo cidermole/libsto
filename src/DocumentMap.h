@@ -11,34 +11,31 @@
 #include <vector>
 #include <map>
 #include <unordered_map>
-#include <cassert>
 #include <memory>
 
 #include "Types.h"
+#include "Vocab.h"
+#include "Corpus.h"
 #include "ug_bias.h"
 
-namespace sapt {
+namespace sto {
 
 /**
  * Maps between sentence IDs and domain IDs (domains are called 'documents' in Mmsapt lingo),
  * and domain names and domain IDs.
  */
-struct DocumentMap {
-  std::vector<std::string> m_docname; /** doc names */
-  std::map<std::string, tpt::docid_type>  m_docname2docid; /** maps from doc names to ids */
-  std::shared_ptr<std::vector<tpt::docid_type>>   m_sid2docid; /** maps from sentences to docs (ids) */
-
+class DocumentMap {
+public:
+  /** Create an empty DocumentMap. */
   DocumentMap();
 
   /** Create a new DocumentBias object with bias weights for Mmsapt from a map of domain names -> weights. */
-  IBias *SetupDocumentBias(std::map<std::string,float> context_weights,
+  sapt::IBias *SetupDocumentBias(std::map<std::string,float> context_weights,
                                        std::ostream* log) const;
 
   tpt::docid_type sid2did(sto::sid_t sid) const;
 
-  const std::vector<tpt::docid_type>& sid2docids() const { assert(m_sid2docid); return *m_sid2docid; }
-
-  size_t numDomains() const { return m_docname.size(); }
+  size_t numDomains() const { return docname2id_.size(); }
 
   tpt::docid_type FindOrInsert(const std::string &docname);
 
@@ -52,6 +49,8 @@ struct DocumentMap {
   void AddSentence(sto::sid_t sid, tpt::docid_type docid);
 
   /**
+   * Load document map from a v1 sapt .dmp file.
+   *
    * fname: *.dmp (document map) filename
    * num_sents: number of sentences in corpus
    *
@@ -61,11 +60,15 @@ struct DocumentMap {
    * ibm 1717
    * microsoft 1823
    */
-  void LoadDocumentMap(std::string const& fname, size_t num_sents);
+  void Load(std::string const& fname, size_t num_sents);
+
+private:
+  Vocab<Domain> docname2id_;                  /** document name to document id mapping */
+  std::shared_ptr<Corpus<Domain>> sid2docid_; /** sentence id to document id mapping */
 };
 
 /** Domain bias for BitextSampler, backed by libsto DocumentMap. */
-class StoBias : public IBias {
+class StoBias : public sapt::IBias {
 public:
   StoBias(std::map<std::string, float> &context_weights, const DocumentMap &map);
   virtual ~StoBias() = default;
@@ -84,6 +87,6 @@ private:
   const DocumentMap &map_;
 };
 
-} // namespace sapt
+} // namespace sto
 
 #endif //STO_DOCUMENTMAP_H

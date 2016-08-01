@@ -39,5 +39,6 @@ SuffixArrayDisk<Token> &SuffixArrayDisk<Token>::operator=(const std::string &byt
 // explicit template instantiation
 template class SuffixArrayDisk<SrcToken>;
 template class SuffixArrayDisk<TrgToken>;
+template class SuffixArrayDisk<Domain>;
 
 } // namespace sto
