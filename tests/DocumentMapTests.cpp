@@ -9,6 +9,7 @@
 #include <string>
 #include <fstream>
 #include <vector>
+#include <set>
 
 #include "DocumentMap.h"
 
@@ -32,12 +33,18 @@ TEST(DocumentMapTests, load) {
   DocumentMap docmap;
   docmap.LoadDocumentMap(filename, nlines);
 
+  // don't assume any particular start for the domain ID (Vocab will start mapping at ID 2)
+  std::set<size_t> domain_ids;
   size_t isent = 0;
   for(size_t i = 0; i < domain_names.size(); i++) {
+    size_t domain_id = docmap[domain_names[i]];
+
     for(size_t j = 0; j < line_counts[i]; j++) {
-      EXPECT_EQ(i, docmap.sid2did(isent));
+      EXPECT_EQ(domain_id, docmap.sid2did(isent)) << "domain ID of each sentence ID should be consistent with domain ID of domain name sequence";
       isent++;
     }
-    EXPECT_EQ(i, docmap[domain_names[i]]);
+
+    domain_ids.insert(domain_id);
   }
+  EXPECT_EQ(domain_names.size(), domain_ids.size()) << "each domain should have a unique ID";
 }
