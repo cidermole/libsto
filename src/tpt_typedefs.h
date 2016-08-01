@@ -7,7 +7,9 @@
 #include <stdint.h>
 namespace tpt
 {
-  typedef uint32_t      id_type;
+  typedef uint32_t     sid_type;
+  typedef uint32_t   docid_type;
+  typedef uint32_t      id_type; // deprecated; use sid_type or docid_type
   typedef uint8_t   offset_type;
   typedef uint32_t   count_type;
   typedef uint64_t filepos_type;

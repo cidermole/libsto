@@ -9,6 +9,7 @@ set(SOURCES
         Corpus.h
         CorpusTypes.h
         tpt_typedefs.h
+        ug_bias.h
         MappedFile.cpp
         MappedFile.h
         TokenIndex.cpp
@@ -20,6 +21,6 @@ set(SOURCES
         TokenIndexSpan.cpp
         TreeNode.cpp
         TreeNode.h
-        TreeNodeDisk.cpp TreeNodeDisk.h SuffixArrayDisk.cpp SuffixArrayDisk.h Range.h TreeNodeMemory.cpp TreeNodeMemory.h SuffixArrayMemory.h DB.cpp DB.h)
+        TreeNodeDisk.cpp TreeNodeDisk.h SuffixArrayDisk.cpp SuffixArrayDisk.h Range.h TreeNodeMemory.cpp TreeNodeMemory.h SuffixArrayMemory.h DB.cpp DB.h DocumentMap.cpp DocumentMap.h)
 
 add_library(sto OBJECT ${SOURCES})  # no real lib, just collection of objs
