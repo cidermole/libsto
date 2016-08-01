@@ -67,7 +67,7 @@ static void remove_all(const std::string &p) {
   boost::filesystem::remove_all(base, ec); // ensure no leftovers
 }
 
-TEST(DocumentMapTests, save_load) {
+TEST(DocumentMapTests, save_load_append) {
   DocumentMap docmap_build;
 
   std::string dirname = "res/DocumentMapTests";
@@ -93,9 +93,16 @@ TEST(DocumentMapTests, save_load) {
   std::string corpusfile = dirname + "/sentmap.trk";
   docmap_build.Write(db, corpusfile);
 
-  // load from disk and verify
-
+  // load from disk
   DocumentMap docmap{db, corpusfile};
+
+  // append
+  docmap.AddSentence(nlines++, docmap.FindOrInsert("domAdd"));
+  line_counts.push_back(1);
+  domain_names.push_back("domAdd");
+  // TODO: AddSentence() could take a domain name instead.
+
+  // verify
 
   //domain_names[0] = "domx"; // make test fail
 
