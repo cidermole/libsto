@@ -39,7 +39,7 @@ TEST(CorpusTests, empty_add) {
   EXPECT_EQ("orange apple and pear", sent.surface()) << "ability to retrieve a dyn stored Sentence";
 }
 
-void remove_all(const std::string &p) {
+static void remove_all(const std::string &p) {
   using namespace boost::filesystem;
   boost::system::error_code ec;
   path base(p);

@@ -29,6 +29,9 @@ public:
   /** Create an empty DocumentMap. */
   DocumentMap();
 
+  /** Load existing DocumentMap from DB and disk. */
+  DocumentMap(std::shared_ptr<DB<Domain>> db, const std::string &corpus_file);
+
   /** Create a new DocumentBias object with bias weights for Mmsapt from a map of domain names -> weights. */
   sapt::IBias *SetupDocumentBias(std::map<std::string,float> context_weights,
                                        std::ostream* log) const;
@@ -62,9 +65,14 @@ public:
    */
   void Load(std::string const& fname, size_t num_sents);
 
+  /** Write to (empty) DB and disk. */
+  void Write(std::shared_ptr<DB<Domain>> db, const std::string &corpus_file);
+
 private:
   Vocab<Domain> docname2id_;                  /** document name to document id mapping */
   std::shared_ptr<Corpus<Domain>> sid2docid_; /** sentence id to document id mapping */
+
+  void WriteVocab(std::shared_ptr<DB<Domain>> db);
 };
 
 /** Domain bias for BitextSampler, backed by libsto DocumentMap. */

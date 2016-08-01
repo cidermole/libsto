@@ -137,6 +137,10 @@ struct Domain {
   // these are used in tests
   bool operator==(const Domain &other) const { return vid == other.vid; }
   bool operator!=(const Domain &other) const { return vid != other.vid; }
+
+  // these two make us iterable
+  Domain &operator++() { ++vid; return *this; }
+  Vid &operator*() { return vid; }
 };
 
 
