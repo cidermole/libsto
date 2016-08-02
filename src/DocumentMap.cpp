@@ -84,6 +84,19 @@ tpt::docid_type DocumentMap::operator[](const std::string &docname) const {
   return docname2id_.at(docname);
 }
 
+/** look up doc name from doc id, returns "" on failure */
+std::string DocumentMap::operator[](tpt::docid_type docid) const {
+  return docname2id_.at(docid);
+}
+
+Domain DocumentMap::begin() const {
+  return docname2id_.begin();
+}
+
+Domain DocumentMap::end() const {
+  return docname2id_.end();
+}
+
 void DocumentMap::AddSentence(sto::sid_t sid, tpt::docid_type docid) {
   size_t next_sid = sid2docid_->size();
   if(next_sid != sid)

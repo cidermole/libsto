@@ -48,6 +48,9 @@ public:
   /** look up doc id from doc name, returns -1 on failure */
   tpt::docid_type operator[](const std::string &docname) const;
 
+  /** look up doc name from doc id, returns "" on failure */
+  std::string operator[](tpt::docid_type docid) const;
+
   /** add to sentence ID -> document ID mapping */
   void AddSentence(sto::sid_t sid, tpt::docid_type docid);
 
@@ -67,6 +70,9 @@ public:
 
   /** Write to (empty) DB and disk. */
   void Write(std::shared_ptr<DB<Domain>> db, const std::string &corpus_file);
+
+  Domain begin() const;
+  Domain end() const;
 
 private:
   Vocab<Domain> docname2id_;                  /** document name to document id mapping */
