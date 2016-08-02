@@ -24,7 +24,7 @@ namespace sto {
  * For a single language side, holds sto::Corpus, sto::Vocab and sto::TokenIndex.
  */
 template<typename Token>
-struct StoCorpusSide : public sto::Loggable {
+struct BitextSide : public sto::Loggable {
   std::shared_ptr<sto::Vocab<Token>> vocab;
   std::shared_ptr<sto::Corpus<Token>> corpus;
   std::shared_ptr<sto::TokenIndex<Token>> index;
@@ -33,8 +33,8 @@ struct StoCorpusSide : public sto::Loggable {
   std::string base_and_lang;
 
   /** Construct empty corpus side */
-  StoCorpusSide();
-  ~StoCorpusSide();
+  BitextSide();
+  ~BitextSide();
 
   /** Load vocabulary and corpus track */
   void Open(std::string const base_and_lang);
@@ -59,18 +59,18 @@ struct StoCorpusSide : public sto::Loggable {
 /**
  * Incrementally updatable collection of libsto objects.
  */
-class StoBitext : public virtual sto::IncrementalBitext, public sto::Loggable {
+class Bitext : public virtual sto::IncrementalBitext, public sto::Loggable {
 public:
-  StoBitext();
-  virtual ~StoBitext();
+  Bitext();
+  virtual ~Bitext();
 
   virtual void open(std::string const base, std::string const L1, std::string const L2) override;
 
   virtual void AddSentencePair(const std::vector<std::string> &srcSent, const std::vector<std::string> &trgSent, const std::vector<std::pair<size_t, size_t>> &alignment, const std::string &domain) override;
 
 protected:
-  StoCorpusSide<sto::SrcToken> src_;
-  StoCorpusSide<sto::TrgToken> trg_;
+  BitextSide<sto::SrcToken> src_;
+  BitextSide<sto::TrgToken> trg_;
 
   std::shared_ptr<sto::Corpus<sto::AlignmentLink>> align_;
 

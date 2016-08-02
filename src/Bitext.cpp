@@ -12,7 +12,7 @@ namespace sto {
 
 
 template<typename Token>
-StoCorpusSide<Token>::StoCorpusSide() :
+BitextSide<Token>::BitextSide() :
     vocab(new sto::Vocab<Token>),
     corpus(new sto::Corpus<Token>(vocab.get())),
     index(new sto::TokenIndex<Token>(*corpus))
@@ -20,11 +20,11 @@ StoCorpusSide<Token>::StoCorpusSide() :
 }
 
 template<typename Token>
-StoCorpusSide<Token>::~StoCorpusSide()
+BitextSide<Token>::~BitextSide()
 {}
 
 template<typename Token>
-void StoCorpusSide<Token>::Open(std::string const base_and_lang) {
+void BitextSide<Token>::Open(std::string const base_and_lang) {
   // token index
   vocab.reset(new Vocab<Token>(base_and_lang+".tdx"));
   // mapped corpus track
@@ -35,7 +35,7 @@ void StoCorpusSide<Token>::Open(std::string const base_and_lang) {
 }
 
 template<typename Token>
-void StoCorpusSide<Token>::CreateGlobalIndex() {
+void BitextSide<Token>::CreateGlobalIndex() {
   std::string index_file = base_and_lang + ".sfa";
   if(!access(index_file.c_str(), F_OK)) {
     // load index from disk, if possible
@@ -43,15 +43,15 @@ void StoCorpusSide<Token>::CreateGlobalIndex() {
     return;
   }
 
-  XVERBOSE(2, " StoCorpusSide<Token>::CreateGlobalIndex()...\n");
+  XVERBOSE(2, " BitextSide<Token>::CreateGlobalIndex()...\n");
   index.reset(new sto::TokenIndex<Token>(*corpus));
   for(size_t i = 0; i < corpus->size(); i++)
     index->AddSentence(corpus->sentence(i));
 }
 
 template<typename Token>
-void StoCorpusSide<Token>::CreateDomainIndexes(const DocumentMap &map) {
-  XVERBOSE(2, " StoCorpusSide<Token>::CreateDomainIndexes()...\n");
+void BitextSide<Token>::CreateDomainIndexes(const DocumentMap &map) {
+  XVERBOSE(2, " BitextSide<Token>::CreateDomainIndexes()...\n");
   size_t nsents = corpus->size();
 
   assert(map.numDomains() > 0); // we must have at least 1 domain... otherwise we could just load the global idx.
@@ -78,18 +78,18 @@ void StoCorpusSide<Token>::CreateDomainIndexes(const DocumentMap &map) {
 }
 
 // explicit template instantiation
-template class StoCorpusSide<SrcToken>;
-template class StoCorpusSide<TrgToken>;
+template class BitextSide<SrcToken>;
+template class BitextSide<TrgToken>;
 
 ///////////////////////////////////////////////////////////////////////////////
 
-StoBitext::StoBitext() : align_(new sto::Corpus<sto::AlignmentLink>)
+Bitext::Bitext() : align_(new sto::Corpus<sto::AlignmentLink>)
 {}
 
-StoBitext::~StoBitext()
+Bitext::~Bitext()
 {}
 
-void StoBitext::open(std::string const base, std::string const L1, std::string const L2) {
+void Bitext::open(std::string const base, std::string const L1, std::string const L2) {
   XVERBOSE(1, "SBitext: opening file base: " << base << "\n");
   src_.Open(base+L1);
   trg_.Open(base+L2);
@@ -104,7 +104,7 @@ void StoBitext::open(std::string const base, std::string const L1, std::string c
   XVERBOSE(1, "SBitext: CreateIndexes() and open() done.\n");
 }
 
-void StoBitext::AddSentencePair(const std::vector<std::string> &srcSent, const std::vector<std::string> &trgSent, const std::vector<std::pair<size_t, size_t>> &alignment, const std::string &domain) {
+void Bitext::AddSentencePair(const std::vector<std::string> &srcSent, const std::vector<std::string> &trgSent, const std::vector<std::pair<size_t, size_t>> &alignment, const std::string &domain) {
   std::vector<SrcToken> src;
   for(auto s : srcSent)
     src.push_back((*src_.vocab)[s]); // vocabulary insert/lookup
