@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <unordered_map>
 
 #include "TokenIndex.h"
 #include "DocumentMap.h"
@@ -18,7 +19,7 @@
 
 namespace sto {
 
-
+class BaseDB;
 
 /**
  * For a single language side, holds sto::Corpus, sto::Vocab and sto::TokenIndex.
@@ -29,15 +30,25 @@ struct BitextSide : public sto::Loggable {
   std::shared_ptr<sto::Corpus<Token>> corpus;
   std::shared_ptr<sto::TokenIndex<Token>> index;
 
-  std::vector<std::shared_ptr<sto::TokenIndex<Token>>> domain_indexes;
-  std::string base_and_lang;
+  std::unordered_map<Domain::Vid, std::shared_ptr<sto::TokenIndex<Token>>> domain_indexes;
+  std::string base_and_lang; /** e.g. "phrase_tables/model.en" */
+  std::string base; /** e.g. "phrase_tables/model." */
+  std::string lang; /** 2-letter language code */
 
-  /** Construct empty corpus side */
+  /** Create empty BitextSide */
   BitextSide();
+
+  /**
+   * Load existing BitextSide from DB and disk.
+   *
+   * @param base  base pathname prefix, e.g. "phrase_tables/bitext." (base+lang must be a directory)
+   */
+  BitextSide(std::shared_ptr<DB<Token>> db, const std::string &base, const std::string &lang, const DocumentMap &map);
+
   ~BitextSide();
 
-  /** Load vocabulary and corpus track */
-  void Open(std::string const base_and_lang);
+  /** Load vocabulary and corpus track. Does not index or load indexes. */
+  void Open(const std::string &base, const std::string &lang);
 
   void CreateIndexes(const DocumentMap &map) { CreateGlobalIndex(); CreateDomainIndexes(map); }
 
@@ -54,6 +65,13 @@ struct BitextSide : public sto::Loggable {
    * * otherwise, index the entire corpus, putting each sentence into the correct index
    */
   void CreateDomainIndexes(const DocumentMap &map);
+
+  /**
+   * Write to (empty) DB and disk.
+   *
+   * @param base  base pathname prefix, e.g. "phrase_tables/bitext.en" (will be created as a directory)
+   */
+  void Write(std::shared_ptr<DB<Token>> db, const std::string &base, const DocumentMap &map);
 };
 
 /**
@@ -61,20 +79,37 @@ struct BitextSide : public sto::Loggable {
  */
 class Bitext : public virtual sto::IncrementalBitext, public sto::Loggable {
 public:
+  /** Create an empty Bitext. */
   Bitext();
+
+  /**
+   * Load existing Bitext from DB and disk.
+   *
+   * @param base  base pathname prefix, e.g. "phrase_tables/bitext."
+   */
+  Bitext(std::shared_ptr<BaseDB> db, const std::string &base, const std::string &l1, const std::string &l2);
+
   virtual ~Bitext();
+
 
   virtual void open(std::string const base, std::string const L1, std::string const L2) override;
 
   virtual void AddSentencePair(const std::vector<std::string> &srcSent, const std::vector<std::string> &trgSent, const std::vector<std::pair<size_t, size_t>> &alignment, const std::string &domain) override;
 
+  /**
+   * Write to (empty) DB and disk.
+   *
+   * @param base  base pathname prefix, e.g. "phrase_tables/bitext."
+   */
+  void Write(std::shared_ptr<BaseDB> db, const std::string &base);
+
 protected:
+  std::string l1_;
+  std::string l2_;
+  DocumentMap doc_map_; /** housekeeping for individual domain names, IDs */
   BitextSide<sto::SrcToken> src_;
   BitextSide<sto::TrgToken> trg_;
-
   std::shared_ptr<sto::Corpus<sto::AlignmentLink>> align_;
-
-  DocumentMap doc_map_; /** housekeeping for individual domain names, IDs */
 };
 
 } // namespace sto

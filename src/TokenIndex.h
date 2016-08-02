@@ -327,6 +327,13 @@ public:
 
   void Merge(const TokenIndex<Token, IndexTypeMemory> &add);
 
+  // not implemented
+  void Merge(const TokenIndex<Token, IndexTypeDisk> &add);
+
+  /** Write to (empty) DB. */
+  void Write(std::shared_ptr<DB<Token>> db) const;
+
+
   void DebugPrint(std::ostream &os);
 
   /** Insert the subsequence from start into this index. Potentially splits. */

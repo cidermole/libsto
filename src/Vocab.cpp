@@ -86,6 +86,17 @@ bool Vocab<Token>::contains(const std::string &surface) const {
   return surface2id_.find(surface) != surface2id_.end();
 }
 
+template<class Token>
+void Vocab<Token>::Write(std::shared_ptr<DB<Token>> db) const {
+  Vocab<Token> target(db); // persistent Vocab with DB backing
+  assert(target.size() == 0); // make sure that DB is empty (should not contain a Vocab, so we start from scratch)
+
+  for(auto vid : (*this)) {
+    target[this->at(vid)]; // insert vids in order
+    assert(target.at(vid) == this->at(vid)); // inserting them in order means the surface forms should be equal as well
+  }
+}
+
 struct UGVocabHeader {
   uint32_t size; /** size of vocabulary (and index) */
   uint32_t unk_vid; /** vocabulary ID of UNK word */

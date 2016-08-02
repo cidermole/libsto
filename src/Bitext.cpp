@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #include "Bitext.h"
+#include "DB.h"
 
 namespace sto {
 
@@ -19,12 +20,27 @@ BitextSide<Token>::BitextSide() :
 {
 }
 
+/** Load existing BitextSide from DB and disk. */
+template<typename Token>
+BitextSide<Token>::BitextSide(std::shared_ptr<DB<Token>> db, const std::string &base, const std::string &lang, const DocumentMap &map) :
+    vocab(new sto::Vocab<Token>(db->template PrefixedDB<Token>(lang))),
+    corpus(new sto::Corpus<Token>(base + lang + ".trk", vocab.get())),
+    index(new sto::TokenIndex<Token>("/", *corpus, db->template PrefixedDB<Token>(lang)))  // note: filename is only ever used as DB prefix now.
+{
+  // load domain indexes
+  for(auto docid : map)
+    domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token>>(/* filename = */ "/", *corpus, db->template PrefixedDB<Token>(lang, docid));
+}
+
 template<typename Token>
 BitextSide<Token>::~BitextSide()
 {}
 
 template<typename Token>
-void BitextSide<Token>::Open(std::string const base_and_lang) {
+void BitextSide<Token>::Open(const std::string &base, const std::string &lang) {
+  this->base = base;
+  this->lang = lang;
+  base_and_lang = base + lang;
   // token index
   vocab.reset(new Vocab<Token>(base_and_lang+".tdx"));
   // mapped corpus track
@@ -62,19 +78,29 @@ void BitextSide<Token>::CreateDomainIndexes(const DocumentMap &map) {
     // create TokenIndex objects
     domain_indexes.clear();
     for(auto docid : map)
-      domain_indexes.push_back(std::make_shared<sto::TokenIndex<Token>>(base_and_lang + "." + map[docid] + ".sfa", *corpus));
+      domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token>>(base_and_lang + "." + map[docid] + ".sfa", *corpus);
 
     return;
   }
 
   // create TokenIndex objects
   domain_indexes.clear();
-  for(size_t i = 0; i < map.numDomains(); i++)
-    domain_indexes.push_back(std::make_shared<sto::TokenIndex<Token>>(*corpus));
+  for(auto docid : map)
+    domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token>>(*corpus);
 
   // put each sentence into the correct domain index
   for(size_t i = 0; i < nsents; i++)
     domain_indexes[map.sid2did(i)]->AddSentence(corpus->sentence(i));
+}
+
+template<typename Token>
+void BitextSide<Token>::Write(std::shared_ptr<DB<Token>> db, const std::string &base, const DocumentMap &map) {
+  vocab->Write(db->template PrefixedDB<Token>(lang));
+  corpus->Write(base + lang + ".trk");
+  index->Write(db->template PrefixedDB<Token>(lang));
+
+  for(auto docid : map)
+    domain_indexes[docid]->Write(db->template PrefixedDB<Token>(lang, docid));
 }
 
 // explicit template instantiation
@@ -86,13 +112,24 @@ template class BitextSide<TrgToken>;
 Bitext::Bitext() : align_(new sto::Corpus<sto::AlignmentLink>)
 {}
 
+/** Load existing Bitext from DB and disk. */
+Bitext::Bitext(std::shared_ptr<BaseDB> db, const std::string &base, const std::string &l1, const std::string &l2) :
+    l1_(l1), l2_(l2),
+    doc_map_(std::make_shared<DB<Domain>>(*db), base + "docmap.trk"),
+    src_(std::make_shared<DB<SrcToken>>(*db), base, l1, doc_map_),
+    trg_(std::make_shared<DB<TrgToken>>(*db), base, l2, doc_map_),
+    align_(new sto::Corpus<sto::AlignmentLink>(base + "align.trk"))
+{}
+
 Bitext::~Bitext()
 {}
 
 void Bitext::open(std::string const base, std::string const L1, std::string const L2) {
   XVERBOSE(1, "SBitext: opening file base: " << base << "\n");
-  src_.Open(base+L1);
-  trg_.Open(base+L2);
+  l1_ = L1;
+  l2_ = L2;
+  src_.Open(base, L1);
+  trg_.Open(base, L2);
   XVERBOSE(2, " sto::Corpus<AlignmentLink>()...\n");
   align_.reset(new Corpus<AlignmentLink>(base+L1+"-"+L2+".mam"));
   doc_map_.Load(base + "dmp", src_.corpus->size());
@@ -127,15 +164,24 @@ void Bitext::AddSentencePair(const std::vector<std::string> &srcSent, const std:
   size_t isrc = src_.corpus->size()-1, itrg = trg_.corpus->size()-1; assert(isrc == itrg);
   doc_map_.AddSentence(isrc, docid);
 
-  if(docid >= trg_.domain_indexes.size())
-    trg_.domain_indexes.push_back(std::make_shared<sto::TokenIndex<TrgToken>>(*trg_.corpus));
+  if(trg_.domain_indexes.find(docid) == trg_.domain_indexes.end())
+    trg_.domain_indexes[docid] = std::make_shared<sto::TokenIndex<TrgToken>>(*trg_.corpus);
   trg_.domain_indexes[docid]->AddSentence(trg_.corpus->sentence(itrg)); // target side first
-  if(docid >= src_.domain_indexes.size())
-    src_.domain_indexes.push_back(std::make_shared<sto::TokenIndex<SrcToken>>(*src_.corpus));
+
+  if(src_.domain_indexes.find(docid) == src_.domain_indexes.end())
+    src_.domain_indexes[docid] = std::make_shared<sto::TokenIndex<SrcToken>>(*src_.corpus);
   src_.domain_indexes[docid]->AddSentence(src_.corpus->sentence(isrc));
 
   trg_.index->AddSentence(trg_.corpus->sentence(itrg)); // target side first: ensures extraction will work
   src_.index->AddSentence(src_.corpus->sentence(isrc));
+}
+
+/** Write to (empty) DB and disk. */
+void Bitext::Write(std::shared_ptr<BaseDB> db, const std::string &base) {
+  src_.Write(std::make_shared<DB<SrcToken>>(*db), base + l1_, doc_map_);
+  trg_.Write(std::make_shared<DB<TrgToken>>(*db), base + l2_, doc_map_);
+  align_->Write(base + "align.trk");
+  doc_map_.Write(std::make_shared<DB<Domain>>(*db), base + "docmap.trk");
 }
 
 } // namespace sto

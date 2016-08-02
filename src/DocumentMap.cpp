@@ -12,6 +12,7 @@
 #include <cassert>
 
 #include "DocumentMap.h"
+#include "DB.h"
 
 namespace sto {
 
@@ -19,7 +20,9 @@ DocumentMap::DocumentMap() : sid2docid_(new Corpus<Domain>(&docname2id_))
 {}
 
 /** Load existing DocumentMap from DB and disk. */
-DocumentMap::DocumentMap(std::shared_ptr<DB<Domain>> db, const std::string &corpus_file) : docname2id_(db), sid2docid_(new Corpus<Domain>(corpus_file, &docname2id_))
+DocumentMap::DocumentMap(std::shared_ptr<DB<Domain>> db, const std::string &corpus_file) :
+    docname2id_(db->template PrefixedDB<Domain>("dmp")), // add another prefix, so we do not collide with normal Vocab DB entries
+    sid2docid_(new Corpus<Domain>(corpus_file, &docname2id_))
 {}
 
 sapt::IBias *DocumentMap::SetupDocumentBias(std::map<std::string,float> context_weights,
@@ -106,18 +109,8 @@ void DocumentMap::AddSentence(sto::sid_t sid, tpt::docid_type docid) {
 
 /** Write to (empty) DB and disk. */
 void DocumentMap::Write(std::shared_ptr<DB<Domain>> db, const std::string &corpus_file) {
-  WriteVocab(db);
+  docname2id_.Write(db);
   sid2docid_->Write(corpus_file);
-}
-
-void DocumentMap::WriteVocab(std::shared_ptr<DB<Domain>> db) {
-  Vocab<Domain> target(db); // persistent Vocab with DB backing
-  assert(target.size() == 0); // make sure that DB is empty (should not contain a Vocab, so we start from scratch)
-
-  for(auto vid : docname2id_) {
-    target[docname2id_.at(vid)]; // insert vids in order
-    assert(target.at(vid) == docname2id_.at(vid)); // inserting them in order means the surface forms should be equal as well
-  }
 }
 
 // ----------------------------------------------------------------------------

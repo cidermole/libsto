@@ -30,18 +30,58 @@ enum NodeType {
   NT_LEAF_MISSING = 2 /** should be a leaf node */
 };
 
+template<class Token> class DB;
+
+/**
+ * Base class for DB, without any particular template argument.
+ */
+class BaseDB {
+public:
+  BaseDB(const std::string &basePath);
+
+  BaseDB(const BaseDB &other, const std::string &key_prefix);
+
+  /**
+   * Make a shallow copy referencing a different area in the same underlying rocksdb::DB object.
+   *
+   * @param key_prefix  prefix prepended to all keys, essentially like a namespace/schema in the database
+   */
+  template<typename Token>
+  std::shared_ptr<DB<Token>> PrefixedDB(std::string key_prefix) {
+    return std::shared_ptr<DB<Token>>(new DB<Token>(*this, key_prefix_ + key_prefix));
+  }
+
+  /** Make a shallow copy with (key,id) as prefix, like PrefixedDB() above. */
+  template<typename Token>
+  std::shared_ptr<DB<Token>> PrefixedDB(std::string key, size_t id) {
+    std::string id_prefix(reinterpret_cast<const char *>(&id), sizeof(id));
+    return std::shared_ptr<DB<Token>>(new DB<Token>(*this, key_prefix_ + key + id_prefix));
+  }
+
+protected:
+  std::shared_ptr<rocksdb::DB> db_;
+  std::string key_prefix_; /** prefix prepended to all keys, essentially like a namespace/schema in the database */
+};
+
 /**
  * Persistence methods for TokenIndex and Vocab.
  * Currently backed by RocksDB.
  */
 template<class Token>
-class DB {
+class DB : public BaseDB {
 public:
   typedef typename Token::Vid Vid;
 
   static constexpr size_t KEY_PREFIX_LEN = 4; /** key type prefix length in bytes */
 
-  DB(const std::string &basePath);
+  DB(const std::string &basePath); // should we deprecate this?
+
+  /** Conversion from BaseDB, without adding a key prefix. */
+  DB(const BaseDB &base);
+
+  /** Convert from BaseDB and add a key prefix. */
+  DB(const BaseDB &other, std::string key_prefix);
+
   DB(const DB &other) = delete;
   ~DB();
 
@@ -96,19 +136,8 @@ public:
   /** compact the entire database */
   void CompactRange();
 
-  /**
-   * Make a shallow copy referencing a different area in the same underlying rocksdb::DB object.
-   *
-   * @param key_prefix  prefix prepended to all keys, essentially like a global namespace/schema in the database
-   */
-  std::shared_ptr<DB<Token>> PrefixedDB(std::string key_prefix);
-
 private:
-  std::shared_ptr<rocksdb::DB> db_;
-  std::string key_prefix_; /** prefix prepended to all keys, essentially like a global namespace/schema in the database */
-
-  /** ctor used by PrefixedDB() */
-  DB(const DB &other, std::string key_prefix);
+  //friend class BaseDB; // was for private: DB(const BaseDB &other, std::string key_prefix);
 
   /** @returns key_prefix_ + key */
   std::string key_(const std::string &k);

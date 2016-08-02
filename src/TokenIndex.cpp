@@ -88,9 +88,20 @@ void TokenIndex<Token, TypeTag>::AddSentence(const Sentence<Token> &sent) {
 
 template<class Token, typename TypeTag>
 void TokenIndex<Token, TypeTag>::Merge(const TokenIndex<Token, IndexTypeMemory> &add) {
-  auto span = this->span();
-  auto as = add.span();
-  root_->Merge(as, span);
+  auto us = this->span();
+  auto adds = add.span();
+  root_->Merge(adds, us);
+}
+
+template<class Token, typename TypeTag>
+void TokenIndex<Token, TypeTag>::Merge(const TokenIndex<Token, IndexTypeDisk> &add) {
+  throw new std::runtime_error("disk to disk merge not implemented yet");
+}
+
+template<class Token, typename TypeTag>
+void TokenIndex<Token, TypeTag>::Write(std::shared_ptr<DB<Token>> db) const {
+  TokenIndex<Token, IndexTypeDisk> target(/* filename = */ "/", *this->corpus(), db); // note: filename is now only used as DB key prefix; we handle DB prefixes elsewhere
+  target.Merge(*this);
 }
 
 template<class Token, typename TypeTag>

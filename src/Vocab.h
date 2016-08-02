@@ -56,6 +56,9 @@ public:
 
   bool contains(const std::string &surface) const;
 
+  /** write out into an empty DB */
+  void Write(std::shared_ptr<DB<Token>> db) const;
+
 private:
   std::unordered_map<Vid, std::string> id2surface_;
   std::unordered_map<std::string, Vid> surface2id_;
