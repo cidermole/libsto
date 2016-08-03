@@ -13,10 +13,11 @@ namespace sto {
 
 
 template<typename Token>
-BitextSide<Token>::BitextSide() :
+BitextSide<Token>::BitextSide(const std::string &l) :
     vocab(new sto::Vocab<Token>),
     corpus(new sto::Corpus<Token>(vocab.get())),
-    index(new sto::TokenIndex<Token>(*corpus))
+    index(new sto::TokenIndex<Token>(*corpus)),
+    lang(l)
 {
 }
 
@@ -94,6 +95,22 @@ void BitextSide<Token>::CreateDomainIndexes(const DocumentMap &map) {
 }
 
 template<typename Token>
+typename BitextSide<Token>::Sid BitextSide<Token>::AddToCorpus(const std::vector<std::string> &sent) {
+  std::vector<Token> toks;
+  for(auto t : sent)
+    toks.push_back((*vocab)[t]); // vocabulary insert/lookup
+  corpus->AddSentence(toks);
+  return corpus->size() - 1;
+}
+
+template<typename Token>
+void BitextSide<Token>::AddToDomainIndex(Sid sid, tpt::docid_type docid) {
+  if(domain_indexes.find(docid) == domain_indexes.end())
+    domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token>>(*corpus);
+  domain_indexes[docid]->AddSentence(corpus->sentence(sid));
+}
+
+template<typename Token>
 void BitextSide<Token>::Write(std::shared_ptr<DB<Token>> db, const std::string &base, const DocumentMap &map) {
   vocab->Write(db->template PrefixedDB<Token>(lang));
   corpus->Write(base + lang + ".trk");
@@ -109,7 +126,11 @@ template class BitextSide<TrgToken>;
 
 ///////////////////////////////////////////////////////////////////////////////
 
-Bitext::Bitext() : align_(new sto::Corpus<sto::AlignmentLink>)
+Bitext::Bitext(const std::string &l1, const std::string &l2) :
+    l1_(l1), l2_(l2),
+    src_(l1),
+    trg_(l2),
+    align_(new sto::Corpus<sto::AlignmentLink>)
 {}
 
 /** Load existing Bitext from DB and disk. */
@@ -124,14 +145,12 @@ Bitext::Bitext(std::shared_ptr<BaseDB> db, const std::string &base, const std::s
 Bitext::~Bitext()
 {}
 
-void Bitext::open(std::string const base, std::string const L1, std::string const L2) {
+void Bitext::Open(const std::string &base) {
   XVERBOSE(1, "SBitext: opening file base: " << base << "\n");
-  l1_ = L1;
-  l2_ = L2;
-  src_.Open(base, L1);
-  trg_.Open(base, L2);
+  src_.Open(base, l1_);
+  trg_.Open(base, l2_);
   XVERBOSE(2, " sto::Corpus<AlignmentLink>()...\n");
-  align_.reset(new Corpus<AlignmentLink>(base+L1+"-"+L2+".mam"));
+  align_.reset(new Corpus<AlignmentLink>(base+l1_+"-"+l2_+".mam"));
   doc_map_.Load(base + "dmp", src_.corpus->size());
 
   // potentially loads global and domain indexes (instead of building them)
@@ -142,37 +161,29 @@ void Bitext::open(std::string const base, std::string const L1, std::string cons
 }
 
 void Bitext::AddSentencePair(const std::vector<std::string> &srcSent, const std::vector<std::string> &trgSent, const std::vector<std::pair<size_t, size_t>> &alignment, const std::string &domain) {
-  std::vector<SrcToken> src;
-  for(auto s : srcSent)
-    src.push_back((*src_.vocab)[s]); // vocabulary insert/lookup
-  src_.corpus->AddSentence(src);
+  // (1) add to corpus first:
 
-  std::vector<TrgToken> trg;
-  for(auto t : trgSent)
-    trg.push_back((*trg_.vocab)[t]); // vocabulary insert/lookup
-  trg_.corpus->AddSentence(trg);
+  // order of these three does not matter
+  auto isrc = src_.AddToCorpus(srcSent);
+  auto itrg = trg_.AddToCorpus(trgSent);
+  assert(isrc == itrg);
+  align_->AddSentence(std::vector<AlignmentLink>{alignment.begin(), alignment.end()});
 
-  std::vector<AlignmentLink> align;
-  for(auto p : alignment)
-    align.push_back(AlignmentLink(p.first, p.second));
-  align_->AddSentence(align);
+  // indexes:
 
-  // now for the indexes, domain-specific and otherwise:
-
-  // domain-specific first: ensures that domain-specific indexes can provide, since we query the global index for the presence of source phrases first.
-  size_t docid = doc_map_.FindOrInsert(domain);
-  size_t isrc = src_.corpus->size()-1, itrg = trg_.corpus->size()-1; assert(isrc == itrg);
+  auto docid = doc_map_.FindOrInsert(domain);
   doc_map_.AddSentence(isrc, docid);
 
-  if(trg_.domain_indexes.find(docid) == trg_.domain_indexes.end())
-    trg_.domain_indexes[docid] = std::make_shared<sto::TokenIndex<TrgToken>>(*trg_.corpus);
-  trg_.domain_indexes[docid]->AddSentence(trg_.corpus->sentence(itrg)); // target side first
+  // (2) domain-specific first: ensures that domain-specific indexes can provide, since we query the global index for the presence of source phrases first.
 
-  if(src_.domain_indexes.find(docid) == src_.domain_indexes.end())
-    src_.domain_indexes[docid] = std::make_shared<sto::TokenIndex<SrcToken>>(*src_.corpus);
-  src_.domain_indexes[docid]->AddSentence(src_.corpus->sentence(isrc));
+  // currently, order of these two does not matter here (we query global index first)
+  trg_.AddToDomainIndex(itrg, docid);
+  src_.AddToDomainIndex(isrc, docid);
 
-  trg_.index->AddSentence(trg_.corpus->sentence(itrg)); // target side first: ensures extraction will work
+  // (3) global index last - everything should be stored by the time readers see a new global source index entry
+
+  // target side first: ensures extraction will work
+  trg_.index->AddSentence(trg_.corpus->sentence(itrg));
   src_.index->AddSentence(src_.corpus->sentence(isrc));
 }
 

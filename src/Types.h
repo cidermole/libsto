@@ -7,6 +7,7 @@
 #ifndef STO_TYPES_H
 #define STO_TYPES_H
 
+#include <utility>
 #include <cstdint>
 
 namespace sto {
@@ -107,6 +108,8 @@ struct AlignmentLink {
   AlignmentLink(Vid v): vid(v) {}
 
   AlignmentLink(offset_t src_offset, offset_t trg_offset): vid(src_offset, trg_offset) {}
+
+  AlignmentLink(std::pair<size_t, size_t> p): vid(static_cast<offset_t>(p.first), static_cast<offset_t>(p.second)) {}
 
   // these are used in tests
   bool operator==(const AlignmentLink &other) const { return vid == other.vid; }

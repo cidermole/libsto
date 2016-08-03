@@ -26,6 +26,8 @@ class BaseDB;
  */
 template<typename Token>
 struct BitextSide : public sto::Loggable {
+  typedef typename Corpus<Token>::Sid Sid;
+
   std::shared_ptr<sto::Vocab<Token>> vocab;
   std::shared_ptr<sto::Corpus<Token>> corpus;
   std::shared_ptr<sto::TokenIndex<Token>> index;
@@ -36,7 +38,7 @@ struct BitextSide : public sto::Loggable {
   std::string lang; /** 2-letter language code */
 
   /** Create empty BitextSide */
-  BitextSide();
+  BitextSide(const std::string &lang);
 
   /**
    * Load existing BitextSide from DB and disk.
@@ -66,6 +68,12 @@ struct BitextSide : public sto::Loggable {
    */
   void CreateDomainIndexes(const DocumentMap &map);
 
+  /** Add sentence to Vocab and Corpus. */
+  Sid AddToCorpus(const std::vector<std::string> &sent);
+
+  /** Add a sentence to the domain index docid. Sentence should already be added via AddToCorpus(). */
+  void AddToDomainIndex(Sid sid, tpt::docid_type docid);
+
   /**
    * Write to (empty) DB and disk.
    *
@@ -75,12 +83,15 @@ struct BitextSide : public sto::Loggable {
 };
 
 /**
- * Incrementally updatable collection of libsto objects.
+ * Incrementally updatable Bitext - aggregation of backing libsto objects.
+ *
+ * This is a base class implementing the persistence interface IncrementalBitext.
+ * For queries, use class SBitext (in moses).
  */
 class Bitext : public virtual sto::IncrementalBitext, public sto::Loggable {
 public:
   /** Create an empty Bitext. */
-  Bitext();
+  Bitext(const std::string &l1, const std::string &l2);
 
   /**
    * Load existing Bitext from DB and disk.
@@ -92,7 +103,10 @@ public:
   virtual ~Bitext();
 
 
-  virtual void open(std::string const base, std::string const L1, std::string const L2) override;
+  virtual void Open(const std::string &base);
+
+  // to do: change IncrementalBitext interface (add (l1, l2) constructor), and remove this method
+  virtual void open(std::string const base, std::string const L1, std::string const L2) override { Open(base); }
 
   virtual void AddSentencePair(const std::vector<std::string> &srcSent, const std::vector<std::string> &trgSent, const std::vector<std::pair<size_t, size_t>> &alignment, const std::string &domain) override;
 
