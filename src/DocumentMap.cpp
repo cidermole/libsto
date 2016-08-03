@@ -109,7 +109,7 @@ void DocumentMap::AddSentence(sto::sid_t sid, tpt::docid_type docid) {
 
 /** Write to (empty) DB and disk. */
 void DocumentMap::Write(std::shared_ptr<DB<Domain>> db, const std::string &corpus_file) {
-  docname2id_.Write(db);
+  docname2id_.Write(db->template PrefixedDB<Domain>("dmp"));
   sid2docid_->Write(corpus_file);
 }
 

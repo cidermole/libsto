@@ -65,6 +65,7 @@ size_t DB<Token>::LoadVocab(std::unordered_map<Vid, std::string> &id2surface) {
   Vid maxVid = Token::kReservedVids - 1; // note: affects size of empty (newly written) Vocab, via Vocab::db_load()
   auto iter = this->db_->NewIterator(ReadOptions());
   std::string prefix = key_("vid_");
+  //std::cerr << "LoadVocab() prefix = " << prefix << std::endl;
   for(iter->Seek(prefix); iter->Valid() && iter->key().starts_with(prefix); iter->Next()) {
     std::string surface;
     this->db_->Get(ReadOptions(), iter->key(), &surface);
@@ -84,6 +85,8 @@ void DB<Token>::PutVocabPair(Vid vid, const std::string &surface) {
 
   std::string sk = surface_key_(surface); // ensure that underlying byte storage lives long enough
   std::string vk = vid_key_(vid);
+
+  //std::cerr << "PutVocabPair() sk = " << sk << std::endl;
 
   // in presence of vid, LoadVocab() assumes surface will be there as well
   rocksdb::Status status = this->db_->Put(rocksdb::WriteOptions(), sk, rocksdb::Slice(reinterpret_cast<const char *>(&vid), sizeof(vid)));
