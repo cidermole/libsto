@@ -190,6 +190,24 @@ void Bitext::AddSentencePair(const std::vector<std::string> &srcSent, const std:
 
 /** Write to (empty) DB and disk. */
 void Bitext::Write(const std::string &base) {
+  /*
+   * Directory layout: base="phrase_tables/bitext.", l1="fr", l2="en"
+   *
+   * bitext.align.six   word alignment (sentence offsets)
+   * bitext.align.trk                  (sequence of alignment pairs)
+   *
+   * bitext.db/         RocksDB: vocabulary, token index
+   *
+   * bitext.docmap.six  mapping sentence ID -> domain ID
+   * bitext.docmap.trk
+   *
+   * bitext.en.six      corpus side 2 (sentence offsets)
+   * bitext.en.trk                    (sequence of token IDs)
+   *
+   * bitext.fr.six      corpus side 1
+   * bitext.fr.trk
+   */
+
   std::shared_ptr<BaseDB> db = std::make_shared<BaseDB>(base + "db");
   src_.Write(std::make_shared<DB<SrcToken>>(*db), base, doc_map_);
   trg_.Write(std::make_shared<DB<TrgToken>>(*db), base, doc_map_);
