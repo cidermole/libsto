@@ -20,6 +20,8 @@
 
 namespace sto {
 
+class BaseDB;
+
 /**
  * Maps between sentence IDs and domain IDs (domains are called 'documents' in Mmsapt lingo),
  * and domain names and domain IDs.
@@ -30,7 +32,7 @@ public:
   DocumentMap();
 
   /** Load existing DocumentMap from DB and disk. */
-  DocumentMap(std::shared_ptr<DB<Domain>> db, const std::string &corpus_file);
+  DocumentMap(std::shared_ptr<BaseDB> db, const std::string &corpus_file);
 
   /** Create a new DocumentBias object with bias weights for Mmsapt from a map of domain names -> weights. */
   sapt::IBias *SetupDocumentBias(std::map<std::string,float> context_weights,
@@ -69,7 +71,7 @@ public:
   void Load(std::string const& fname, size_t num_sents);
 
   /** Write to (empty) DB and disk. */
-  void Write(std::shared_ptr<DB<Domain>> db, const std::string &corpus_file);
+  void Write(std::shared_ptr<BaseDB> db, const std::string &corpus_file);
 
   Domain begin() const;
   Domain end() const;

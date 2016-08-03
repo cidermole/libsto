@@ -20,7 +20,7 @@ DocumentMap::DocumentMap() : sid2docid_(new Corpus<Domain>(&docname2id_))
 {}
 
 /** Load existing DocumentMap from DB and disk. */
-DocumentMap::DocumentMap(std::shared_ptr<DB<Domain>> db, const std::string &corpus_file) :
+DocumentMap::DocumentMap(std::shared_ptr<BaseDB> db, const std::string &corpus_file) :
     docname2id_(db->template PrefixedDB<Domain>("dmp")), // add another prefix, so we do not collide with normal Vocab DB entries
     sid2docid_(new Corpus<Domain>(corpus_file, &docname2id_))
 {}
@@ -108,7 +108,7 @@ void DocumentMap::AddSentence(sto::sid_t sid, tpt::docid_type docid) {
 }
 
 /** Write to (empty) DB and disk. */
-void DocumentMap::Write(std::shared_ptr<DB<Domain>> db, const std::string &corpus_file) {
+void DocumentMap::Write(std::shared_ptr<BaseDB> db, const std::string &corpus_file) {
   docname2id_.Write(db->template PrefixedDB<Domain>("dmp"));
   sid2docid_->Write(corpus_file);
 }
