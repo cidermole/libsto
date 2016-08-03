@@ -43,7 +43,7 @@ struct BitextSide : public sto::Loggable {
   /**
    * Load existing BitextSide from DB and disk.
    *
-   * @param base  base pathname prefix, e.g. "phrase_tables/bitext." (base+lang must be a directory)
+   * @param base  base pathname prefix, e.g. "phrase_tables/bitext." -- we'll store into base+lang
    */
   BitextSide(std::shared_ptr<DB<Token>> db, const std::string &base, const std::string &lang, const DocumentMap &map);
 
@@ -77,7 +77,7 @@ struct BitextSide : public sto::Loggable {
   /**
    * Write to (empty) DB and disk.
    *
-   * @param base  base pathname prefix, e.g. "phrase_tables/bitext.en" (will be created as a directory)
+   * @param base  base pathname prefix, e.g. "phrase_tables/bitext."
    */
   void Write(std::shared_ptr<DB<Token>> db, const std::string &base, const DocumentMap &map);
 };
@@ -98,7 +98,7 @@ public:
    *
    * @param base  base pathname prefix, e.g. "phrase_tables/bitext."
    */
-  Bitext(std::shared_ptr<BaseDB> db, const std::string &base, const std::string &l1, const std::string &l2);
+  Bitext(const std::string &base, const std::string &l1, const std::string &l2);
 
   virtual ~Bitext();
 
@@ -115,11 +115,12 @@ public:
    *
    * @param base  base pathname prefix, e.g. "phrase_tables/bitext."
    */
-  void Write(std::shared_ptr<BaseDB> db, const std::string &base);
+  void Write(const std::string &base);
 
 protected:
-  std::string l1_;
-  std::string l2_;
+  std::string l1_; /** source language 2-letter code */
+  std::string l2_; /** targetlanguage 2-letter code */
+  std::shared_ptr<BaseDB> db_;
   DocumentMap doc_map_; /** housekeeping for individual domain names, IDs */
   BitextSide<sto::SrcToken> src_;
   BitextSide<sto::TrgToken> trg_;

@@ -42,9 +42,9 @@ void BitextSide<Token>::Open(const std::string &base, const std::string &lang) {
   this->base = base;
   this->lang = lang;
   base_and_lang = base + lang;
-  // token index
+  // vocabulary
   vocab.reset(new Vocab<Token>(base_and_lang+".tdx"));
-  // mapped corpus track
+  // mmapped corpus track
   XVERBOSE(2, " sto::Corpus()...\n");
   corpus.reset(new Corpus<Token>(base_and_lang+".mct", vocab.get()));
   index.reset(new sto::TokenIndex<Token>(*corpus));
@@ -134,11 +134,12 @@ Bitext::Bitext(const std::string &l1, const std::string &l2) :
 {}
 
 /** Load existing Bitext from DB and disk. */
-Bitext::Bitext(std::shared_ptr<BaseDB> db, const std::string &base, const std::string &l1, const std::string &l2) :
+Bitext::Bitext(const std::string &base, const std::string &l1, const std::string &l2) :
     l1_(l1), l2_(l2),
-    doc_map_(std::make_shared<DB<Domain>>(*db), base + "docmap.trk"),
-    src_(std::make_shared<DB<SrcToken>>(*db), base, l1, doc_map_),
-    trg_(std::make_shared<DB<TrgToken>>(*db), base, l2, doc_map_),
+    db_(std::make_shared<BaseDB>(base + "db")),
+    doc_map_(std::make_shared<DB<Domain>>(*db_), base + "docmap.trk"),
+    src_(std::make_shared<DB<SrcToken>>(*db_), base, l1, doc_map_),
+    trg_(std::make_shared<DB<TrgToken>>(*db_), base, l2, doc_map_),
     align_(new sto::Corpus<sto::AlignmentLink>(base + "align.trk"))
 {}
 
@@ -188,9 +189,10 @@ void Bitext::AddSentencePair(const std::vector<std::string> &srcSent, const std:
 }
 
 /** Write to (empty) DB and disk. */
-void Bitext::Write(std::shared_ptr<BaseDB> db, const std::string &base) {
-  src_.Write(std::make_shared<DB<SrcToken>>(*db), base + l1_, doc_map_);
-  trg_.Write(std::make_shared<DB<TrgToken>>(*db), base + l2_, doc_map_);
+void Bitext::Write(const std::string &base) {
+  std::shared_ptr<BaseDB> db = std::make_shared<BaseDB>(base + "db");
+  src_.Write(std::make_shared<DB<SrcToken>>(*db), base, doc_map_);
+  trg_.Write(std::make_shared<DB<TrgToken>>(*db), base, doc_map_);
   align_->Write(base + "align.trk");
   doc_map_.Write(std::make_shared<DB<Domain>>(*db), base + "docmap.trk");
 }
