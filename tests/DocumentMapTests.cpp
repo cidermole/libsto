@@ -12,10 +12,9 @@
 #include <vector>
 #include <set>
 
-#include <boost/filesystem.hpp>
-
 #include "DocumentMap.h"
 #include "DB.h"
+#include "filesystem.h"
 
 using namespace sto;
 
@@ -60,19 +59,12 @@ TEST(DocumentMapTests, load_v1) {
   EXPECT_FALSE(docmap.contains("foobar"));
 }
 
-static void remove_all(const std::string &p) {
-  using namespace boost::filesystem;
-  boost::system::error_code ec;
-  path base(p);
-  boost::filesystem::remove_all(base, ec); // ensure no leftovers
-}
-
 TEST(DocumentMapTests, save_load_append) {
   DocumentMap docmap_build;
 
   std::string dirname = "res/DocumentMapTests";
   remove_all(dirname);
-  boost::filesystem::create_directory(dirname);
+  create_directory(dirname);
 
   std::vector<std::string> domain_names = {"dom1", "dom2", "dom3"};
   std::vector<size_t> line_counts = {3, 5, 1};

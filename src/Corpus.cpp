@@ -290,7 +290,7 @@ template<class Token>
 Token Sentence<Token>::operator[](size_t i) const {
   assert(i <= size_);
   if(i == size_)
-    return Token{Corpus<Token>::Vocabulary::kEOS}; // implicit </s>
+    return Token{Corpus<Token>::Vocabulary::kEosVid}; // implicit </s>
   else
     return Token{begin_[i]};
 }

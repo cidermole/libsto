@@ -99,7 +99,7 @@ void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<To
   std::unique_ptr<SuffixArrayPosition<Token>[]> newArray(new SuffixArrayPosition<Token>[newSize]);
   SuffixArrayPosition<Token> *pnew = newArray.get();
 
-  assert(addSize > 0);
+  assert(addSize > 0 || depth == 0); // the only time we may get a zero-size leaf is if we are merging in an empty addSpan (and even then, only with a leaf root on disk)
   Vid vid = depth > 0 ? Position<Token>(addSpan[0]).add(depth-1, corpus).vid(corpus) : 0;
 
   // to do: if Span had an iterator, we could use std::merge() here.
@@ -138,7 +138,7 @@ void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<To
   assert(pnew - newArray.get() == (ptrdiff_t) newSize); // filled the entire array
 
   // array is sorted in ascending order
-  for(size_t i = 0; i < newSize - 1; i++) {
+  for(size_t i = 0; i + 1 < newSize; i++) {
     Position<Token> p = newArray[i], q = newArray[i+1];
     //assert(p <= q) == assert(!(p > q)); // equivalent formula if we had > operator
     assert(!p.compare(q, corpus)); // ascending order

@@ -17,15 +17,18 @@
 namespace sto {
 
 template<class Token>
-Vocab<Token>::Vocab(std::shared_ptr<DB<Token>> db) : size_(2), db_(db) {
+Vocab<Token>::Vocab(std::shared_ptr<DB<Token>> db) : size_(Token::kReservedVids), db_(db) {
   if(db_) {
     bool exists = db_load();
     if(!exists) {
-      // store </s> sentinel
-      db_->PutVocabPair(kEOS, kEOSSurface);
+      // store </s> sentinel if necessary
+      if(Token::kEosVid != Token::kInvalidVid)
+        db_->PutVocabPair(kEosVid, kEosSurface);
     }
   }
-  put_eos();
+  // put </s> sentinel if necessary
+  if(Token::kEosVid != Token::kInvalidVid)
+    put_eos();
 }
 
 template<class Token>
@@ -73,6 +76,8 @@ Token Vocab<Token>::at(const std::string &surface) const {
 
 template<class Token>
 Token Vocab<Token>::begin() const {
+  // for regular Tokens, this should include </s>
+  // for other Vocab use (see DocumentMap), we start from the first valid entry
   return Token{1};
 }
 
@@ -159,23 +164,23 @@ bool Vocab<Token>::db_load() {
 
 template<class Token>
 void Vocab<Token>::put_eos() {
-  surface2id_["</s>"] = kEOS;
-  id2surface_[kEOS] = "</s>";
+  surface2id_[kEosSurface] = kEosVid;
+  id2surface_[kEosVid] = kEosSurface;
 
   // vid == kEOS must not be used by any word because we use it in TokenIndex as a sentinel.
   // </s> must also have the lowest vid for correctness of comparing shorter sequences as less in TokenIndex.
-  Token eos = at("</s>");
-  assert(eos.vid == kEOS);
+  Token eos = at(kEosSurface);
+  assert(eos.vid == kEosVid);
 }
 
 template<class Token>
-constexpr typename DummyVocab<Token>::Vid DummyVocab<Token>::kEOS;
+constexpr typename DummyVocab<Token>::Vid DummyVocab<Token>::kEosVid;
 
 template<class Token>
-constexpr typename Vocab<Token>::Vid Vocab<Token>::kEOS;
+constexpr typename Vocab<Token>::Vid Vocab<Token>::kEosVid;
 
 template<class Token>
-constexpr char Vocab<Token>::kEOSSurface[];
+constexpr char Vocab<Token>::kEosSurface[];
 
 // explicit template instantiation
 template class Vocab<SrcToken>;

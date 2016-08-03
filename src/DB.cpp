@@ -62,7 +62,7 @@ size_t DB<Token>::LoadVocab(std::unordered_map<Vid, std::string> &id2surface) {
 
   // prefix scan over id2surface to get all vids
 
-  Vid maxVid = 1; // note: affects size of empty Vocab, via Vocab::db_load()
+  Vid maxVid = Token::kReservedVids - 1; // note: affects size of empty (newly written) Vocab, via Vocab::db_load()
   auto iter = this->db_->NewIterator(ReadOptions());
   std::string prefix = key_("vid_");
   for(iter->Seek(prefix); iter->Valid() && iter->key().starts_with(prefix); iter->Next()) {

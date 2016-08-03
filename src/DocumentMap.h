@@ -77,8 +77,6 @@ public:
 private:
   Vocab<Domain> docname2id_;                  /** document name to document id mapping */
   std::shared_ptr<Corpus<Domain>> sid2docid_; /** sentence id to document id mapping */
-
-  void WriteVocab(std::shared_ptr<DB<Domain>> db);
 };
 
 /** Domain bias for BitextSampler, backed by libsto DocumentMap. */

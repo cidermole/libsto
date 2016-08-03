@@ -21,7 +21,7 @@ find_package(Boost REQUIRED COMPONENTS
 #configure_file(res/vocab.tdx COPYONLY)
 
 set(RESOURCES res/vocab.tdx res/corpus.mct res/align.mam res/index.sfa)
-set(TEST_SOURCES VocabTests.cpp CorpusTests.cpp TokenIndexTests.cpp BenchmarkTests.cpp RBTreeIteratorTests.cpp DocumentMapTests.cpp)
+set(TEST_SOURCES VocabTests.cpp CorpusTests.cpp TokenIndexTests.cpp BenchmarkTests.cpp RBTreeIteratorTests.cpp DocumentMapTests.cpp BitextTests.cpp)
 
 file(COPY ${RESOURCES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/res/)
 

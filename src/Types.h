@@ -38,6 +38,8 @@ struct SrcToken {
   typedef Vocab<SrcToken> Vocabulary;
   typedef vid_t Vid; /** vocabulary ID type */
   static constexpr Vid kInvalidVid = 0;
+  static constexpr Vid kEosVid = 1; /** vocabulary ID for </s>, the end-of-sentence sentinel token */
+  static constexpr Vid kReservedVids = 2; /** number of reserved vids starting from 0 */
   static constexpr CorpusIndexAccounting::acc_t kIndexType = CorpusIndexAccounting::IDX_CNT_ENTRIES;
 
   Vid vid; /** vocabulary ID */
@@ -60,6 +62,8 @@ struct TrgToken {
   typedef Vocab<TrgToken> Vocabulary;
   typedef vid_t Vid; /** vocabulary ID type */
   static constexpr Vid kInvalidVid = 0;
+  static constexpr Vid kEosVid = 1; /** vocabulary ID for </s>, the end-of-sentence sentinel token */
+  static constexpr Vid kReservedVids = 2; /** number of reserved vids starting from 0 */
   static constexpr CorpusIndexAccounting::acc_t kIndexType = CorpusIndexAccounting::IDX_CNT_ENTRIES;
 
   Vid vid; /** vocabulary ID */
@@ -98,6 +102,7 @@ struct AlignmentLink {
   typedef DummyVocab<AlignmentLink> Vocabulary;
   typedef aln_link_t Vid; /** vocabulary ID type */
   static constexpr offset_t kInvalidOffset = static_cast<offset_t>(-1);
+  static constexpr Vid kEosVid = {kInvalidOffset, kInvalidOffset}; /** value should never be used, just for template completion */
   static constexpr CorpusIndexAccounting::acc_t kIndexType = CorpusIndexAccounting::IDX_CNT_BYTES;
 
   Vid vid; /** alignment link (called Vid for compatibility with the remaining Corpus/Sentence implementation.) */
@@ -124,13 +129,15 @@ struct Domain {
   typedef Vocab<Domain> Vocabulary;
   typedef domid_t Vid; /** vocabulary ID type */
   //static constexpr offset_t kInvalidOffset = static_cast<offset_t>(-1);
-  static constexpr Vid kInvalidDomain = static_cast<Vid>(-1);
+  static constexpr Vid kInvalidVid = static_cast<Vid>(-1);
+  static constexpr Vid kEosVid = kInvalidVid; /** unused here */
+  static constexpr Vid kReservedVids = 1; /** number of reserved vids starting from 0 */
   static constexpr CorpusIndexAccounting::acc_t kIndexType = CorpusIndexAccounting::IDX_CNT_ENTRIES;
 
   Vid vid; /** domain ID (called Vid for compatibility with the remaining Corpus/Sentence implementation.) */
 
   /** construct invalid domain */
-  Domain(): vid(kInvalidDomain) {}
+  Domain(): vid(kInvalidVid) {}
 
   Domain(Vid d): vid(d) {}
 
