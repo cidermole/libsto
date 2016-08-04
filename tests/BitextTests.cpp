@@ -40,6 +40,24 @@ TEST(BitextTests, create_empty_write_read) {
   //remove_all(dirname);
 }
 
+
+TEST(BitextTests, add_memory) {
+  std::string dirname = "res/BitextTests";
+  remove_all(dirname);
+  create_directory(dirname);
+
+  std::string base = dirname + "/bitext.";
+  Bitext bitext("fr", "en");
+
+  // test add to memory-only Bitext
+  bitext.AddSentencePair(
+      std::vector<std::string>{"source", "words"},
+      std::vector<std::string>{"target", "sentence", "words"},
+      std::vector<std::pair<size_t, size_t>>{{0,0}, {1,2}},
+      "dom1"
+  );
+}
+
 TEST(BitextTests, create_add_write_read) {
   std::string dirname = "res/BitextTests";
   remove_all(dirname);
@@ -48,13 +66,13 @@ TEST(BitextTests, create_add_write_read) {
   std::string base = dirname + "/bitext.";
   Bitext bitext("fr", "en");
 
-  // to add stuff, there needs to be an empty Bitext before
   bitext.Write(base); // write an empty Bitext
 
 
   {
     Bitext writable(base, "fr", "en");
 
+    // add to already existing, empty, persisted Bitext
     writable.AddSentencePair(
         std::vector<std::string>{"source", "words"},
         std::vector<std::string>{"target", "sentence", "words"},

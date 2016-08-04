@@ -109,8 +109,14 @@ typename BitextSide<Token>::Sid BitextSide<Token>::AddToCorpus(const std::vector
 
 template<typename Token>
 void BitextSide<Token>::AddToDomainIndex(Sid sid, tpt::docid_type docid) {
-  if(domain_indexes.find(docid) == domain_indexes.end())
-    domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token, IndexTypeDisk>>(/* filename = */ "/", *corpus, db->template PrefixedDB<Token>(lang, docid));
+  if(domain_indexes.find(docid) == domain_indexes.end()) {
+    if(db)
+      // persisted in DB
+      domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token, IndexTypeDisk>>(/* filename = */ "/", *corpus, db->template PrefixedDB<Token>(lang, docid));
+    else
+      // memory only
+      domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token, IndexTypeMemory>>(*corpus);
+  }
   domain_indexes[docid]->AddSentence(corpus->sentence(sid));
 }
 
