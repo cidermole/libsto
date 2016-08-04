@@ -42,7 +42,7 @@ public:
   virtual ~TreeNodeMemory() = default;
 
   // not implemented
-  void Merge(ITokenIndexSpan<Token> &spanMemory, ITokenIndexSpan<Token> &spanUs) { assert(0); }
+  void Merge(IndexSpan<Token> &spanMemory, IndexSpan<Token> &spanUs) { assert(0); }
 
   /**
    * Insert the existing Corpus Position into this leaf node (SuffixArray).

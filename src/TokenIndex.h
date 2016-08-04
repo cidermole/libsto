@@ -259,7 +259,7 @@ public:
   };
 
   /** Returns the whole span of the entire index (empty lookup sequence). */
-  virtual std::shared_ptr<ITokenIndexSpan<Token>> span() const;
+  virtual IndexSpan<Token> span() const;
 
   virtual Corpus<Token> *corpus() const { return corpus_; }
 

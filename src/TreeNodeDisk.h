@@ -64,7 +64,7 @@ public:
   template<class PositionSpan>
   void MergeLeaf(const PositionSpan &addSpan, const Corpus<Token> &corpus, Offset depth);
 
-  void Merge(ITokenIndexSpan<Token> &spanMemory, ITokenIndexSpan<Token> &spanDisk);
+  void Merge(IndexSpan<Token> &spanMemory, IndexSpan<Token> &spanDisk);
 
   void AddPosition(const Sentence<Token> &sent, Offset start, size_t depth) { assert(0); }
 

@@ -153,6 +153,105 @@ public:
   virtual size_t StepSize(size_t index) const = 0;
 };
 
+
+/**
+ * IndexSpan represents the matched locations of a partial lookup sequence
+ * within TokenIndex.
+ *
+ * You start with the empty lookup sequence from TokenIndex::span() and
+ * keep adding tokens to the lookup via narrow().
+ *
+ * This is a proxy object taking a virtual ITokenIndexSpan.
+ */
+template<class Token>
+class IndexSpan {
+public:
+  //friend class TokenIndex;
+
+  typedef typename ITokenIndexSpan<Token>::VidIterator VidIterator;
+
+  // note: use TokenIndex::span() for constructing an IndexSpan
+
+  /** Create an IndexSpan wrapper backed by 'span' */
+  IndexSpan(std::shared_ptr<ITokenIndexSpan<Token>> span) : span_(span) {}
+
+  /** Deep copy so modifications don't affect 'other' */
+  IndexSpan(const IndexSpan &other) : span_(other.span_->copy()) {}
+  IndexSpan(IndexSpan &&other) = default;
+
+  IndexSpan &operator=(const IndexSpan &other) { span_ = other.span_->copy(); return *this; }
+  IndexSpan &operator=(IndexSpan &&other) = default;
+
+  /**
+   * Narrow the span by adding a token to the end of the lookup sequence.
+   * Returns new span size.
+   * If the token was not found at all, returns zero without modifying the
+   * IndexSpan.
+   * If an empty SuffixArray leaf was found, returns zero while
+   * still modifying the IndexSpan.
+   */
+  size_t narrow(Token t) { return span_->narrow(t); }
+
+  /**
+   * Random access to a position within the selected span.
+   * O(log(n/k)) with with k = TreeNode<Token>::kMaxArraySize.
+   *
+   * When reading a SuffixArray leaf that is being written to,
+   * returned Position values will always be valid, but
+   * may be to the left of 'rel'.
+   */
+  Position<Token> operator[](size_t rel) const { return span_->operator[](rel); }
+
+  // for testing
+  Position<Token> at_unchecked(size_t rel) const { return span_->at_unchecked(rel); }
+
+  /**
+   * Number of token positions spanned in the index.
+   *
+   * Returns a size cached when narrow() was called.
+   */
+  size_t size() const { return span_->size(); }
+
+  /** Length of lookup sequence, or the number of times narrow() has been called. */
+  size_t depth() const { return span_->depth(); }
+
+  /** Distance from the root in number of TreeNodes. */
+  size_t tree_depth() const { return span_->tree_depth(); }
+
+  /** TreeNode at current depth. */
+  ITreeNode<Token> *node() const { return span_->node(); }
+
+  /** first part of path from root through the tree, excluding suffix array range choices */
+  const std::vector<ITreeNode<Token> *>& tree_path() const { return span_->tree_path(); }
+
+  /** true if span reaches into a suffix array leaf. */
+  bool in_array() const { return span_->in_array(); }
+
+  Range array_range() const { return span_->array_range(); }
+
+  /** partial lookup sequence so far, as appended by narrow() */
+  const std::vector<Token> &sequence() const { return span_->sequence(); }
+
+  Corpus<Token> *corpus() const { return span_->corpus(); }
+
+  /** iterate over unique vocabulary IDs at this depth. */
+  VidIterator begin() const { return span_->begin(); }
+
+  VidIterator end() const { return span_->end(); }
+
+  /**
+   * @returns the number of Positions comparing equal from the current index,
+   * aka the number of Positions to skip to get to the next vid at the current depth
+   *
+   * Currently only available on leaf nodes, but just lazy.
+   */
+  size_t StepSize(size_t index) const { return span_->StepSize(index); }
+
+private:
+  std::shared_ptr<ITokenIndexSpan<Token>> span_;
+};
+
+
 /**
  * Interface to a corpus index.
  *
@@ -164,7 +263,7 @@ public:
   virtual ~ITokenIndex() {}
 
   /** Returns the whole span of the entire index (empty lookup sequence). */
-  virtual std::shared_ptr<ITokenIndexSpan<Token>> span() const = 0;
+  virtual IndexSpan<Token> span() const = 0;
 
   virtual Corpus<Token> *corpus() const = 0;
 

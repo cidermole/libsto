@@ -115,7 +115,7 @@ TYPED_TEST(TokenIndexTests, add_sentence) {
   TokenIndexType tokenIndex(this->basePath, this->corpus, this->db);
   Sentence<Token> sentence = this->AddSentence({"this", "is", "an", "example"});
   tokenIndex.AddSentence(sentence);
-  typename TokenIndexType::Span span = tokenIndex.span();
+  auto span = tokenIndex.span();
   EXPECT_EQ(4, span.size()) << "the Sentence should have added 4 tokens to the IndexSpan";
 }
 
@@ -138,7 +138,7 @@ TYPED_TEST(TokenIndexTests, suffix_array_paper_example) {
   TokenIndexType tokenIndex(this->basePath, this->corpus, this->db);
   Sentence<Token> sentence = this->AddSentence(sent_words);
   tokenIndex.AddSentence(sentence);
-  typename TokenIndexType::Span span = tokenIndex.span();
+  auto span = tokenIndex.span();
   EXPECT_EQ(sent_words.size(), span.size()) << "the Sentence should have added its tokens to the IndexSpan";
 
   // ideas:
@@ -177,8 +177,8 @@ TYPED_TEST(TokenIndexTests, load_v2) {
   TokenIndexType dynamicIndex(this->basePath, sc, this->db); // building dynamically
   dynamicIndex.AddSentence(sc.sentence(0));
 
-  typename TokenIndex<Token, IndexTypeMemory>::Span staticSpan = staticIndex.span();
-  typename TokenIndexType::Span dynamicSpan = dynamicIndex.span();
+  auto staticSpan = staticIndex.span();
+  auto dynamicSpan = dynamicIndex.span();
 
   EXPECT_EQ(staticSpan.size(), dynamicSpan.size()) << "two ways of indexing the same corpus must be equivalent";
 
@@ -211,7 +211,7 @@ TYPED_TEST(TokenIndexTests, suffix_array_split) {
   // however, the hash function % ensures that our vids are still in order, even though the API doesn't guarantee this.
   // so this is not a good test.
 
-  typename TokenIndexType::Span span = tokenIndex.span();
+  auto span = tokenIndex.span();
   //tokenIndex.DebugPrint(std::cerr);
   // we should check here if it's really split, i.e. root_->is_leaf() == false.
   EXPECT_EQ(sent_words.size(), span.size()) << "the Sentence should have added its tokens to the IndexSpan";
@@ -403,7 +403,7 @@ void TokenIndexTests<TokenIndexType>::tree_2level_common_prefix_the_m(size_t max
   };
 
   std::vector<Position<Token>> actual_pos;
-  typename TokenIndexType::Span span = tokenIndex.span();
+  auto span = tokenIndex.span();
   // IndexSpan could support iteration...
   for(size_t i = 0; i < span.size(); i++)
     actual_pos.push_back(span[i]);
@@ -455,8 +455,8 @@ TYPED_TEST(TokenIndexTests, static_vs_dynamic_eim) {
   }
   std::cerr << "building dynamicIndex done." << std::endl;
 
-  typename TokenIndex<Token, IndexTypeMemory>::Span staticSpan = staticIndex.span();
-  typename TokenIndexType::Span dynamicSpan = dynamicIndex.span();
+  auto staticSpan = staticIndex.span();
+  auto dynamicSpan = dynamicIndex.span();
 
   EXPECT_EQ(staticSpan.size(), dynamicSpan.size()) << "two ways of indexing the same corpus must be equivalent";
 
@@ -513,10 +513,10 @@ TYPED_TEST(TokenIndexTests, TokenIndexDisk) {
   //indexDisk.Merge(tokenIndex); // merge of 'sentence' into empty TokenIndex
   indexDisk.AddSentence(sentence);
 
-  typename TokenIndex<Token, IndexTypeDisk>::Span span = indexDisk.span();
+  auto span = indexDisk.span();
   EXPECT_EQ(4, span.size()) << "the Sentence should have added 4 tokens to the IndexSpan";
 
-  typename TokenIndexType::Span refSpan = tokenIndex.span();
+  auto refSpan = tokenIndex.span();
   for(size_t i = 0; i < span.size(); i++) {
     EXPECT_EQ(refSpan[i], span[i]) << "index entry at i=" << i << " should be equal to reference";
   }
@@ -530,7 +530,7 @@ TYPED_TEST(TokenIndexTests, TokenIndexDisk) {
 
   // this check happens to work because equal positions get appended in both cases, so the order is stable
   // otherwise, we would have to check buckets
-  typename TokenIndexType::Span refSpan2 = tokenIndex.span();
+  auto refSpan2 = tokenIndex.span();
   for(size_t i = 0; i < span.size(); i++) {
     EXPECT_EQ(refSpan2[i], span[i]) << "index entry at i=" << i << " should be equal to reference";
   }

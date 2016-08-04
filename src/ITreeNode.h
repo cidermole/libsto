@@ -11,7 +11,7 @@
 
 namespace sto {
 
-template<typename Token> class ITokenIndexSpan;
+template<typename Token> class IndexSpan;
 
 /**
  * Internal interface for TreeNode::Iterator
@@ -70,7 +70,7 @@ public:
   virtual Position<Token> At(size_t abs_offset, size_t rel_offset) = 0;
 
   /** Merge the entire IndexSpan spanMemory into this leaf. spanDisk must be a path to this TreeNode. */
-  virtual void Merge(ITokenIndexSpan<Token> &spanMemory, ITokenIndexSpan<Token> &spanDisk) = 0;
+  virtual void Merge(IndexSpan<Token> &spanMemory, IndexSpan<Token> &spanDisk) = 0;
 
   /** Add an empty leaf node (SuffixArray) as a child. */
   virtual void AddLeaf(Vid vid) = 0;
