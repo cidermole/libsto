@@ -38,6 +38,8 @@ set(SOURCES
         Loggable.h
         IncrementalBitext.h
         ITokenIndex.h
-        ITreeNode.h)
+        ITreeNode.h
+        IndexBuffer.cpp
+        IndexBuffer.h)
 
 add_library(sto OBJECT ${SOURCES})  # no real lib, just collection of objs

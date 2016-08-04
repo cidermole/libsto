@@ -18,6 +18,7 @@
 #include "Vocab.h"
 #include "Corpus.h"
 #include "TokenIndex.h"
+#include "IndexBuffer.h"
 #include "Types.h"
 #include "util/Time.h"
 #include "util/usage.h"
@@ -374,14 +375,19 @@ TEST_F(BenchmarkTests, index_100k_disk) {
 
   TokenIndex<SrcToken, IndexTypeDisk> tokenIndex(basePath, corpus, db, /* maxLeafSize = */ 10000);
 
-  benchmark_time([&corpus, &tokenIndex](){
+  BatchIndexBuffer<SrcToken> buffer(tokenIndex, /* batchSize = */ 1000);
+
+  double time = benchmark_time([&corpus, &buffer](){
     for(size_t i = 0; i < corpus.size(); i++) {
       if(i % 1000 == 0)
         std::cerr << "tokenIndex @ AddSentence(i=" << i << ")..." << std::endl;
-      tokenIndex.AddSentence(corpus.sentence(i));
+      buffer.AddSentence(corpus.sentence(i));
     }
+    buffer.Flush();
   }, "build_index");
   util::PrintUsage(std::cerr);
+
+  std::cerr << (tokenIndex.span().size() / time) << " tokens/sec. indexed" << std::endl;
 }
 
 

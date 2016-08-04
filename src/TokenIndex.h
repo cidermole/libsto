@@ -26,8 +26,12 @@ template<class Token, class SuffixArray> class TreeNode;
 
 template<class Token> class DB;
 
-struct IndexTypeMemory {};
-struct IndexTypeDisk {};
+struct IndexTypeMemory {
+  static constexpr bool HasAddSentence = true;
+};
+struct IndexTypeDisk {
+  static constexpr bool HasAddSentence = false; /** IndexTypeDisk implementation has no AddSentence() support, so we need to use Merge() instead */
+};
 
 /** types for TokenIndex with different backing (Disk or Memory) */
 template<typename Token, typename IndexTypeTag>
@@ -52,41 +56,6 @@ struct IndexTypes<Token, IndexTypeMemory> {
   typedef SuffixArrayMemory<Token> SuffixArray;
   typedef TreeNodeMemory<Token> TreeNode;
 };
-
-/**
- * Implementation of TokenIndex::AddSentence() that can be specialized
- * for testing IndexTypeDisk.
- */
-template<class Token, typename TypeTag>
-struct AddSentenceImpl {
-  void operator()(const Sentence<Token> &sent);
-  AddSentenceImpl(TokenIndex<Token, TypeTag> &index);
-private:
-  TokenIndex<Token, TypeTag> &index_;
-};
-
-
-/**
- * Partial specialization of AddSentenceImpl for IndexTypeDisk.
- * for testing IndexTypeDisk using AddSentence().
- */
-template<class Token>
-struct AddSentenceImpl<Token, IndexTypeDisk> {
-  static constexpr size_t kMaxLeafSizeMem = 10000;
-
-  void operator()(const Sentence<Token> &sent);
-
-  AddSentenceImpl(TokenIndex<Token, IndexTypeDisk> &index);
-
-private:
-  std::unique_ptr<TokenIndex<Token, IndexTypeMemory>> memBuffer;
-  size_t nsents = 0;
-  //size_t kBatchSize = 10000; /** batch size in number of sents */  // (used this for individually running BenchmarkTests.index_100k_disk) -- breaks other tests since we don't have a flush at the end
-  size_t kBatchSize = 1; /** batch size in number of sents */
-
-  TokenIndex<Token, IndexTypeDisk> &index_;
-};
-
 
 /**
  * Indexes a Corpus. The index is implemented as a hybrid suffix tree/array.
@@ -255,7 +224,7 @@ public:
   virtual void AddSentence(const Sentence<Token> &sent);
 
   /** Merge all Positions from 'add' into this TokenIndex. */
-  void Merge(const ITokenIndex<Token> &add);
+  virtual void Merge(const ITokenIndex<Token> &add);
 
   /** Write to (empty) DB. */
   virtual void Write(std::shared_ptr<DB<Token>> db) const;
@@ -271,7 +240,6 @@ private:
 
   Corpus<Token> *corpus_;
   TreeNodeT *root_; /** root of the index tree */
-  AddSentenceImpl<Token, TypeTag> add_buffer_; /** buffer caching AddSentence() calls */
 };
 
 } // namespace sto

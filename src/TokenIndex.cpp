@@ -12,14 +12,16 @@
 
 namespace sto {
 
-// --------------------------------------------------------
-
 template<class Token, typename TypeTag>
-TokenIndex<Token, TypeTag>::TokenIndex(const std::string &filename, Corpus<Token> &corpus, std::shared_ptr<DB<Token>> db, size_t maxLeafSize) : corpus_(&corpus), root_(new TreeNodeT(filename, db, maxLeafSize)), add_buffer_(*this)
+TokenIndex<Token, TypeTag>::TokenIndex(const std::string &filename, Corpus<Token> &corpus, std::shared_ptr<DB<Token>> db, size_t maxLeafSize) :
+    corpus_(&corpus),
+    root_(new TreeNodeT(filename, db, maxLeafSize))
 {}
 
 template<class Token, typename TypeTag>
-TokenIndex<Token, TypeTag>::TokenIndex(Corpus<Token> &corpus, size_t maxLeafSize) : corpus_(&corpus), root_(new TreeNodeT("", nullptr, maxLeafSize)), add_buffer_(*this)
+TokenIndex<Token, TypeTag>::TokenIndex(Corpus<Token> &corpus, size_t maxLeafSize) :
+    corpus_(&corpus),
+    root_(new TreeNodeT("", nullptr, maxLeafSize))
 {}
 
 template<class Token, typename TypeTag>
@@ -33,51 +35,22 @@ IndexSpan<Token> TokenIndex<Token, TypeTag>::span() const {
 }
 
 template<class Token, typename TypeTag>
-void AddSentenceImpl<Token,TypeTag>::operator()(const Sentence<Token> &sent) {
-  typedef typename Corpus<Token>::Offset Offset;
-  // start a subsequence at each sentence position
-  // each subsequence only goes as deep as necessary to hit a SA
-  for(Offset i = 0; i < sent.size(); i++)
-    index_.AddSubsequence_(sent, i);
-}
-
-template<class Token, typename TypeTag>
-AddSentenceImpl<Token,TypeTag>::AddSentenceImpl(TokenIndex<Token, TypeTag> &index) : index_(index)
-{}
-
-template<class Token>
-void AddSentenceImpl<Token, IndexTypeDisk>::operator()(const Sentence<Token> &sent) {
-  // add to memory index, then merge in
-  // (workaround for testing IndexTypeDisk using AddSentence())
-
-  Corpus<Token> &corpus = *index_.corpus();
-
-#if 0
-  // merge every sentence
-  TokenIndex<Token, IndexTypeMemory> add(*index.corpus());
-  add.AddSentence(sent);
-  index.Merge(add);
-#else
-  // merge in batches of kBatchSize
-  // TODO: flush remaining entries at the end
-  memBuffer->AddSentence(sent);
-  if(++nsents == kBatchSize) {
-    index_.Merge(*memBuffer);
-    nsents = 0;
-    memBuffer.reset(new TokenIndex<Token, IndexTypeMemory>(corpus, kMaxLeafSizeMem));
-  }
-#endif
-}
-
-template<class Token>
-AddSentenceImpl<Token, IndexTypeDisk>::AddSentenceImpl(TokenIndex<Token, IndexTypeDisk> &index) :
-    memBuffer(new TokenIndex<Token, IndexTypeMemory>(*index.corpus(), kMaxLeafSizeMem)), index_(index)
-{}
-
-template<class Token, typename TypeTag>
 void TokenIndex<Token, TypeTag>::AddSentence(const Sentence<Token> &sent) {
-  // work around C++ lacking partial specialization of member functions
-  add_buffer_(sent);
+  typedef typename Corpus<Token>::Offset Offset;
+
+  if(TypeTag::HasAddSentence) {
+    // start a subsequence at each sentence position
+    // each subsequence only goes as deep as necessary to hit a SA
+    for(Offset i = 0; i < sent.size(); i++)
+      AddSubsequence_(sent, i);
+  } else {
+    // Workaround for testing. Should not be called in production, because it's slow! Use an IndexBuffer instead.
+
+    // merge every sentence
+    TokenIndex<Token, IndexTypeMemory> add(*corpus());
+    add.AddSentence(sent);
+    Merge(add);
+  }
 }
 
 template<class Token, typename TypeTag>
@@ -177,6 +150,8 @@ void TokenIndex<Token, TypeTag>::AddSubsequence_(const Sentence<Token> &sent, Of
     i--;
   }
 }
+
+// --------------------------------------------------------
 
 // explicit template instantiation
 template class TokenIndex<SrcToken, IndexTypeMemory>;
