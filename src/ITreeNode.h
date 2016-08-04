@@ -9,6 +9,8 @@
 
 #include <memory>
 
+#include "Corpus.h"
+
 namespace sto {
 
 template<typename Token> class IndexSpan;
