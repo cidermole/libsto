@@ -16,6 +16,7 @@
 #include "util/rbtree.hpp"
 
 #include "SuffixArrayDisk.h"
+#include "ITreeNode.h"
 
 namespace sto {
 
@@ -31,7 +32,7 @@ template<class Token, typename TypeTag> class TokenIndex;
  * size low.
  */
 template<class Token, class SuffixArray>
-class TreeNode {
+class TreeNode : public ITreeNode<Token> {
 public:
   typedef typename Corpus<Token>::Vid Vid;
   typedef typename Corpus<Token>::Offset Offset;
@@ -82,8 +83,8 @@ public:
   bool find_child_(Vid vid, TreeNode<Token, SuffixArray> **child = nullptr);
 
   /** iterator over vids of children of internal nodes */
-  Iterator begin() const { return children_.begin(); }
-  Iterator end() const { return children_.end(); }
+  IVidIterator<Token> begin() const { return IVidIterator<Token>(std::shared_ptr<ITreeNodeIterator<typename Token::Vid>>(children_.begin().copy())); }
+  IVidIterator<Token> end() const { return IVidIterator<Token>(std::shared_ptr<ITreeNodeIterator<typename Token::Vid>>(children_.end().copy())); }
 
   // TODO: temporary
   std::shared_ptr<SuffixArray> array() { assert(is_leaf()); return array_; }

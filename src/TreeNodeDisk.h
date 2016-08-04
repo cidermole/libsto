@@ -11,6 +11,7 @@
 
 #include "TreeNode.h"
 #include "SuffixArrayDisk.h"
+#include "ITokenIndex.h"
 
 namespace sto {
 
@@ -63,7 +64,7 @@ public:
   template<class PositionSpan>
   void MergeLeaf(const PositionSpan &addSpan, const Corpus<Token> &corpus, Offset depth);
 
-  void Merge(typename TokenIndex<Token, IndexTypeMemory>::Span &spanMemory, typename TokenIndex<Token, IndexTypeDisk>::Span &spanDisk);
+  void Merge(ITokenIndexSpan<Token> &spanMemory, ITokenIndexSpan<Token> &spanDisk);
 
   void AddPosition(const Sentence<Token> &sent, Offset start, size_t depth) { assert(0); }
 

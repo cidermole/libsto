@@ -8,10 +8,12 @@
 #define STO_TREENODEMEMORY_H
 
 #include <memory>
+#include <cassert>
 
 #include "TreeNode.h"
 //#include "TokenIndex.h"
 #include "SuffixArrayMemory.h"
+#include "ITokenIndex.h"
 
 namespace sto {
 
@@ -39,13 +41,8 @@ public:
 
   virtual ~TreeNodeMemory() = default;
 
-  /*
-  template<class IndexSpanMemory, class IndexSpanDisk>
-  void Merge(const IndexSpanMemory &spanMemory, IndexSpanDisk &spanDisk) { assert(0); }
-   */
-
   // not implemented
-  void Merge(const typename TokenIndex<Token, IndexTypeMemory>::Span &spanMemory, typename TokenIndex<Token, IndexTypeMemory>::Span &spanUs);
+  void Merge(ITokenIndexSpan<Token> &spanMemory, ITokenIndexSpan<Token> &spanUs) { assert(0); }
 
   /**
    * Insert the existing Corpus Position into this leaf node (SuffixArray).

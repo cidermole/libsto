@@ -36,6 +36,8 @@ set(SOURCES
         Bitext.cpp
         Bitext.h
         Loggable.h
-        IncrementalBitext.h)
+        IncrementalBitext.h
+        ITokenIndex.h
+        ITreeNode.h)
 
 add_library(sto OBJECT ${SOURCES})  # no real lib, just collection of objs

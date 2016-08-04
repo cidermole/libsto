@@ -21,6 +21,8 @@
 #include <cassert>
 #include <utility>
 
+#include "../ITreeNode.h"
+
 namespace sto {
 
 
@@ -132,7 +134,7 @@ class RBTree {
   }
 
   /** Walking keys in ascending order, supporting standard operations (range-based for loop over RBTree). */
-  class Iterator {
+  class Iterator : public sto::ITreeNodeIterator<KeyType> {
   public:
     Iterator(const Iterator &other) = default;
 
@@ -205,6 +207,15 @@ class RBTree {
     const KeyType& operator*() { return cur_->key; }
 
     bool operator!=(const Iterator &other) const { return cur_ != other.cur_; }
+
+    virtual bool operator!=(const sto::ITreeNodeIterator<KeyType> &other) const {
+      const Iterator *right = dynamic_cast<const Iterator *>(&other);
+      assert(right);
+      if(!right)
+        return true;
+      return this->operator!=(*right);
+    }
+    virtual sto::ITreeNodeIterator<KeyType> *copy() const { return new Iterator(*this); }
 
   private:
     typedef typename RBTree<KeyType,ValueType>::Node Node;

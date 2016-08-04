@@ -22,6 +22,7 @@
 
 #include "util/Time.h"
 #include "util/usage.h"
+#include "ITokenIndex.h"
 
 
 using namespace sto;

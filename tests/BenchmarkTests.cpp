@@ -24,6 +24,7 @@
 
 #include <boost/filesystem.hpp>
 #include "DB.h"
+#include "ITokenIndex.h"
 
 #define static_assert(x) static_cast<void>(0)
 

@@ -8,6 +8,7 @@
 
 #include "Bitext.h"
 #include "DB.h"
+#include "ITokenIndex.h"
 
 namespace sto {
 
@@ -16,7 +17,7 @@ template<typename Token>
 BitextSide<Token>::BitextSide(const std::string &l) :
     vocab(new sto::Vocab<Token>),
     corpus(new sto::Corpus<Token>(vocab.get())),
-    index(new sto::TokenIndex<Token>(*corpus)),
+    index(new sto::TokenIndex<Token, IndexTypeDisk>(*corpus)), // TODO: this should be IndexTypeMemory, since we did not implement Merge(), hence Write(), for IndexTypeDisk
     lang(l)
 {
 }
@@ -26,11 +27,12 @@ template<typename Token>
 BitextSide<Token>::BitextSide(std::shared_ptr<DB<Token>> db, const std::string &base, const std::string &lang, const DocumentMap &map) :
     vocab(new sto::Vocab<Token>(db->template PrefixedDB<Token>(lang))),
     corpus(new sto::Corpus<Token>(base + lang + ".trk", vocab.get())),
-    index(new sto::TokenIndex<Token>("/", *corpus, db->template PrefixedDB<Token>(lang)))  // note: filename is only ever used as DB prefix now.
+    index(new sto::TokenIndex<Token, IndexTypeDisk>("/", *corpus, db->template PrefixedDB<Token>(lang))),  // note: filename is only ever used as DB prefix now (in TreeNodeDisk)
+    db(db)
 {
   // load domain indexes
   for(auto docid : map)
-    domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token>>(/* filename = */ "/", *corpus, db->template PrefixedDB<Token>(lang, docid));
+    domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token, IndexTypeDisk>>(/* filename = */ "/", *corpus, db->template PrefixedDB<Token>(lang, docid));
 }
 
 template<typename Token>
@@ -47,7 +49,7 @@ void BitextSide<Token>::Open(const std::string &base, const std::string &lang) {
   // mmapped corpus track
   XVERBOSE(2, " sto::Corpus()...\n");
   corpus.reset(new Corpus<Token>(base_and_lang+".mct", vocab.get()));
-  index.reset(new sto::TokenIndex<Token>(*corpus));
+  index.reset(new sto::TokenIndex<Token, IndexTypeDisk>(*corpus)); // TODO IndexTypeMemory
   this->base_and_lang = base_and_lang;
 }
 
@@ -56,19 +58,19 @@ void BitextSide<Token>::CreateGlobalIndex() {
   std::string index_file = base_and_lang + ".sfa";
   if(!access(index_file.c_str(), F_OK)) {
     // load index from disk, if possible
-    index.reset(new sto::TokenIndex<Token>(index_file, *corpus));
+    // TODO IndexTypeMemory (despite the slightly bad name, IndexTypeMemory can mmap the old index format from disk)
+    index.reset(new sto::TokenIndex<Token, IndexTypeDisk>(index_file, *corpus)); // TODO IndexTypeMemory
     return;
   }
 
   XVERBOSE(2, " BitextSide<Token>::CreateGlobalIndex()...\n");
-  index.reset(new sto::TokenIndex<Token>(*corpus));
+  index.reset(new sto::TokenIndex<Token, IndexTypeDisk>(*corpus)); // TODO IndexTypeMemory
   for(size_t i = 0; i < corpus->size(); i++)
     index->AddSentence(corpus->sentence(i));
 }
 
 template<typename Token>
 void BitextSide<Token>::CreateDomainIndexes(const DocumentMap &map) {
-  XVERBOSE(2, " BitextSide<Token>::CreateDomainIndexes()...\n");
   size_t nsents = corpus->size();
 
   assert(map.numDomains() > 0); // we must have at least 1 domain... otherwise we could just load the global idx.
@@ -79,15 +81,17 @@ void BitextSide<Token>::CreateDomainIndexes(const DocumentMap &map) {
     // create TokenIndex objects
     domain_indexes.clear();
     for(auto docid : map)
-      domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token>>(base_and_lang + "." + map[docid] + ".sfa", *corpus);
+      domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token, IndexTypeDisk>>(base_and_lang + "." + map[docid] + ".sfa", *corpus); // TODO IndexTypeMemory
 
     return;
   }
 
+  XVERBOSE(2, " BitextSide<Token>::CreateDomainIndexes()...\n");
+
   // create TokenIndex objects
   domain_indexes.clear();
   for(auto docid : map)
-    domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token>>(*corpus);
+    domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token, IndexTypeDisk>>(*corpus); // TODO IndexTypeMemory
 
   // put each sentence into the correct domain index
   for(size_t i = 0; i < nsents; i++)
@@ -106,7 +110,7 @@ typename BitextSide<Token>::Sid BitextSide<Token>::AddToCorpus(const std::vector
 template<typename Token>
 void BitextSide<Token>::AddToDomainIndex(Sid sid, tpt::docid_type docid) {
   if(domain_indexes.find(docid) == domain_indexes.end())
-    domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token>>(*corpus);
+    domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token, IndexTypeDisk>>(/* filename = */ "/", *corpus, db->template PrefixedDB<Token>(lang, docid));
   domain_indexes[docid]->AddSentence(corpus->sentence(sid));
 }
 

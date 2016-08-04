@@ -18,6 +18,7 @@
 #include "DB.h"
 
 #include "rocksdb/db.h"
+#include "ITokenIndex.h"
 
 #define static_assert(x) static_cast<void>(0)
 
@@ -174,7 +175,7 @@ void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<To
 }
 
 template<class Token>
-void TreeNodeDisk<Token>::Merge(typename TokenIndex<Token, IndexTypeMemory>::Span &spanMemory, typename TokenIndex<Token, IndexTypeDisk>::Span &spanDisk) {
+void TreeNodeDisk<Token>::Merge(ITokenIndexSpan<Token> &spanMemory, ITokenIndexSpan<Token> &spanDisk) {
   // iterate through children, recursively calling Merge() until we reach the TreeNodeDisk leaf level.
   // spanMemory may not hit leaves at the same depth, but we can still iterate over the entire span to merge it.
 
@@ -186,20 +187,20 @@ void TreeNodeDisk<Token>::Merge(typename TokenIndex<Token, IndexTypeMemory>::Spa
   }
 
   for(auto vid : spanMemory) {
-    typename TokenIndex<Token, IndexTypeMemory>::Span spanm = spanMemory;
-    size_t num_new = spanm.narrow(Token{vid});
+    std::shared_ptr<ITokenIndexSpan<Token>> spanm(spanMemory.copy());
+    size_t num_new = spanm->narrow(Token{vid});
 
     assert(num_new > 0); // since we iterate precisely spanMemory
 
-    typename TokenIndex<Token, IndexTypeDisk>::Span spand = spanDisk;
-    size_t spanSize = spand.narrow(Token{vid});
+    std::shared_ptr<ITokenIndexSpan<Token>> spand(spanDisk.copy());
+    size_t spanSize = spand->narrow(Token{vid});
     if(spanSize == 0) {
       // (1) create tree entry (leaf)
-      spand.node()->AddLeaf(vid);
-      spand.narrow(Token{vid}); // step IndexSpan into the node just created (which contains an empty SA)
-      assert(spand.in_array());
+      spand->node()->AddLeaf(vid);
+      spand->narrow(Token{vid}); // step IndexSpan into the node just created (which contains an empty SA)
+      assert(spand->in_array());
     }
-    spand.node()->Merge(spanm, spand);
+    spand->node()->Merge(*spanm, *spand);
     this->AddSize(vid, num_new);
   }
 

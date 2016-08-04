@@ -18,7 +18,7 @@
 #include "TreeNodeDisk.h"
 #include "Corpus.h"
 #include "util/rbtree.hpp"
-
+#include "ITokenIndex.h"
 
 namespace sto {
 
@@ -95,7 +95,7 @@ private:
  * (sort order matters, shorter sequences must come first)!
  */
 template<class Token, typename TypeTag = IndexTypeMemory>
-class TokenIndex {
+class TokenIndex : public ITokenIndex<Token> {
 public:
   typedef Token TokenT;
   typedef TypeTag TypeTagT;
@@ -115,7 +115,7 @@ public:
 
   /** Construct an empty TokenIndex, i.e. this does not index the Corpus by itself. */
   TokenIndex(Corpus<Token> &corpus, size_t maxLeafSize = 10000);
-  ~TokenIndex();
+  virtual ~TokenIndex();
 
 
   /**
@@ -125,10 +125,11 @@ public:
    * You start with the empty lookup sequence from TokenIndex::span() and
    * keep adding tokens to the lookup via narrow().
    */
-  class Span {
+  class Span : public ITokenIndexSpan<Token> {
   public:
     friend class TokenIndex;
     typedef typename TokenIndex::TreeNodeT TreeNodeT;
+    typedef typename ITokenIndexSpan<Token>::VidIterator VidIterator;
 
     // note: use TokenIndex::span() for constructing an IndexSpan
 
@@ -138,86 +139,6 @@ public:
     Span& operator=(const Span &other) = default;
     Span& operator=(Span &&other) = default;
 
-
-    /**
-     * Iterator over vids (vocabulary IDs) associated with a TreeNode.
-     * Obtain instances from TokenIndex::Span
-     *
-     * TODO: this should really be on TreeNode. TreeNode leaves should know (corpus,depth), then they can return
-     * an iterator interface in begin()/end() which either walks RBTree (internal nodes) or the SA (leaf nodes).
-     */
-    class VidIterator {
-    public:
-      typedef typename TokenIndex::Span IndexSpan;
-      typedef typename TokenIndex::TreeNodeT TreeNodeT;
-      typedef typename Corpus<Token>::Vid Vid;
-
-      VidIterator(const VidIterator &other) = default;
-
-      /** use TokenIndex::Span::begin() / end() instead. */
-      VidIterator(const IndexSpan &span, bool begin = true) : span_(span), index_(begin ? 0 : span.size()), depth_(span.depth()), iter_(begin ? span.node()->begin() : span.node()->end()), is_leaf_(span.node()->is_leaf()) {}
-
-      Vid operator*() {
-        if(is_leaf_)
-          return span_[index_].add((Offset) depth_, *span_.corpus()).vid(*span_.corpus());
-        else
-          return *iter_;
-      }
-      VidIterator &operator++() {
-        if(is_leaf_)
-          index_ += StepSize();
-        else
-          ++iter_;
-        return *this;
-      }
-      bool operator!=(const VidIterator &other) {
-        if(is_leaf_)
-          return index_ != other.index_;
-        else
-          return iter_ != other.iter_;
-      }
-
-      /**
-       * @returns the number of Positions comparing equal from the current index_,
-       * aka the number of Positions to skip to get to the next vid at the current depth
-       */
-      size_t StepSize() {
-        // much akin to code in TreeNode::SplitNode()... unite?
-        typedef typename TreeNodeT::SuffixArrayT::iterator iter;
-
-        // note: the real type of the SuffixArrayDisk range are AtomicPosition. But Position<->AtomicPosition are convertible
-        //
-        // #include <type_traits>
-        //bool same = std::is_same<typename TreeNodeT::SuffixArrayT::value_type, AtomicPosition<Token>>::value;
-        //assert(same);
-
-        Position<Token> pos = span_[index_];
-
-        Corpus<Token> &corpus = *span_.corpus();
-        size_t depth = span_.depth();
-        auto comp = [&corpus, depth](const Position<Token> a, const Position<Token> b) {
-          // the suffix array at this depth should only contain positions that continue long enough without the sentence ending
-          return a.add(depth, corpus).vid(corpus) < b.add(depth, corpus).vid(corpus);
-        };
-
-        // TODO this too low-level; move into Span.
-        std::pair<iter, iter> vid_range = std::equal_range(span_.node()->array()->begin() + span_.array_range().begin + index_, span_.node()->array()->begin() + span_.array_range().end, pos, comp);
-        size_t step = vid_range.second - vid_range.first;
-        assert(step > 0);
-        return step;
-      }
-
-    private:
-      typedef typename TokenIndex::TreeNodeT::Iterator TreeNodeIterator;
-
-      const IndexSpan &span_;
-      size_t index_;
-      size_t depth_;
-      TreeNodeIterator iter_;
-      bool is_leaf_;
-    };
-
-
     /**
      * Narrow the span by adding a token to the end of the lookup sequence.
      * Returns new span size.
@@ -226,7 +147,7 @@ public:
      * If an empty SuffixArray leaf was found, returns zero while
      * still modifying the IndexSpan.
      */
-    size_t narrow(Token t);
+    virtual size_t narrow(Token t);
 
     /**
      * Random access to a position within the selected span.
@@ -236,42 +157,80 @@ public:
      * returned Position values will always be valid, but
      * may be to the left of 'rel'.
      */
-    Position<Token> operator[](size_t rel) const;
+    virtual Position<Token> operator[](size_t rel) const;
 
-    // for testing!
-    Position<Token> at_unchecked(size_t rel) const;
+    // for testing
+    virtual Position<Token> at_unchecked(size_t rel) const;
 
     /**
      * Number of token positions spanned in the index.
      *
      * Returns a size cached when narrow() was called.
      */
-    size_t size() const;
+    virtual size_t size() const;
 
     /** Length of lookup sequence, or the number of times narrow() has been called. */
-    size_t depth() const;
+    virtual size_t depth() const;
 
     /** Distance from the root in number of TreeNodes. */
-    size_t tree_depth() const;
+    virtual size_t tree_depth() const;
 
     /** TreeNode at current depth. */
-    TreeNodeT *node() const;
+    virtual ITreeNode<Token> *node() const;
 
     /** first part of path from root through the tree, excluding suffix array range choices */
-    const std::vector<TreeNodeT *>& tree_path() const { return tree_path_; }
+    virtual const std::vector<ITreeNode<Token> *>& tree_path() const { return tree_path_; }
 
     /** true if span reaches into a suffix array leaf. */
-    bool in_array() const;
+    virtual bool in_array() const;
 
-    Range array_range() const { assert(array_path_.size() > 0); return array_path_.back(); }
+    virtual Range array_range() const { assert(array_path_.size() > 0); return array_path_.back(); }
 
     /** partial lookup sequence so far, as appended by narrow() */
-    const std::vector<Token>& sequence() const { return sequence_; }
+    virtual const std::vector<Token>& sequence() const { return sequence_; }
 
-    Corpus<Token> *corpus() const;
+    virtual Corpus<Token> *corpus() const;
 
-    VidIterator begin() { return VidIterator(*this, /* begin = */ true); }
-    VidIterator end() { return VidIterator(*this, /* begin = */ false); }
+    /** iterate over unique vocabulary IDs at this depth. */
+    virtual VidIterator begin() const { return VidIterator(*this, /* begin = */ true); }
+    virtual VidIterator end() const { return VidIterator(*this, /* begin = */ false); }
+
+    virtual Span *copy() const { return new Span(*this); }
+
+    /**
+     * @returns the number of Positions comparing equal from the current index,
+     * aka the number of Positions to skip to get to the next vid at the current depth
+     *
+     * Currently only available on leaf nodes, but just lazy.
+     */
+    virtual size_t StepSize(size_t index) const {
+      assert(in_array());
+
+      // much akin to code in TreeNode::SplitNode()... unite?
+      typedef typename TreeNodeT::SuffixArrayT::iterator iter;
+
+      // note: the real type of the SuffixArrayDisk range are AtomicPosition. But Position<->AtomicPosition are convertible
+      //
+      // #include <type_traits>
+      //bool same = std::is_same<typename TreeNodeT::SuffixArrayT::value_type, AtomicPosition<Token>>::value;
+      //assert(same);
+
+      Position<Token> pos = (*this)[index];
+
+      Corpus<Token> &corpus = *(*this).corpus();
+      size_t depth = (*this).depth();
+      auto comp = [&corpus, depth](const Position<Token> a, const Position<Token> b) {
+        // the suffix array at this depth should only contain positions that continue long enough without the sentence ending
+        return a.add(depth, corpus).vid(corpus) < b.add(depth, corpus).vid(corpus);
+      };
+
+      // TODO: move to TreeNode
+      TreeNodeT *node = dynamic_cast<TreeNodeT *>(this->node());
+      std::pair<iter, iter> vid_range = std::equal_range(node->array()->begin() + (*this).array_range().begin + index, node->array()->begin() + (*this).array_range().end, pos, comp);
+      size_t step = vid_range.second - vid_range.first;
+      assert(step > 0);
+      return step;
+    }
 
   protected:
     /** use TokenIndex::span() for constructing an IndexSpan */
@@ -283,7 +242,7 @@ public:
     const TokenIndex *index_;
 
     std::vector<Token> sequence_; /** partial lookup sequence so far, as appended by narrow() */
-    std::vector<TreeNodeT *> tree_path_; /** first part of path from root through the tree */
+    std::vector<ITreeNode<Token> *> tree_path_; /** first part of path from root through the tree */
     std::vector<Range> array_path_; /** second part of path from leaf through the suffix array. These Ranges always index relative to the specific suffix array. */
 
     /** narrow() in suffix array.
@@ -300,9 +259,9 @@ public:
   };
 
   /** Returns the whole span of the entire index (empty lookup sequence). */
-  Span span() const;
+  virtual std::shared_ptr<ITokenIndexSpan<Token>> span() const;
 
-  Corpus<Token> *corpus() const { return corpus_; }
+  virtual Corpus<Token> *corpus() const { return corpus_; }
 
   /**
    * Insert the existing Corpus Sentence into this index. Last token must be the EOS symbol </s>.
@@ -318,23 +277,20 @@ public:
    * Thread safety: writes concurrent to multiple reading threads
    * do not result in invalid state being read.
    */
-  void AddSentence(const Sentence<Token> &sent);
+  virtual void AddSentence(const Sentence<Token> &sent);
 
-/*
-  template<class IndexSpanMemory, class IndexSpanDisk>
-  void Merge(const IndexSpanMemory &spanMemory, IndexSpanDisk &spanDisk);
-  */
+  virtual void Merge(const TokenIndex<Token, IndexTypeMemory> &add);
 
-  void Merge(const TokenIndex<Token, IndexTypeMemory> &add);
+  virtual void Merge(const ITokenIndex<Token> &add) { assert(0); } // TODO: assert convertible to TokenIndex<Token, IndexTypeMemory>, use above Merge()
 
-  // not implemented
-  void Merge(const TokenIndex<Token, IndexTypeDisk> &add);
+  // not implemented  TODO remove this
+  virtual void Merge(const TokenIndex<Token, IndexTypeDisk> &add);
 
   /** Write to (empty) DB. */
-  void Write(std::shared_ptr<DB<Token>> db) const;
+  virtual void Write(std::shared_ptr<DB<Token>> db) const;
 
 
-  void DebugPrint(std::ostream &os);
+  virtual void DebugPrint(std::ostream &os);
 
   /** Insert the subsequence from start into this index. Potentially splits. */
   void AddSubsequence_(const Sentence<Token> &sent, Offset start);

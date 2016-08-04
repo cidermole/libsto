@@ -11,6 +11,7 @@
 
 #include "TokenIndex.h"
 #include "TreeNode.h"
+#include "ITokenIndex.h"
 
 namespace sto {
 
@@ -53,7 +54,8 @@ size_t TokenIndex<Token, TypeTag>::Span::narrow(Token t) {
 
 template<class Token, typename TypeTag>
 Range TokenIndex<Token, TypeTag>::Span::find_bounds_array_(Token t) {
-  return tree_path_.back()->find_bounds_array_(*index_->corpus_, array_path_.back(), t, sequence_.size());
+  TreeNodeT *node = dynamic_cast<TreeNodeT *>(this->node()); assert(node);
+  return node->find_bounds_array_(*index_->corpus_, array_path_.back(), t, sequence_.size());
 }
 
 template<class Token, typename TypeTag>
@@ -70,7 +72,8 @@ size_t TokenIndex<Token, TypeTag>::Span::narrow_array_(Token t) {
 template<class Token, typename TypeTag>
 size_t TokenIndex<Token, TypeTag>::Span::narrow_tree_(Token t) {
   TreeNodeT *node;
-  if (!tree_path_.back()->find_child_(t.vid, &node))
+  TreeNodeT *parent = dynamic_cast<TreeNodeT *>(this->node()); assert(parent);
+  if (!parent->find_child_(t.vid, &node))
     return STO_NOT_FOUND; // do not modify the IndexSpan and signal failure
 
   // note: we also end up here if stepping into an empty, existing SuffixArray leaf
@@ -106,7 +109,7 @@ size_t TokenIndex<Token, TypeTag>::Span::size() const {
 }
 
 template<class Token, typename TypeTag>
-typename TokenIndex<Token, TypeTag>::Span::TreeNodeT *TokenIndex<Token, TypeTag>::Span::node() const {
+ITreeNode<Token> *TokenIndex<Token, TypeTag>::Span::node() const {
   return tree_path_.back();
 }
 

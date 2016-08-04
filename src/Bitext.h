@@ -30,12 +30,13 @@ struct BitextSide : public sto::Loggable {
 
   std::shared_ptr<sto::Vocab<Token>> vocab;
   std::shared_ptr<sto::Corpus<Token>> corpus;
-  std::shared_ptr<sto::TokenIndex<Token>> index;
+  std::shared_ptr<sto::TokenIndex<Token, IndexTypeDisk>> index;
 
-  std::unordered_map<Domain::Vid, std::shared_ptr<sto::TokenIndex<Token>>> domain_indexes;
+  std::unordered_map<Domain::Vid, std::shared_ptr<sto::TokenIndex<Token, IndexTypeDisk>>> domain_indexes;
   std::string base_and_lang; /** e.g. "phrase_tables/model.en" */
   std::string base; /** e.g. "phrase_tables/model." */
   std::string lang; /** 2-letter language code */
+  std::shared_ptr<DB<Token>> db;
 
   /** Create empty BitextSide */
   BitextSide(const std::string &lang);

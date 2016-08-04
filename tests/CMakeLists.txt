@@ -23,10 +23,12 @@ find_package(Boost REQUIRED COMPONENTS
 set(RESOURCES res/vocab.tdx res/corpus.mct res/align.mam res/index.sfa)
 set(TEST_SOURCES VocabTests.cpp CorpusTests.cpp TokenIndexTests.cpp BenchmarkTests.cpp RBTreeIteratorTests.cpp DocumentMapTests.cpp BitextTests.cpp)
 
+set(OTHER_SOURCES fisheryates.h filesystem.h)
+
 file(COPY ${RESOURCES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/res/)
 
 foreach(testSrc ${TEST_SOURCES})
     get_filename_component(testName ${testSrc} NAME_WE)
-    add_executable(run${testName} ${testSrc} $<TARGET_OBJECTS:sto>)
+    add_executable(run${testName} ${testSrc} ${OTHER_SOURCES} $<TARGET_OBJECTS:sto>)
     target_link_libraries(run${testName}  ${Boost_LIBRARIES}  gtest gtest_main  tcmalloc profiler  ${ROCKSDB_LIBRARIES})
 endforeach(testSrc)

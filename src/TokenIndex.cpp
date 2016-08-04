@@ -28,8 +28,8 @@ TokenIndex<Token, TypeTag>::~TokenIndex() {
 }
 
 template<class Token, typename TypeTag>
-typename TokenIndex<Token, TypeTag>::Span TokenIndex<Token, TypeTag>::span() const {
-  return Span(*this);
+std::shared_ptr<ITokenIndexSpan<Token>> TokenIndex<Token, TypeTag>::span() const {
+  return std::static_pointer_cast<ITokenIndexSpan<Token>>(std::shared_ptr<Span>(new Span(*this)));
 }
 
 template<class Token, typename TypeTag>
@@ -90,7 +90,7 @@ template<class Token, typename TypeTag>
 void TokenIndex<Token, TypeTag>::Merge(const TokenIndex<Token, IndexTypeMemory> &add) {
   auto us = this->span();
   auto adds = add.span();
-  root_->Merge(adds, us);
+  root_->Merge(*adds, *us);
 }
 
 template<class Token, typename TypeTag>
@@ -145,27 +145,27 @@ void TokenIndex<Token, TypeTag>::AddSubsequence_(const Sentence<Token> &sent, Of
 
 
   // track the position to insert at
-  Span cur_span = span();
+  auto cur_span = span();
   size_t span_size;
   Offset i;
   bool finished = false;
 
   // <= sent.size(): includes implicit </s> at the end
   for(i = start; !finished && i <= sent.size(); i++) {
-    span_size = cur_span.narrow(sent[i]);
+    span_size = cur_span->narrow(sent[i]);
 
-    if(span_size == 0 || cur_span.in_array()) {
+    if(span_size == 0 || cur_span->in_array()) {
       // create an entry (whether in tree or SA)
-      if(!cur_span.in_array()) {
+      if(!cur_span->in_array()) {
         // (1) create tree entry (leaf)
-        cur_span.node()->AddLeaf(sent[i].vid);
-        cur_span.narrow(sent[i]); // step IndexSpan into the node just created (which contains an empty SA)
-        assert(cur_span.in_array());
+        cur_span->node()->AddLeaf(sent[i].vid);
+        cur_span->narrow(sent[i]); // step IndexSpan into the node just created (which contains an empty SA)
+        assert(cur_span->in_array());
       }
       // stop after adding to a SA (entry there represents all the remaining depth)
       finished = true;
       // create SA entry
-      cur_span.node()->AddPosition(sent, start, cur_span.tree_depth());
+      dynamic_cast<TreeNodeT *>(cur_span->node())->AddPosition(sent, start, cur_span->tree_depth());
       // After a split, cur_span is at the new internal TreeNode, not at the SA.
       // This is by design: since the SA insertion added a count there, the split created a TreeNode with already incremented size.
 
@@ -173,17 +173,18 @@ void TokenIndex<Token, TypeTag>::AddSubsequence_(const Sentence<Token> &sent, Of
     }
   }
   assert(finished);
-  //assert(cur_span.in_array()); // after a split, cur_span is at the new internal TreeNode, not at the SA.
+  //assert(cur_span->in_array()); // after a split, cur_span is at the new internal TreeNode, not at the SA.
 
   // add to cumulative count for internal TreeNodes (excludes SA leaves which increment in AddPosition()), including the root (if it's not a SA)
-  auto &path = cur_span.tree_path();
-  i = start + cur_span.depth();
+  auto &path = cur_span->tree_path();
+  i = start + cur_span->depth();
   auto it = path.rbegin();
   ++it; i--; // avoid leaf, potentially avoid most recent internal TreeNode created by a split above.
   for(; it != path.rend(); ++it) {
+    TreeNodeT *n = dynamic_cast<TreeNodeT *>(*it);
     // add sizes from deepest level towards root, so that readers will see a valid state (children being at least as big as they should be)
-    assert(!(*it)->is_leaf());
-    (*it)->AddSize(sent[i].vid, /* add_size = */ 1);
+    assert(!n->is_leaf());
+    n->AddSize(sent[i].vid, /* add_size = */ 1);
     i--;
   }
 }
