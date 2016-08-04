@@ -184,8 +184,6 @@ public:
     /** true if span reaches into a suffix array leaf. */
     virtual bool in_array() const;
 
-    virtual Range array_range() const { assert(array_path_.size() > 0); return array_path_.back(); }
-
     /** partial lookup sequence so far, as appended by narrow() */
     virtual const std::vector<Token>& sequence() const { return sequence_; }
 
@@ -198,36 +196,13 @@ public:
     virtual Span *copy() const { return new Span(*this); }
 
     /**
-     * @returns the number of Positions comparing equal from the current index,
-     * aka the number of Positions to skip to get to the next vid at the current depth
+     * Number of Positions equal to 't' in this span.
      *
-     * Currently only available on leaf nodes, but just lazy.
+     * Currently only available on leaf nodes: just lazy.
      */
-    virtual size_t StepSize(size_t index) const {
+    virtual size_t StepSize(Token t) const {
       assert(in_array());
-
-      // much akin to code in TreeNode::SplitNode()... unite?
-      typedef typename TreeNodeT::SuffixArrayT::iterator iter;
-
-      // note: the real type of the SuffixArrayDisk range are AtomicPosition. But Position<->AtomicPosition are convertible
-      //
-      // #include <type_traits>
-      //bool same = std::is_same<typename TreeNodeT::SuffixArrayT::value_type, AtomicPosition<Token>>::value;
-      //assert(same);
-
-      Position<Token> pos = (*this)[index];
-
-      Corpus<Token> &corpus = *(*this).corpus();
-      size_t depth = (*this).depth();
-      auto comp = [&corpus, depth](const Position<Token> a, const Position<Token> b) {
-        // the suffix array at this depth should only contain positions that continue long enough without the sentence ending
-        return a.add(depth, corpus).vid(corpus) < b.add(depth, corpus).vid(corpus);
-      };
-
-      // TODO: move to TreeNode
-      TreeNodeT *node = dynamic_cast<TreeNodeT *>(this->node());
-      std::pair<iter, iter> vid_range = std::equal_range(node->array()->begin() + (*this).array_range().begin + index, node->array()->begin() + (*this).array_range().end, pos, comp);
-      size_t step = vid_range.second - vid_range.first;
+      size_t step = this->find_bounds_array_(t).size();
       assert(step > 0);
       return step;
     }
@@ -250,7 +225,7 @@ public:
     size_t narrow_array_(Token t);
 
     /** find the bounds of an existing Token or insertion point of a new one */
-    Range find_bounds_array_(Token t);
+    Range find_bounds_array_(Token t) const;
 
     /** narrow() in tree.
      * returns >= 0 on success, STO_NOT_FOUND on failure. (=0 stepping into empty SuffixArray leaf)

@@ -51,7 +51,7 @@ public:
     }
     virtual VidIterator &operator++() {
       if(is_leaf_)
-        index_ += StepSize();
+        index_ += span_.StepSize(this->operator*()); // number of Positions to skip to get to the next vid at the current depth
       else
         ++iter_;
       return *this;
@@ -61,14 +61,6 @@ public:
         return index_ != other.index_;
       else
         return iter_ != other.iter_;
-    }
-
-    /**
-     * @returns the number of Positions comparing equal from the current index_,
-     * aka the number of Positions to skip to get to the next vid at the current depth
-     */
-    virtual size_t StepSize() {
-      return span_.StepSize(index_);
     }
 
   private:
@@ -138,12 +130,11 @@ public:
   virtual ITokenIndexSpan *copy() const = 0;
 
   /**
-   * @returns the number of Positions comparing equal from the current index,
-   * aka the number of Positions to skip to get to the next vid at the current depth
+   * Number of Positions equal to 't' in this span.
    *
    * Currently only available on leaf nodes, but just lazy.
    */
-  virtual size_t StepSize(size_t index) const = 0;
+  virtual size_t StepSize(Token t) const = 0;
 };
 
 

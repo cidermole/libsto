@@ -53,7 +53,7 @@ size_t TokenIndex<Token, TypeTag>::Span::narrow(Token t) {
 }
 
 template<class Token, typename TypeTag>
-Range TokenIndex<Token, TypeTag>::Span::find_bounds_array_(Token t) {
+Range TokenIndex<Token, TypeTag>::Span::find_bounds_array_(Token t) const {
   TreeNodeT *node = dynamic_cast<TreeNodeT *>(this->node()); assert(node);
   return node->find_bounds_array_(*index_->corpus_, array_path_.back(), t, sequence_.size());
 }
