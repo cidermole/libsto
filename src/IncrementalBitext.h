@@ -7,6 +7,10 @@
 #ifndef STO_INCREMENTAL_BITEXT_H
 #define STO_INCREMENTAL_BITEXT_H
 
+#include <string>
+#include <vector>
+#include <utility>
+
 namespace sto {
 
 /**
