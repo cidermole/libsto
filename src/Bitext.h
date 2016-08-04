@@ -30,11 +30,10 @@ struct BitextSide : public sto::Loggable {
 
   std::shared_ptr<sto::Vocab<Token>> vocab;
   std::shared_ptr<sto::Corpus<Token>> corpus;
-  std::shared_ptr<sto::TokenIndex<Token, IndexTypeDisk>> index;
+  std::shared_ptr<sto::ITokenIndex<Token>> index;
 
-  std::unordered_map<Domain::Vid, std::shared_ptr<sto::TokenIndex<Token, IndexTypeDisk>>> domain_indexes;
+  std::unordered_map<Domain::Vid, std::shared_ptr<sto::ITokenIndex<Token>>> domain_indexes;
   std::string base_and_lang; /** e.g. "phrase_tables/model.en" */
-  std::string base; /** e.g. "phrase_tables/model." */
   std::string lang; /** 2-letter language code */
   std::shared_ptr<DB<Token>> db;
 
@@ -50,21 +49,21 @@ struct BitextSide : public sto::Loggable {
 
   ~BitextSide();
 
-  /** Load vocabulary and corpus track. Does not index or load indexes. */
+  /** Load v1/v2 vocabulary and corpus track. Does not index or load indexes. */
   void Open(const std::string &base, const std::string &lang);
 
   void CreateIndexes(const DocumentMap &map) { CreateGlobalIndex(); CreateDomainIndexes(map); }
 
   /**
    * Create the global index.
-   * * if present, load it from disk
+   * * if present, load it from disk (old v1/v2 format)
    * * otherwise, index the entire corpus
    */
   void CreateGlobalIndex();
 
   /**
    * Create the domain-specific indexes.
-   * * if present, load them from disk
+   * * if present, load them from disk (old v1/v2 format)
    * * otherwise, index the entire corpus, putting each sentence into the correct index
    */
   void CreateDomainIndexes(const DocumentMap &map);

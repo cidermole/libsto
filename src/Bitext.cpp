@@ -17,7 +17,7 @@ template<typename Token>
 BitextSide<Token>::BitextSide(const std::string &l) :
     vocab(new sto::Vocab<Token>),
     corpus(new sto::Corpus<Token>(vocab.get())),
-    index(new sto::TokenIndex<Token, IndexTypeDisk>(*corpus)), // TODO: this should be IndexTypeMemory, since we did not implement Merge(), hence Write(), for IndexTypeDisk
+    index(new sto::TokenIndex<Token, IndexTypeMemory>(*corpus)),
     lang(l)
 {
 }
@@ -28,6 +28,7 @@ BitextSide<Token>::BitextSide(std::shared_ptr<DB<Token>> db, const std::string &
     vocab(new sto::Vocab<Token>(db->template PrefixedDB<Token>(lang))),
     corpus(new sto::Corpus<Token>(base + lang + ".trk", vocab.get())),
     index(new sto::TokenIndex<Token, IndexTypeDisk>("/", *corpus, db->template PrefixedDB<Token>(lang))),  // note: filename is only ever used as DB prefix now (in TreeNodeDisk)
+    lang(lang),
     db(db)
 {
   // load domain indexes
@@ -41,7 +42,6 @@ BitextSide<Token>::~BitextSide()
 
 template<typename Token>
 void BitextSide<Token>::Open(const std::string &base, const std::string &lang) {
-  this->base = base;
   this->lang = lang;
   base_and_lang = base + lang;
   // vocabulary
@@ -49,7 +49,7 @@ void BitextSide<Token>::Open(const std::string &base, const std::string &lang) {
   // mmapped corpus track
   XVERBOSE(2, " sto::Corpus()...\n");
   corpus.reset(new Corpus<Token>(base_and_lang+".mct", vocab.get()));
-  index.reset(new sto::TokenIndex<Token, IndexTypeDisk>(*corpus)); // TODO IndexTypeMemory
+  index.reset(new sto::TokenIndex<Token, IndexTypeMemory>(*corpus));
   this->base_and_lang = base_and_lang;
 }
 
@@ -58,13 +58,13 @@ void BitextSide<Token>::CreateGlobalIndex() {
   std::string index_file = base_and_lang + ".sfa";
   if(!access(index_file.c_str(), F_OK)) {
     // load index from disk, if possible
-    // TODO IndexTypeMemory (despite the slightly bad name, IndexTypeMemory can mmap the old index format from disk)
-    index.reset(new sto::TokenIndex<Token, IndexTypeDisk>(index_file, *corpus)); // TODO IndexTypeMemory
+    // despite the slightly misleading name, IndexTypeMemory can mmap the old index format from disk
+    index.reset(new sto::TokenIndex<Token, IndexTypeMemory>(index_file, *corpus));
     return;
   }
 
   XVERBOSE(2, " BitextSide<Token>::CreateGlobalIndex()...\n");
-  index.reset(new sto::TokenIndex<Token, IndexTypeDisk>(*corpus)); // TODO IndexTypeMemory
+  index.reset(new sto::TokenIndex<Token, IndexTypeMemory>(*corpus));
   for(size_t i = 0; i < corpus->size(); i++)
     index->AddSentence(corpus->sentence(i));
 }
@@ -81,7 +81,7 @@ void BitextSide<Token>::CreateDomainIndexes(const DocumentMap &map) {
     // create TokenIndex objects
     domain_indexes.clear();
     for(auto docid : map)
-      domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token, IndexTypeDisk>>(base_and_lang + "." + map[docid] + ".sfa", *corpus); // TODO IndexTypeMemory
+      domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token, IndexTypeMemory>>(base_and_lang + "." + map[docid] + ".sfa", *corpus);
 
     return;
   }
@@ -91,7 +91,7 @@ void BitextSide<Token>::CreateDomainIndexes(const DocumentMap &map) {
   // create TokenIndex objects
   domain_indexes.clear();
   for(auto docid : map)
-    domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token, IndexTypeDisk>>(*corpus); // TODO IndexTypeMemory
+    domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token, IndexTypeMemory>>(*corpus);
 
   // put each sentence into the correct domain index
   for(size_t i = 0; i < nsents; i++)
@@ -145,7 +145,10 @@ Bitext::Bitext(const std::string &base, const std::string &l1, const std::string
     src_(std::make_shared<DB<SrcToken>>(*db_), base, l1, doc_map_),
     trg_(std::make_shared<DB<TrgToken>>(*db_), base, l2, doc_map_),
     align_(new sto::Corpus<sto::AlignmentLink>(base + "align.trk"))
-{}
+{
+  if(l1 == l2)
+    throw new std::runtime_error("Bitext: src and trg languages are equal - persistence will clash");
+}
 
 Bitext::~Bitext()
 {}
