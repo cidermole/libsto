@@ -7,6 +7,7 @@
 #ifndef STO_CORPUSTYPES_H
 #define STO_CORPUSTYPES_H
 
+#include <cstring>
 #include <cinttypes>
 
 #include "tpt_typedefs.h"
@@ -28,7 +29,7 @@ struct CorpusTrackHeader {
   uint32_t legacy_idxSize;    /** Legacy support for loading v2 format. Use SentIndexHeader! */
   uint32_t legacy_totalWords; /** Total number of tokens in all sentences. Not currently updated! */
 
-  CorpusTrackHeader() : versionMagic(tpt::INDEX_V3_MAGIC) {}
+  CorpusTrackHeader() : versionMagic(tpt::INDEX_V3_MAGIC), legacy_startIdx(0), legacy_idxSize(0), legacy_totalWords(0) {}
 };
 
 /**
@@ -39,7 +40,10 @@ struct SentIndexHeader {
   VersionMagic versionMagic;
   uint32_t idxSize; /** number of sentences. excludes the trailing sentinel */
 
-  SentIndexHeader() : versionMagic(tpt::INDEX_V3_MAGIC) {}
+  SentIndexHeader() {
+    memset(this, 0, sizeof(SentIndexHeader));
+    versionMagic = tpt::INDEX_V3_MAGIC;
+  }
 };
 
 /**
