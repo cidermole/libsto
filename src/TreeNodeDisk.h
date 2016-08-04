@@ -44,12 +44,9 @@ public:
    *
    * @param path  path to the backing directory
    */
-  TreeNodeDisk(std::string path, std::shared_ptr<DB<Token>> db, size_t maxArraySize = 1000000); // TODO: ptr passing is incompatible with TokenIndex contructor.
+  TreeNodeDisk(std::string path, std::shared_ptr<DB<Token>> db, size_t maxArraySize = 1000000);
 
   virtual ~TreeNodeDisk() = default;
-
-  /** Set the path to the directory backing this DiskTreeNode. */
-  //void SetPath(const std::string &path) { path_ = path; }
 
   /**
    * For now, leaves only. Merge the entire IndexSpan into this leaf.

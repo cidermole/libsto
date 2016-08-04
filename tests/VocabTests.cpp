@@ -11,7 +11,7 @@
 
 #include <memory>
 
-#include <boost/filesystem.hpp>
+#include "filesystem.h"
 #include "DB.h"
 
 
@@ -46,31 +46,15 @@ TEST(VocabTests, load) {
   ASSERT_THROW(sv.at("banana"), std::out_of_range) << "out-of-range access must throw an exception";
 }
 
-static std::string getBasePath() {
-  return "res/VocabTests";
-}
-
-static std::string getCleanBasePath() {
-  std::string basePath = getBasePath();
-
-  using namespace boost::filesystem;
-  boost::system::error_code ec;
-  path base(basePath);
-  remove_all(base, ec); // ensure no leftovers
-
-  return basePath;
-}
-
-static void removeTestBase() {
-  getCleanBasePath();
-}
-
 TEST(VocabTests, persist) {
   SrcToken apple, orange, ref_end;
 
+  std::string basePath = "res/VocabTests";
+  remove_all(basePath); // ensure no leftovers
+
   // fill an empty vocabulary with some words
   {
-    std::shared_ptr<DB<SrcToken>> db(new DB<SrcToken>(getCleanBasePath()));
+    std::shared_ptr<DB<SrcToken>> db(new DB<SrcToken>(basePath));
     Vocab<SrcToken> vocab(db);
 
     apple = vocab["apple"];   // insert apple
@@ -88,7 +72,7 @@ TEST(VocabTests, persist) {
 
   // verify if the vocab can be loaded from DB
 
-  std::shared_ptr<DB<SrcToken>> db(new DB<SrcToken>(getBasePath()));
+  std::shared_ptr<DB<SrcToken>> db(new DB<SrcToken>(basePath));
 
   Vocab<SrcToken> sv(db); // load vocabulary from DB
 
@@ -106,5 +90,6 @@ TEST(VocabTests, persist) {
   // TODO: need a test fixture / RAII-finally which cleans up despite the throw above
 
   //delete db; // done by shared_ptr
-  // removeTestBase(); // for debug: comment this to leave the DB in filesystem
+
+  //remove_all(basePath);
 }

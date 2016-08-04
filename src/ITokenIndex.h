@@ -13,9 +13,6 @@
 
 #include "Range.h"
 #include "Corpus.h"
-#include "SuffixArrayMemory.h"
-//#include "TreeNodeMemory.h"
-//#include "TreeNodeDisk.h"
 #include "ITreeNode.h"
 
 namespace sto {
@@ -23,11 +20,9 @@ namespace sto {
 template<class Token> class DB;
 
 /**
- * IndexSpan represents the matched locations of a partial lookup sequence
- * within TokenIndex.
+ * Internal, abstract TokenIndexSpan interface, implemented e.g. by TokenIndex::Span
  *
- * You start with the empty lookup sequence from TokenIndex::span() and
- * keep adding tokens to the lookup via narrow().
+ * For outside users, use IndexSpan<Token> from TokenIndex::span()
  */
 template<typename Token>
 class ITokenIndexSpan {
@@ -130,8 +125,6 @@ public:
   /** true if span reaches into a suffix array leaf. */
   virtual bool in_array() const = 0;
 
-  virtual Range array_range() const = 0;
-
   /** partial lookup sequence so far, as appended by narrow() */
   virtual const std::vector<Token>& sequence() const = 0;
 
@@ -166,8 +159,6 @@ public:
 template<class Token>
 class IndexSpan {
 public:
-  //friend class TokenIndex;
-
   typedef typename ITokenIndexSpan<Token>::VidIterator VidIterator;
 
   // note: use TokenIndex::span() for constructing an IndexSpan
@@ -227,8 +218,6 @@ public:
   /** true if span reaches into a suffix array leaf. */
   bool in_array() const { return span_->in_array(); }
 
-  Range array_range() const { return span_->array_range(); }
-
   /** partial lookup sequence so far, as appended by narrow() */
   const std::vector<Token> &sequence() const { return span_->sequence(); }
 
@@ -283,7 +272,8 @@ public:
    */
   virtual void AddSentence(const Sentence<Token> &sent) = 0;
 
-  virtual void Merge(const ITokenIndex<Token> &add) = 0;
+  /** Merge all Positions from 'add' into this TokenIndex. */
+  //virtual void Merge(const ITokenIndex<Token> &add) = 0;
 
   /** Write to (empty) DB. */
   virtual void Write(std::shared_ptr<DB<Token>> db) const = 0;

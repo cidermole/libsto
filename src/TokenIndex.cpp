@@ -80,22 +80,11 @@ void TokenIndex<Token, TypeTag>::AddSentence(const Sentence<Token> &sent) {
   add_buffer_(sent);
 }
 
-
-/*
-  template<class IndexSpanMemory, class IndexSpanDisk>
-  void Merge(const IndexSpanMemory &spanMemory, IndexSpanDisk &spanDisk);
-  */
-
 template<class Token, typename TypeTag>
-void TokenIndex<Token, TypeTag>::Merge(const TokenIndex<Token, IndexTypeMemory> &add) {
+void TokenIndex<Token, TypeTag>::Merge(const ITokenIndex<Token> &add) {
   auto us = this->span();
   auto adds = add.span();
   root_->Merge(adds, us);
-}
-
-template<class Token, typename TypeTag>
-void TokenIndex<Token, TypeTag>::Merge(const TokenIndex<Token, IndexTypeDisk> &add) {
-  throw new std::runtime_error("disk to disk merge not implemented yet");
 }
 
 template<class Token, typename TypeTag>

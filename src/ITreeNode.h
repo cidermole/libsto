@@ -17,8 +17,6 @@ template<typename Token> class IndexSpan;
 
 /**
  * Internal interface for TreeNode::Iterator
- *
- * Iterates over vocabulary IDs of internal TreeNodes.
  */
 template<typename Vid>
 class ITreeNodeIterator {
@@ -34,7 +32,9 @@ public:
 };
 
 /**
- * Virtual vid iterator wrapper.
+ * Iterates over vocabulary IDs of internal TreeNodes.
+ *
+ * This is a proxy object taking an ITreeNodeIterator.
  */
 template<typename Token>
 class IVidIterator {

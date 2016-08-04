@@ -279,12 +279,8 @@ public:
    */
   virtual void AddSentence(const Sentence<Token> &sent);
 
-  virtual void Merge(const TokenIndex<Token, IndexTypeMemory> &add);
-
-  virtual void Merge(const ITokenIndex<Token> &add) { assert(0); } // TODO: assert convertible to TokenIndex<Token, IndexTypeMemory>, use above Merge()
-
-  // not implemented  TODO remove this
-  virtual void Merge(const TokenIndex<Token, IndexTypeDisk> &add);
+  /** Merge all Positions from 'add' into this TokenIndex. */
+  void Merge(const ITokenIndex<Token> &add);
 
   /** Write to (empty) DB. */
   virtual void Write(std::shared_ptr<DB<Token>> db) const;

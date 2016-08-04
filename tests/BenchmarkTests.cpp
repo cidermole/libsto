@@ -22,11 +22,9 @@
 #include "util/Time.h"
 #include "util/usage.h"
 
-#include <boost/filesystem.hpp>
+#include "filesystem.h"
 #include "DB.h"
 #include "ITokenIndex.h"
-
-#define static_assert(x) static_cast<void>(0)
 
 using namespace sto;
 
@@ -126,26 +124,7 @@ void BenchmarkTests::create_random_queries(TokenIndex<SrcToken> &tokenIndex, std
   }
 }
 
-
-static std::string getBasePath() {
-  return "res/BenchmarkTests";
-}
-
-static std::string getCleanBasePath() {
-  std::string basePath = getBasePath();
-
-  using namespace boost::filesystem;
-  boost::system::error_code ec;
-  path base(basePath);
-  remove_all(base, ec); // ensure no leftovers
-
-  return basePath;
-}
-
-static void removeTestBase() {
-  getCleanBasePath();
-}
-
+static std::string basePath = "res/BenchmarkTests";
 
 namespace std {
 template<>
@@ -179,9 +158,11 @@ TEST_F(BenchmarkTests, dynamic_memory_vs_disk) {
     std::cerr << "building dynamicIndex (memory) done." << std::endl;
   }, "dynamicIndexMemory");
 
-  std::shared_ptr<DB<Token>> db(new DB<Token>(getCleanBasePath()));
+  remove_all(basePath); // ensure no leftovers
 
-  TokenIndex<Token, IndexTypeDisk> dynamicIndexDisk(getBasePath(), sc, db); // building dynamically
+  std::shared_ptr<DB<Token>> db(new DB<Token>(basePath));
+
+  TokenIndex<Token, IndexTypeDisk> dynamicIndexDisk(basePath, sc, db); // building dynamically
 
   benchmark_time([&sc, &dynamicIndexDisk]() {
     std::cerr << "building dynamicIndex..." << std::endl;
@@ -235,7 +216,7 @@ TEST_F(BenchmarkTests, dynamic_memory_vs_disk) {
   }
   EXPECT_EQ(staticBucket, dynamicBucket);
 
-  //removeTestBase();
+  //remove_all(basePath);
 }
 
 TEST_F(BenchmarkTests, index_eim_small) {
@@ -387,9 +368,11 @@ TEST_F(BenchmarkTests, index_100k_disk) {
 
   ///////////////////////////
 
-  std::shared_ptr<DB<SrcToken>> db(new DB<SrcToken>(getCleanBasePath()));
+  remove_all(basePath); // ensure no leftovers
 
-  TokenIndex<SrcToken, IndexTypeDisk> tokenIndex(getBasePath(), corpus, db, /* maxLeafSize = */ 10000);
+  std::shared_ptr<DB<SrcToken>> db(new DB<SrcToken>(basePath));
+
+  TokenIndex<SrcToken, IndexTypeDisk> tokenIndex(basePath, corpus, db, /* maxLeafSize = */ 10000);
 
   benchmark_time([&corpus, &tokenIndex](){
     for(size_t i = 0; i < corpus.size(); i++) {

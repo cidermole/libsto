@@ -169,8 +169,7 @@ void Vocab<Token>::put_eos() {
 
   // vid == kEOS must not be used by any word because we use it in TokenIndex as a sentinel.
   // </s> must also have the lowest vid for correctness of comparing shorter sequences as less in TokenIndex.
-  Token eos = at(kEosSurface);
-  assert(eos.vid == kEosVid);
+  assert(at(kEosSurface).vid == kEosVid);
 }
 
 template<class Token>
