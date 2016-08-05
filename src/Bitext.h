@@ -103,10 +103,12 @@ public:
   virtual ~Bitext();
 
 
-  virtual void Open(const std::string &base);
+  void OpenLegacy(const std::string &base);
+
+  void OpenIncremental(const std::string &base);
 
   // to do: change IncrementalBitext interface (add (l1, l2) constructor), and remove this method
-  virtual void open(std::string const base, std::string const L1, std::string const L2) override { Open(base); }
+  virtual void Open(const std::string &base) override;
 
   virtual void AddSentencePair(const std::vector<std::string> &srcSent, const std::vector<std::string> &trgSent, const std::vector<std::pair<size_t, size_t>> &alignment, const std::string &domain) override;
 
@@ -123,9 +125,9 @@ protected:
   std::string l1_; /** source language 2-letter code */
   std::string l2_; /** targetlanguage 2-letter code */
   std::shared_ptr<BaseDB> db_;
-  DocumentMap doc_map_; /** housekeeping for individual domain names, IDs */
-  BitextSide<sto::SrcToken> src_;
-  BitextSide<sto::TrgToken> trg_;
+  std::shared_ptr<DocumentMap> doc_map_; /** housekeeping for individual domain names, IDs */
+  std::shared_ptr<BitextSide<sto::SrcToken>> src_;
+  std::shared_ptr<BitextSide<sto::TrgToken>> trg_;
   std::shared_ptr<sto::Corpus<sto::AlignmentLink>> align_;
 };
 

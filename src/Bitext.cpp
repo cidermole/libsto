@@ -138,18 +138,19 @@ template class BitextSide<TrgToken>;
 
 Bitext::Bitext(const std::string &l1, const std::string &l2) :
     l1_(l1), l2_(l2),
-    src_(l1),
-    trg_(l2),
+    doc_map_(new DocumentMap),
+    src_(new BitextSide<sto::SrcToken>(l1)),
+    trg_(new BitextSide<sto::TrgToken>(l2)),
     align_(new sto::Corpus<sto::AlignmentLink>)
 {}
 
 /** Load existing Bitext from DB and disk. */
 Bitext::Bitext(const std::string &base, const std::string &l1, const std::string &l2) :
     l1_(l1), l2_(l2),
-    db_(std::make_shared<BaseDB>(base + "db")),
-    doc_map_(std::make_shared<DB<Domain>>(*db_), base + "docmap.trk"),
-    src_(std::make_shared<DB<SrcToken>>(*db_), base, l1, doc_map_),
-    trg_(std::make_shared<DB<TrgToken>>(*db_), base, l2, doc_map_),
+    db_(new BaseDB(base + "db")),
+    doc_map_(new DocumentMap(std::make_shared<DB<Domain>>(*db_), base + "docmap.trk")),
+    src_(new BitextSide<sto::SrcToken>(std::make_shared<DB<SrcToken>>(*db_), base, l1, *doc_map_)),
+    trg_(new BitextSide<sto::TrgToken>(std::make_shared<DB<TrgToken>>(*db_), base, l2, *doc_map_)),
     align_(new sto::Corpus<sto::AlignmentLink>(base + "align.trk"))
 {
   if(l1 == l2)
@@ -159,46 +160,71 @@ Bitext::Bitext(const std::string &base, const std::string &l1, const std::string
 Bitext::~Bitext()
 {}
 
-void Bitext::Open(const std::string &base) {
-  XVERBOSE(1, "SBitext: opening file base: " << base << "\n");
-  src_.Open(base, l1_);
-  trg_.Open(base, l2_);
+void Bitext::OpenIncremental(const std::string &base) {
+  // TODO: redundant with ctor above, could call this from ctor instead.
+
+  if(l1_ == l2_)
+    throw new std::runtime_error("Bitext: src and trg languages are equal - persistence will clash");
+
+  db_.reset(new BaseDB(base + "db"));
+  doc_map_.reset(new DocumentMap(std::make_shared<DB<Domain>>(*db_), base + "docmap.trk"));
+  src_.reset(new BitextSide<sto::SrcToken>(std::make_shared<DB<SrcToken>>(*db_), base, l1_, *doc_map_));
+  trg_.reset(new BitextSide<sto::TrgToken>(std::make_shared<DB<TrgToken>>(*db_), base, l2_, *doc_map_));
+  align_.reset(new sto::Corpus<sto::AlignmentLink>(base + "align.trk"));
+}
+
+void Bitext::OpenLegacy(const std::string &base) {
+  src_->Open(base, l1_);
+  trg_->Open(base, l2_);
   XVERBOSE(2, " sto::Corpus<AlignmentLink>()...\n");
   align_.reset(new Corpus<AlignmentLink>(base+l1_+"-"+l2_+".mam"));
-  doc_map_.Load(base + "dmp", src_.corpus->size());
+  doc_map_->Load(base + "dmp", src_->corpus->size());
 
   // potentially loads global and domain indexes (instead of building them)
   XVERBOSE(1, "SBitext: CreateIndexes()...\n");
-  src_.CreateIndexes(doc_map_);
-  trg_.CreateIndexes(doc_map_);
+  src_->CreateIndexes(*doc_map_);
+  trg_->CreateIndexes(*doc_map_);
   XVERBOSE(1, "SBitext: CreateIndexes() and open() done.\n");
+}
+
+void Bitext::Open(const std::string &base) {
+  std::string db_dir = base + "db";
+  if(!access(db_dir.c_str(), F_OK)) {
+    // DB exists -> v3 incremental file format
+    XVERBOSE(1, "SBitext: opening file base in persistent incremental update mode: " << base << "\n");
+    OpenIncremental(base);
+  } else {
+    // assume legacy v1/v2 file format
+    XVERBOSE(1, "SBitext: opening legacy file base with in-memory update mode: " << base << "\n");
+    OpenLegacy(base);
+  }
 }
 
 void Bitext::AddSentencePair(const std::vector<std::string> &srcSent, const std::vector<std::string> &trgSent, const std::vector<std::pair<size_t, size_t>> &alignment, const std::string &domain) {
   // (1) add to corpus first:
 
   // order of these three does not matter
-  auto isrc = src_.AddToCorpus(srcSent);
-  auto itrg = trg_.AddToCorpus(trgSent);
+  auto isrc = src_->AddToCorpus(srcSent);
+  auto itrg = trg_->AddToCorpus(trgSent);
   assert(isrc == itrg);
   align_->AddSentence(std::vector<AlignmentLink>{alignment.begin(), alignment.end()});
 
   // indexes:
 
-  auto docid = doc_map_.FindOrInsert(domain);
-  doc_map_.AddSentence(isrc, docid);
+  auto docid = doc_map_->FindOrInsert(domain);
+  doc_map_->AddSentence(isrc, docid);
 
   // (2) domain-specific first: ensures that domain-specific indexes can provide, since we query the global index for the presence of source phrases first.
 
   // currently, order of these two does not matter here (we query global index first)
-  trg_.AddToDomainIndex(itrg, docid);
-  src_.AddToDomainIndex(isrc, docid);
+  trg_->AddToDomainIndex(itrg, docid);
+  src_->AddToDomainIndex(isrc, docid);
 
   // (3) global index last - everything should be stored by the time readers see a new global source index entry
 
   // target side first: ensures extraction will work
-  trg_.index->AddSentence(trg_.corpus->sentence(itrg));
-  src_.index->AddSentence(src_.corpus->sentence(isrc));
+  trg_->index->AddSentence(trg_->corpus->sentence(itrg));
+  src_->index->AddSentence(src_->corpus->sentence(isrc));
 }
 
 /** Write to (empty) DB and disk. */
@@ -222,16 +248,16 @@ void Bitext::Write(const std::string &base) {
    */
 
   std::shared_ptr<BaseDB> db = std::make_shared<BaseDB>(base + "db");
-  src_.Write(std::make_shared<DB<SrcToken>>(*db), base, doc_map_);
-  trg_.Write(std::make_shared<DB<TrgToken>>(*db), base, doc_map_);
+  src_->Write(std::make_shared<DB<SrcToken>>(*db), base, *doc_map_);
+  trg_->Write(std::make_shared<DB<TrgToken>>(*db), base, *doc_map_);
   align_->Write(base + "align.trk");
-  doc_map_.Write(std::make_shared<DB<Domain>>(*db), base + "docmap.trk");
+  doc_map_->Write(std::make_shared<DB<Domain>>(*db), base + "docmap.trk");
 }
 
 void Bitext::SetupLogging(std::shared_ptr<Logger> logger) {
-  src_.SetupLogging(logger);
-  trg_.SetupLogging(logger);
-  doc_map_.SetupLogging(logger);
+  src_->SetupLogging(logger);
+  trg_->SetupLogging(logger);
+  doc_map_->SetupLogging(logger);
   Loggable::SetupLogging(logger);
 }
 
