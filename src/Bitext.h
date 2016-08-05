@@ -117,6 +117,8 @@ public:
    */
   void Write(const std::string &base);
 
+  virtual void SetupLogging(std::shared_ptr<Logger> logger) override;
+
 protected:
   std::string l1_; /** source language 2-letter code */
   std::string l2_; /** targetlanguage 2-letter code */

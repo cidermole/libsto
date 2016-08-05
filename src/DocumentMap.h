@@ -16,6 +16,7 @@
 #include "Types.h"
 #include "Vocab.h"
 #include "Corpus.h"
+#include "Loggable.h"
 #include "ug_bias.h"
 
 namespace sto {
@@ -26,7 +27,7 @@ class BaseDB;
  * Maps between sentence IDs and domain IDs (domains are called 'documents' in Mmsapt lingo),
  * and domain names and domain IDs.
  */
-class DocumentMap {
+class DocumentMap : public Loggable {
 public:
   /** Create an empty DocumentMap. */
   DocumentMap();

@@ -228,4 +228,11 @@ void Bitext::Write(const std::string &base) {
   doc_map_.Write(std::make_shared<DB<Domain>>(*db), base + "docmap.trk");
 }
 
+void Bitext::SetupLogging(std::shared_ptr<Logger> logger) {
+  src_.SetupLogging(logger);
+  trg_.SetupLogging(logger);
+  doc_map_.SetupLogging(logger);
+  Loggable::SetupLogging(logger);
+}
+
 } // namespace sto

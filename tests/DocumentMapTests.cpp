@@ -57,6 +57,14 @@ TEST(DocumentMapTests, load_v1) {
   EXPECT_EQ(domain_names.size(), docmap.numDomains());
 
   EXPECT_FALSE(docmap.contains("foobar"));
+
+  // test iteration
+
+  domain_ids.clear();
+  for(auto d : docmap)
+    domain_ids.insert(d);
+
+  EXPECT_EQ(domain_names.size(), domain_ids.size()) << "each domain should have a unique ID in iteration (iteration should have covered all domain IDs)";
 }
 
 TEST(DocumentMapTests, save_load_append) {
