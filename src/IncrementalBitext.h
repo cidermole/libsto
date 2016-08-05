@@ -37,7 +37,24 @@ public:
    *
    * note: this same docstring exists in MMT project, src/Moses/native/src/wrapper/MosesDecoder.h
    */
-  virtual void AddSentencePair(const std::vector<std::string> &srcSent, const std::vector<std::string> &trgSent, const std::vector<std::pair<size_t, size_t>> &alignment, const std::string &domain) = 0;
+  virtual void AddSentencePair(const std::vector<std::string> &srcSent, const std::vector<std::string> &trgSent,
+                               const std::vector<std::pair<size_t, size_t>> &alignment, const std::string &domain) = 0;
+
+  /**
+   * Write to (empty) DB and disk.
+   *
+   * @param base  base pathname prefix, e.g. "phrase_tables/bitext."
+   */
+  virtual void Write(const std::string &base) = 0;
+};
+
+/**
+ * Interface for a class that has an IncrementalBitext.
+ * Implemented by Mmsapt to provide the IncrementalBitext interface to outside users.
+ */
+class HasIncrementalBitext {
+public:
+  virtual IncrementalBitext *GetIncrementalBitext() const = 0;
 };
 
 } // namespace sto

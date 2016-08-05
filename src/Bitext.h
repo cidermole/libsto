@@ -115,7 +115,7 @@ public:
    *
    * @param base  base pathname prefix, e.g. "phrase_tables/bitext."
    */
-  void Write(const std::string &base);
+  virtual void Write(const std::string &base) override;
 
   virtual void SetupLogging(std::shared_ptr<Logger> logger) override;
 
