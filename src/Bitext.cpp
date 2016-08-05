@@ -145,24 +145,15 @@ Bitext::Bitext(const std::string &l1, const std::string &l2) :
 {}
 
 /** Load existing Bitext from DB and disk. */
-Bitext::Bitext(const std::string &base, const std::string &l1, const std::string &l2) :
-    l1_(l1), l2_(l2),
-    db_(new BaseDB(base + "db")),
-    doc_map_(new DocumentMap(std::make_shared<DB<Domain>>(*db_), base + "docmap.trk")),
-    src_(new BitextSide<sto::SrcToken>(std::make_shared<DB<SrcToken>>(*db_), base, l1, *doc_map_)),
-    trg_(new BitextSide<sto::TrgToken>(std::make_shared<DB<TrgToken>>(*db_), base, l2, *doc_map_)),
-    align_(new sto::Corpus<sto::AlignmentLink>(base + "align.trk"))
+Bitext::Bitext(const std::string &base, const std::string &l1, const std::string &l2) : Bitext(l1, l2)
 {
-  if(l1 == l2)
-    throw new std::runtime_error("Bitext: src and trg languages are equal - persistence will clash");
+  OpenIncremental(base);
 }
 
 Bitext::~Bitext()
 {}
 
 void Bitext::OpenIncremental(const std::string &base) {
-  // TODO: redundant with ctor above, could call this from ctor instead.
-
   if(l1_ == l2_)
     throw new std::runtime_error("Bitext: src and trg languages are equal - persistence will clash");
 
