@@ -192,6 +192,18 @@ TEST(CorpusTests, alignment_write_read_append) {
 
     // for binary comparison, write in a different way as well:
     //loaded.Write("res/CorpusTests/ref.trk"); // note: will not currently diff correctly, because of uninitialized trailing bytes in structs
+
+
+    // check in-memory retainment of disk-persistent Corpus
+    EXPECT_EQ(2, loaded.size()) << "after 2nd append, Corpus must have size() == 2";
+
+    Sentence<AlignmentLink> sent3x = loaded.sentence(1);
+    EXPECT_EQ(links2.size(), sent3x.size()) << "should have the same number of alignment links";
+    for(size_t i = 0; i < links2.size(); i++)
+      EXPECT_EQ(links2[i], sent3x[i]) << "correct entry in v3 word alignment append, offset " << i;
+
+
+
   } // Corpus loaded; goes out of scope here -> file closed
 
   // load corpus from disk
