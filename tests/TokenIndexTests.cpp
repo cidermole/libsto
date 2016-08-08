@@ -213,7 +213,7 @@ TYPED_TEST(TokenIndexTests, suffix_array_split) {
 
   auto span = tokenIndex.span();
   //tokenIndex.DebugPrint(std::cerr);
-  // we should check here if it's really split, i.e. root_->is_leaf() == false.
+  EXPECT_FALSE(span.in_array()) << "the TreeNode root of TokenIndex should have been split";
   EXPECT_EQ(sent_words.size(), span.size()) << "the Sentence should have added its tokens to the IndexSpan";
 
   std::vector<size_t>      expect_suffix_array_offset  = {2,     4,     1,     7,     5,    3,     0,     6 };
@@ -520,17 +520,20 @@ struct TestPersistence<Token, IndexTypeDisk> {
     //                                     0      1      2      3      4      5     6      7
     std::vector<std::string> sent_words = {"the", "dog", "bit", "the", "cat", "on", "the", "mat"};
 
-    {
+    //{
       TokenIndexType tokenIndex(self->basePath, self->corpus, self->db, /* maxLeafSize = */ 7);
 
       Sentence<Token> sentence = self->AddSentence(sent_words);
       tokenIndex.AddSentence(sentence);
 
       // tokenIndex goes out of scope, DB is closed etc.
-    }
+    //}
+
+    // use the updates directly from memory
+    TokenIndexType& loadedTokenIndex = tokenIndex;
 
     // load persisted index from disk/DB
-    TokenIndexType loadedTokenIndex(self->basePath, self->corpus, self->db, /* maxLeafSize = */ 7);
+    //TokenIndexType loadedTokenIndex(self->basePath, self->corpus, self->db, /* maxLeafSize = */ 7);
 
     // because of maxLeafSize=8, these accesses go via a first TreeNode level.
     // however, the hash function % ensures that our vids are still in order, even though the API doesn't guarantee this.
@@ -538,7 +541,7 @@ struct TestPersistence<Token, IndexTypeDisk> {
 
     auto span = loadedTokenIndex.span();
     loadedTokenIndex.DebugPrint(std::cerr);
-    // we should check here if it's really split, i.e. root_->is_leaf() == false.
+    EXPECT_FALSE(span.in_array()) << "the TreeNode root of TokenIndex should have been split";
     EXPECT_EQ(sent_words.size(), span.size()) << "the Sentence should have added its tokens to the IndexSpan";
 
     std::vector<size_t>      expect_suffix_array_offset  = {2,     4,     1,     7,     5,    3,     0,     6 };
