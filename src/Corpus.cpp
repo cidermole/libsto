@@ -178,7 +178,7 @@ void Corpus<Token>::Write(const std::string &filename) {
     auto *end = sentIndexEntries_ + sentIndexHeader_.idxSize;
     for(auto *p = sentIndexEntries_; p != end; p++) {
       auto e = *p;
-      e *= sentIndexEntrySize_; // compute the size format for disk
+      //e *= sentIndexEntrySize_; // compute the size format for disk. NO! is mmapped from disk, so it's already the right format. We just save the same format.
       if(fwrite(&e, sizeof(SentIndexEntry), 1, index) != 1)
         throw std::runtime_error("Corpus: fwrite() failed");
     }

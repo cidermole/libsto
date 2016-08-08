@@ -141,9 +141,10 @@ TEST(BitextTests, convert_eim_small) {
   EXPECT_EQ(bitext1.Align().size(), new_bitext.Align().size());
 
   // test full alignment equality
-  for(size_t isent = 0; isent < 2 /*bitext1.Align().size()*/; isent++) { // TODO fix bug in code, then this range
+  for(size_t isent = 0; isent < bitext1.Align().size(); isent++) {
     auto sent1 = bitext1.Align().sentence(isent);
     auto sent2 = new_bitext.Align().sentence(isent);
+    EXPECT_EQ(sent1.size(), sent2.size()) << "size equality of sent " << isent;
     for(size_t i = 0; i < sent1.size(); i++)
       EXPECT_EQ(sent1[i], sent2[i]) << "equality of sent " << isent << " alignment pair " << i;
   }
