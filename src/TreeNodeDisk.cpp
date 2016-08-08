@@ -95,7 +95,10 @@ void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<To
 
   // disallow splits of </s> - as argued in TreeNodeMemory::AddPosition()
   // bool allow_split = sent.size() + 1 > start + depth; // +1 for implicit </s>
-  bool allow_split = curSize > 0 && corpus.sentence(curSpan[0].sid).size() + 1 > curSpan[0].offset + depth;
+  bool allow_split = (curSize > 0 && corpus.sentence(curSpan[0].sid).size() + 1 > curSpan[0].offset + depth) ||
+                     (addSize > 0 && corpus.sentence(addSpan[0].sid).size() + 1 > addSpan[0].offset + depth);
+  // because shorter sequences come first in lexicographic order, we can compare the length of the first entry
+  // (of either available index -- either cur or add may be empty, unfortunately)
 
   std::unique_ptr<SuffixArrayPosition<Token>[]> newArray(new SuffixArrayPosition<Token>[newSize]);
   SuffixArrayPosition<Token> *pnew = newArray.get();
