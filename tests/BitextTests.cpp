@@ -155,8 +155,10 @@ TEST(BitextTests, convert_eim_small) {
 
 
 /*
- * Convert MMT demo corpus and load it up. Then, add a sentence pair.
- * Similar to what StoWriteTests.persistent_add should do in Moses wrapper
+ * Convert MMT demo corpus and load it up. Then, add a sentence pair (should be persisted to disk).
+ * Then, load again and query.
+ *
+ * Similar to what StoWriteTests.persistent_add does last in Moses wrapper
  */
 TEST(BitextTests, convert_append_eim_small) {
   TestBitext bitext1("en", "it");
@@ -178,13 +180,6 @@ TEST(BitextTests, convert_append_eim_small) {
   std::cerr << "Write() done." << std::endl;
 
 
-  TestBitext new_bitext("en", "it");
-
-  // load v3 bitext just written
-  new_bitext.Open(base + "/bitext.");
-
-  EXPECT_EQ(bitext1.Align().size(), new_bitext.Align().size());
-  size_t size_before = bitext1.Align().size();
 
   // test full alignment equality
   auto test_alignment_equality = [&bitext1](TestBitext &new_bitext) {
@@ -198,45 +193,64 @@ TEST(BitextTests, convert_append_eim_small) {
     }
     //std::cerr << "done." << std::endl;
   };
-  test_alignment_equality(new_bitext);
 
-  std::cerr << "index span size before: src=" << new_bitext.Src().index->span().size() << " trg=" << new_bitext.Trg().index->span().size() << std::endl;
-  std::cerr << "domain-specific index span size before: src=" << new_bitext.Src().domain_indexes[new_bitext.DocMap()["europarl"]]->span().size() << std::endl;
+  size_t size_before = 0;
 
-  // add sentence pair (to both corpora)
+  {
+    TestBitext new_bitext("en", "it");
 
-  auto add_sentence_pair = [&src_sent](Bitext &bitxt) {
-    std::cerr << "AddSentencePair()..." << std::endl;
-    bitxt.AddSentencePair(
-        src_sent,
-        std::vector<std::string>{"target", "side", "lang", "words2"},
-        std::vector<std::pair<size_t, size_t>>{{0,0}, {1,3}},
-        "europarl" // to existing domain
-    );
-    std::cerr << "Done." << std::endl;
-  };
-  add_sentence_pair(bitext1);
-  add_sentence_pair(new_bitext);
+    // load v3 bitext just written
+    new_bitext.Open(base + "/bitext.");
 
+    EXPECT_EQ(bitext1.Align().size(), new_bitext.Align().size());
+    size_before = bitext1.Align().size();
 
-  EXPECT_EQ(size_before + 1, new_bitext.Align().size());
-  EXPECT_EQ(bitext1.Align().size(), new_bitext.Align().size());
+    test_alignment_equality(new_bitext);
+
+    std::cerr << "index span size before: src=" << new_bitext.Src().index->span().size() << " trg=" << new_bitext.Trg().index->span().size() << std::endl;
+    std::cerr << "domain-specific index span size before: src=" << new_bitext.Src().domain_indexes[new_bitext.DocMap()["europarl"]]->span().size() << std::endl;
+
+    // add sentence pair (to both corpora)
+
+    auto add_sentence_pair = [&src_sent](Bitext &bitxt) {
+      std::cerr << "AddSentencePair()..." << std::endl;
+      bitxt.AddSentencePair(
+          src_sent,
+          std::vector<std::string>{"target", "side", "lang", "words2"},
+          std::vector<std::pair<size_t, size_t>>{{0,0}, {1,3}},
+          "europarl" // to existing domain
+      );
+      std::cerr << "Done." << std::endl;
+    };
+    add_sentence_pair(bitext1);
+    add_sentence_pair(new_bitext);
+
+    // new_bitext goes out of scope (cleans up, closes DB)
+  }
+
+  TestBitext updated_bitext("en", "it");
+
+  // load v3 bitext just written
+  updated_bitext.Open(base + "/bitext.");
+
+  EXPECT_EQ(size_before + 1, updated_bitext.Align().size());
+  EXPECT_EQ(bitext1.Align().size(), updated_bitext.Align().size());
 
   // test full alignment equality, again
-  test_alignment_equality(new_bitext);
+  test_alignment_equality(updated_bitext);
 
   // test token index
 
-  std::cerr << "index span size after: src=" << new_bitext.Src().index->span().size() << " trg=" << new_bitext.Trg().index->span().size() << std::endl;
-  std::cerr << "domain-specific index span size after: src=" << new_bitext.Src().domain_indexes[new_bitext.DocMap()["europarl"]]->span().size() << std::endl;
+  std::cerr << "index span size after: src=" << updated_bitext.Src().index->span().size() << " trg=" << updated_bitext.Trg().index->span().size() << std::endl;
+  std::cerr << "domain-specific index span size after: src=" << updated_bitext.Src().domain_indexes[updated_bitext.DocMap()["europarl"]]->span().size() << std::endl;
 
-  EXPECT_EQ(bitext1.Src().index->span().size(), new_bitext.Src().index->span().size());
-  EXPECT_EQ(bitext1.Trg().index->span().size(), new_bitext.Trg().index->span().size());
+  EXPECT_EQ(bitext1.Src().index->span().size(), updated_bitext.Src().index->span().size());
+  EXPECT_EQ(bitext1.Trg().index->span().size(), updated_bitext.Trg().index->span().size());
 
   // test src token index contents
 
   sto::IndexSpan<sto::SrcToken> span1 = bitext1.Src().index->span();
-  sto::IndexSpan<sto::SrcToken> new_span = new_bitext.Src().index->span();
+  sto::IndexSpan<sto::SrcToken> new_span = updated_bitext.Src().index->span();
   EXPECT_EQ(span1.size(), new_span.size());
   for(size_t i = 0; i < span1.size(); i++) {
     // maybe we should not expect each position to be equal (the current test assumes the sort is stable, or at least same between the two Bitext). use buckets?!
@@ -245,7 +259,7 @@ TEST(BitextTests, convert_append_eim_small) {
 
   // test domain index
 
-  EXPECT_EQ(bitext1.Src().domain_indexes[bitext1.DocMap()["europarl"]]->span().size(), new_bitext.Src().domain_indexes[new_bitext.DocMap()["europarl"]]->span().size());
+  EXPECT_EQ(bitext1.Src().domain_indexes[bitext1.DocMap()["europarl"]]->span().size(), updated_bitext.Src().domain_indexes[updated_bitext.DocMap()["europarl"]]->span().size());
 
   // test vocabulary
 
