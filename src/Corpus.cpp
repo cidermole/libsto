@@ -165,7 +165,7 @@ void Corpus<Token>::Write(const std::string &filename) {
 
 
   SentIndexHeader idxHeader;
-  size_t idx_static = sentIndexHeader_.idxSize ? sentIndexHeader_.idxSize + 1 : 0; // +1: trailing sentinel, needed explicitly if there's a static index
+  size_t idx_static = sentIndexHeader_.idxSize ? sentIndexHeader_.idxSize : 0; // +1: trailing sentinel, needed explicitly if there's a static index
   size_t idx_nentries = idx_static + dyn_sentIndex_.size() - 1; // -1: remove trailing sentinel explicitly included in dyn_sentIndex_
   idxHeader.idxSize = static_cast<uint32_t>(idx_nentries);
 
