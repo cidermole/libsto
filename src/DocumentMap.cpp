@@ -68,7 +68,7 @@ void DocumentMap::Load(std::string const& fname, size_t num_sents) {
     }
   }
   assert(b == sid2docid_->size());
-  if(b != num_sents)
+  if(b != num_sents && num_sents != static_cast<size_t>(-1))
     throw std::runtime_error(std::string("Document map doesn't match corpus! b=") + std::to_string(b) + ", num_sents=" + std::to_string(num_sents));
 
   XVERBOSE(1, "DocumentMap::Load() loaded " << numDomains() << " domains, " << (sid2docid_->size()) << " sentences.\n");

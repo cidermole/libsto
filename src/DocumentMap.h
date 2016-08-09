@@ -69,7 +69,7 @@ public:
    * ibm 1717
    * microsoft 1823
    */
-  void Load(std::string const& fname, size_t num_sents);
+  void Load(std::string const& fname, size_t num_sents = static_cast<size_t>(-1));
 
   /** Write to (empty) DB and disk. */
   void Write(std::shared_ptr<BaseDB> db, const std::string &corpus_file);

@@ -3,19 +3,6 @@
 # Google Test
 find_package(GTest REQUIRED)
 
-# Boost
-set(Boost_USE_STATIC_LIBS OFF)
-set(Boost_USE_MULTITHREADED ON)
-set(Boost_USE_STATIC_RUNTIME OFF)
-find_package(Boost REQUIRED COMPONENTS
-        system
-        #thread
-        filesystem
-        #unit_test_framework
-        #program_options
-        #iostreams
-        )
-
 
 #install(FILES res/vocab.tdx DESTINATION ${CMAKE_CURRENT_BINARY_DIR} CONFIGURATIONS Debug Release)
 #configure_file(res/vocab.tdx COPYONLY)

@@ -41,7 +41,7 @@ Corpus<Token>::Corpus(const std::string &filename, const Corpus<Token>::Vocabula
     sentIndexHeader_.idxSize = header.legacy_idxSize;
   } else if (header.versionMagic == tpt::INDEX_V3_MAGIC) {
     // there is a separate sentence index file
-    std::string prefix = filename.substr(0, filename.find(".trk"));
+    std::string prefix = filename.substr(0, filename.find_last_of('.'));
     sentIndex_.reset(new MappedFile(prefix + ".six", /* offset = */ 0, O_RDWR));
     SentIndexHeader &idxHeader = *reinterpret_cast<SentIndexHeader *>(sentIndex_->ptr);
     sentIndexHeader_ = idxHeader;
@@ -136,7 +136,7 @@ void Corpus<Token>::AddSentence(const std::vector<Token> &sent) {
 /** write out the entire corpus in v3 format */
 template<class Token>
 void Corpus<Token>::Write(const std::string &filename) {
-  std::string prefix = filename.substr(0, filename.find(".trk"));
+  std::string prefix = filename.substr(0, filename.find_last_of('.'));
   std::string indexfile = prefix + ".six";
 
   FILE *track = fopen(filename.c_str(), "wb");
@@ -165,7 +165,7 @@ void Corpus<Token>::Write(const std::string &filename) {
 
 
   SentIndexHeader idxHeader;
-  size_t idx_static = sentIndexHeader_.idxSize ? sentIndexHeader_.idxSize : 0; // +1: trailing sentinel, needed explicitly if there's a static index
+  size_t idx_static = sentIndexHeader_.idxSize ? sentIndexHeader_.idxSize : 0; // excluding trailing sentinel
   size_t idx_nentries = idx_static + dyn_sentIndex_.size() - 1; // -1: remove trailing sentinel explicitly included in dyn_sentIndex_
   idxHeader.idxSize = static_cast<uint32_t>(idx_nentries);
 
