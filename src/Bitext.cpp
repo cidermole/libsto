@@ -172,21 +172,21 @@ void Bitext::OpenLegacy(const std::string &base) {
   doc_map_->Load(base + "dmp", src_->corpus->size());
 
   // potentially loads global and domain indexes (instead of building them)
-  XVERBOSE(1, "SBitext: CreateIndexes()...\n");
+  XVERBOSE(1, "Bitext: CreateIndexes()...\n");
   src_->CreateIndexes(*doc_map_);
   trg_->CreateIndexes(*doc_map_);
-  XVERBOSE(1, "SBitext: CreateIndexes() and open() done.\n");
+  XVERBOSE(1, "Bitext: CreateIndexes() and open() done.\n");
 }
 
 void Bitext::Open(const std::string &base) {
   std::string db_dir = base + "db";
   if(!access(db_dir.c_str(), F_OK)) {
     // DB exists -> v3 incremental file format
-    XVERBOSE(1, "SBitext: opening file base in persistent incremental update mode: " << base << "\n");
+    XVERBOSE(1, "Bitext: opening file base in persistent incremental update mode: " << base << "\n");
     OpenIncremental(base);
   } else {
     // assume legacy v1/v2 file format
-    XVERBOSE(1, "SBitext: opening legacy file base with in-memory update mode: " << base << "\n");
+    XVERBOSE(1, "Bitext: opening legacy file base with in-memory update mode: " << base << "\n");
     OpenLegacy(base);
   }
 }
