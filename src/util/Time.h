@@ -15,21 +15,21 @@
 namespace sto {
 
 // current time: unix timestamp with microsecond precision
-double current_time() {
+static double current_time() {
   struct timeval tv;
   gettimeofday(&tv,NULL);
   double cur_time = static_cast<double>(1000000ULL * tv.tv_sec + tv.tv_usec) / 1e6;
   return cur_time;
 }
 
-std::string format_time(double cur_time) {
+static std::string format_time(double cur_time) {
   std::stringstream ss;
   ss << std::fixed << std::setprecision(6) << cur_time;
   return ss.str();
 }
 
 template<typename FuncBody>
-double benchmark_time(FuncBody body, std::string name = "") {
+static double benchmark_time(FuncBody body, std::string name = "") {
   double before = current_time();
   body();
   double after = current_time();

@@ -9,6 +9,7 @@
 
 #include "Bitext.h"
 
+#include "util/Time.h"
 #include "filesystem.h"
 
 using namespace sto;
@@ -222,8 +223,14 @@ TEST(BitextTests, convert_append_eim_small) {
       );
       std::cerr << "Done." << std::endl;
     };
-    add_sentence_pair(bitext1);
-    add_sentence_pair(new_bitext);
+
+    benchmark_time([&bitext1, &add_sentence_pair]() {
+      add_sentence_pair(bitext1);
+    }, "add_sentence_pair(bitext1)");
+
+    benchmark_time([&new_bitext, &add_sentence_pair]() {
+      add_sentence_pair(new_bitext);
+    }, "add_sentence_pair(new_bitext)");
 
     // new_bitext goes out of scope (cleans up, closes DB)
   }
