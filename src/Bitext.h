@@ -31,6 +31,7 @@ struct BitextSide : public sto::Loggable {
   std::shared_ptr<sto::Vocab<Token>> vocab;
   std::shared_ptr<sto::Corpus<Token>> corpus;
   std::shared_ptr<sto::ITokenIndex<Token>> index;
+  const DocumentMap &docMap;
 
   std::unordered_map<Domain::Vid, std::shared_ptr<sto::ITokenIndex<Token>>> domain_indexes;
   std::string base_and_lang; /** e.g. "phrase_tables/model.en" */
@@ -38,35 +39,35 @@ struct BitextSide : public sto::Loggable {
   std::shared_ptr<DB<Token>> db;
 
   /** Create empty BitextSide */
-  BitextSide(const std::string &lang);
+  BitextSide(const std::string &lang, const DocumentMap &documentMap);
 
   /**
    * Load existing BitextSide from DB and disk.
    *
    * @param base  base pathname prefix, e.g. "phrase_tables/bitext." -- we'll store into base+lang
    */
-  BitextSide(std::shared_ptr<DB<Token>> db, const std::string &base, const std::string &lang, const DocumentMap &map);
+  BitextSide(std::shared_ptr<DB<Token>> db, const std::string &base, const std::string &lang, const DocumentMap &documentMap);
 
   ~BitextSide();
 
   /** Load v1/v2 vocabulary and corpus track. Does not index or load indexes. */
   void Open(const std::string &base, const std::string &lang);
 
-  void CreateIndexes(const DocumentMap &map) { CreateGlobalIndex(map); CreateDomainIndexes(map); }
+  void CreateIndexes() { CreateGlobalIndex(); CreateDomainIndexes(); }
 
   /**
    * Create the global index.
    * * if present, load it from disk (old v1/v2 format)
    * * otherwise, index the entire corpus
    */
-  void CreateGlobalIndex(const DocumentMap &map);
+  void CreateGlobalIndex();
 
   /**
    * Create the domain-specific indexes.
    * * if present, load them from disk (old v1/v2 format)
    * * otherwise, index the entire corpus, putting each sentence into the correct index
    */
-  void CreateDomainIndexes(const DocumentMap &map);
+  void CreateDomainIndexes();
 
   /** Add sentence to Vocab and Corpus. */
   Sid AddToCorpus(const std::vector<std::string> &sent);
@@ -79,12 +80,12 @@ struct BitextSide : public sto::Loggable {
    *
    * @param base  base pathname prefix, e.g. "phrase_tables/bitext."
    */
-  void Write(std::shared_ptr<DB<Token>> db, const std::string &base, const DocumentMap &map);
+  void Write(std::shared_ptr<DB<Token>> db, const std::string &base);
 
   /** Finalize an update with seqNum. Flush writes to DB and apply a new persistence sequence number. */
   void Ack(seq_t seqNum);
   /** Current persistence sequence number. */
-  seq_t seqNum(const DocumentMap &map) const;
+  seq_t seqNum() const;
 };
 
 /**

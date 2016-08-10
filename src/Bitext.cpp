@@ -16,10 +16,11 @@ namespace sto {
 
 
 template<typename Token>
-BitextSide<Token>::BitextSide(const std::string &l) :
+BitextSide<Token>::BitextSide(const std::string &l, const DocumentMap &map) :
     vocab(new sto::Vocab<Token>),
     corpus(new sto::Corpus<Token>(vocab.get())),
     index(new sto::TokenIndex<Token, IndexTypeMemory>(*corpus)),
+    docMap(map),
     lang(l)
 {
 }
@@ -30,6 +31,7 @@ BitextSide<Token>::BitextSide(std::shared_ptr<DB<Token>> db, const std::string &
     vocab(new sto::Vocab<Token>(db->template PrefixedDB<Token>(lang))),
     corpus(new sto::Corpus<Token>(base + lang + ".trk", vocab.get())),
     index(new sto::TokenIndex<Token, IndexTypeDisk>("/", *corpus, db->template PrefixedDB<Token>(lang))),  // note: filename is only ever used as DB prefix now (in TreeNodeDisk)
+    docMap(map),
     lang(lang),
     db(db)
 {
@@ -56,7 +58,7 @@ void BitextSide<Token>::Open(const std::string &base, const std::string &lang) {
 }
 
 template<typename Token>
-void BitextSide<Token>::CreateGlobalIndex(const DocumentMap &map) {
+void BitextSide<Token>::CreateGlobalIndex() {
   std::string index_file = base_and_lang + ".sfa";
   if(!access(index_file.c_str(), F_OK)) {
     // load index from disk, if possible
@@ -68,22 +70,22 @@ void BitextSide<Token>::CreateGlobalIndex(const DocumentMap &map) {
   XVERBOSE(2, " BitextSide<Token>::CreateGlobalIndex()...\n");
   index.reset(new sto::TokenIndex<Token, IndexTypeMemory>(*corpus));
   for(size_t i = 0; i < corpus->size(); i++)
-    index->AddSentence(corpus->sentence(i), map.seqNum(i));
+    index->AddSentence(corpus->sentence(i), docMap.seqNum(i));
 }
 
 template<typename Token>
-void BitextSide<Token>::CreateDomainIndexes(const DocumentMap &map) {
+void BitextSide<Token>::CreateDomainIndexes() {
   size_t nsents = corpus->size();
 
-  assert(map.numDomains() > 0); // we must have at least 1 domain... otherwise we could just load the global idx.
-  std::string index1_file = base_and_lang + "." + map[map.begin()] + ".sfa";
+  assert(docMap.numDomains() > 0); // we must have at least 1 domain... otherwise we could just load the global idx.
+  std::string index1_file = base_and_lang + "." + docMap[docMap.begin()] + ".sfa";
   if(!access(index1_file.c_str(), F_OK)) {
     // load indexes from disk, if possible
 
     // create TokenIndex objects
     domain_indexes.clear();
-    for(auto docid : map)
-      domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token, IndexTypeMemory>>(base_and_lang + "." + map[docid] + ".sfa", *corpus);
+    for(auto docid : docMap)
+      domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token, IndexTypeMemory>>(base_and_lang + "." + docMap[docid] + ".sfa", *corpus);
 
     return;
   }
@@ -92,12 +94,12 @@ void BitextSide<Token>::CreateDomainIndexes(const DocumentMap &map) {
 
   // create TokenIndex objects
   domain_indexes.clear();
-  for(auto docid : map)
+  for(auto docid : docMap)
     domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token, IndexTypeMemory>>(*corpus);
 
   // put each sentence into the correct domain index
   for(size_t i = 0; i < nsents; i++)
-    domain_indexes[map.sid2did(i)]->AddSentence(corpus->sentence(i), map.seqNum(i));
+    domain_indexes[docMap.sid2did(i)]->AddSentence(corpus->sentence(i), docMap.seqNum(i));
 }
 
 template<typename Token>
@@ -123,13 +125,13 @@ void BitextSide<Token>::AddToDomainIndex(Sid sid, tpt::docid_type docid, seq_t s
 }
 
 template<typename Token>
-void BitextSide<Token>::Write(std::shared_ptr<DB<Token>> db, const std::string &base, const DocumentMap &map) {
+void BitextSide<Token>::Write(std::shared_ptr<DB<Token>> db, const std::string &base) {
   vocab->Write(db->template PrefixedDB<Token>(lang));
   corpus->Write(base + lang + ".trk");
   index->Write(db->template PrefixedDB<Token>(lang));
 
-  for(auto docid : map)
-    domain_indexes[docid]->Write(db->template PrefixedDB<Token>(lang, docid));
+  for(auto& d : domain_indexes)
+    d.second->Write(db->template PrefixedDB<Token>(lang, d.first));
 }
 
 template<typename Token>
@@ -140,13 +142,13 @@ void BitextSide<Token>::Ack(seq_t seqNum) {
 }
 
 template<typename Token>
-seq_t BitextSide<Token>::seqNum(const DocumentMap &map) const {
+seq_t BitextSide<Token>::seqNum() const {
   // Our seqNum = min({c.seqNum | c in components})
 
   seq_t seqNum = std::numeric_limits<seq_t>::max();
 
   seqNum = std::min(seqNum, vocab->seqNum());
-  seqNum = std::min(seqNum, map.seqNum()); // TODO: map: ref it in ctor!
+  seqNum = std::min(seqNum, docMap.seqNum());
   seqNum = std::min(seqNum, index->seqNum());
 
   for(auto& d : domain_indexes)
@@ -165,8 +167,8 @@ template class BitextSide<TrgToken>;
 Bitext::Bitext(const std::string &l1, const std::string &l2) :
     l1_(l1), l2_(l2),
     doc_map_(new DocumentMap),
-    src_(new BitextSide<sto::SrcToken>(l1)),
-    trg_(new BitextSide<sto::TrgToken>(l2)),
+    src_(new BitextSide<sto::SrcToken>(l1, *doc_map_)),
+    trg_(new BitextSide<sto::TrgToken>(l2, *doc_map_)),
     align_(new sto::Corpus<sto::AlignmentLink>)
 {}
 
@@ -199,8 +201,8 @@ void Bitext::OpenLegacy(const std::string &base) {
 
   // potentially loads global and domain indexes (instead of building them)
   XVERBOSE(1, "Bitext: CreateIndexes()...\n");
-  src_->CreateIndexes(*doc_map_);
-  trg_->CreateIndexes(*doc_map_);
+  src_->CreateIndexes();
+  trg_->CreateIndexes();
   XVERBOSE(1, "Bitext: CreateIndexes() and open() done.\n");
 }
 
@@ -272,8 +274,8 @@ void Bitext::Write(const std::string &base) {
    */
 
   std::shared_ptr<BaseDB> db = std::make_shared<BaseDB>(base + "db");
-  src_->Write(std::make_shared<DB<SrcToken>>(*db), base, *doc_map_);
-  trg_->Write(std::make_shared<DB<TrgToken>>(*db), base, *doc_map_);
+  src_->Write(std::make_shared<DB<SrcToken>>(*db), base);
+  trg_->Write(std::make_shared<DB<TrgToken>>(*db), base);
   align_->Write(base + "align.trk");
   doc_map_->Write(std::make_shared<DB<Domain>>(*db), base + "docmap.trk");
 }
