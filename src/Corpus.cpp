@@ -197,6 +197,17 @@ void Corpus<Token>::Write(const std::string &filename) {
 }
 
 template<class Token>
+seq_t Corpus<Token>::seqNum(Sid sid) const {
+  // TODO: add seq_t to AddSentence() API, persist it, and provide it here
+  return sid;
+}
+
+template<class Token>
+seq_t Corpus<Token>::seqNum() const {
+  return seqNum(size() - 1);
+}
+
+template<class Token>
 void Corpus<Token>::WriteSentence() {
   assert(writable_);
 
@@ -303,6 +314,11 @@ std::string Sentence<Token>::surface() const {
   for(size_t i = 1; i < size(); i++)
     ss << " " << corpus_->vocab()[Token{begin_[i]}];
   return ss.str();
+}
+
+template<class Token>
+seq_t Sentence<Token>::seqNum() const {
+  return corpus_->seqNum(sid_);
 }
 
 // explicit template instantiation

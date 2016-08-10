@@ -71,10 +71,19 @@ public:
   /** @return true if child with 'vid' as the key was found, and optionally sets 'child'. */
   bool find_child_(Vid vid, TreeNodeDisk<Token> **child = nullptr);
 
+  /**
+   * Finalize an update with seqNum. Flush writes to DB and apply a new persistence sequence number.
+   * Only valid conceptually at the root node.
+   */
+  virtual void Ack(seq_t seqNum);
+  /** Current persistence sequence number. Only valid conceptually at the root node. */
+  virtual seq_t seqNum() const;
+
 private:
   std::string path_; /** path to the directory backing this DiskTreeNode */
   std::shared_ptr<DB<Token>> db_;
   bool sync_; /** whether to sync writes immediately to the database (causes immense write amplification!) */
+  seq_t seqNum_ = 0; /** persistence sequence number */
 
   /** load child nodes below 'path' as indicated by the passed sequence of child vids. */
   void LoadSubtree(const Vid *children, size_t num_children);
@@ -91,11 +100,14 @@ private:
    */
   static std::string child_sub_path(Vid vid);
 
+  /** whether this TreeNode is the root */
+  bool is_root() const { return (path_ == "/"); }
+
   /** full path to /array file backing the leaf */
-  std::string array_path() { return path_ + "/array"; }
+  std::string array_path() const { return path_ + "/array"; }
 
   /** full path to directory backing child with given vid. */
-  std::string child_path(Vid vid) { return path_ + "/" + child_sub_path(vid); }
+  std::string child_path(Vid vid) const { return path_ + "/" + child_sub_path(vid); }
 
   /** factory function for TreeNode::SplitNode() */
   TreeNodeDisk<Token> *make_child_(Vid vid, typename SuffixArray::iterator first, typename SuffixArray::iterator last, const Corpus<Token> &corpus, Offset depth);

@@ -15,7 +15,8 @@ namespace sto {
 template<class Token, typename TypeTag>
 TokenIndex<Token, TypeTag>::TokenIndex(const std::string &filename, Corpus<Token> &corpus, std::shared_ptr<DB<Token>> db, size_t maxLeafSize) :
     corpus_(&corpus),
-    root_(new TreeNodeT(filename, db, maxLeafSize))
+    root_(new TreeNodeT(filename, db, maxLeafSize)),
+    seqNum_(root_->seqNum())
 {}
 
 template<class Token, typename TypeTag>
@@ -38,11 +39,17 @@ template<class Token, typename TypeTag>
 void TokenIndex<Token, TypeTag>::AddSentence(const Sentence<Token> &sent) {
   typedef typename Corpus<Token>::Offset Offset;
 
+  // no update necessary
+  if(sent.seqNum() <= seqNum())
+    return;
+
   if(TypeTag::HasAddSentence) {
     // start a subsequence at each sentence position
     // each subsequence only goes as deep as necessary to hit a SA
     for(Offset i = 0; i < sent.size(); i++)
       AddSubsequence_(sent, i);
+
+    Ack(sent.seqNum());
   } else {
     // Workaround for testing. Should not be called in production, because it's slow! Use an IndexBuffer instead.
 
@@ -55,9 +62,15 @@ void TokenIndex<Token, TypeTag>::AddSentence(const Sentence<Token> &sent) {
 
 template<class Token, typename TypeTag>
 void TokenIndex<Token, TypeTag>::Merge(const ITokenIndex<Token> &add) {
+  // no update necessary
+  if(add.seqNum() <= seqNum())
+    return;
+
   auto us = this->span();
   auto adds = add.span();
   root_->Merge(adds, us);
+
+  Ack(add.seqNum());
 }
 
 template<class Token, typename TypeTag>
@@ -149,6 +162,16 @@ void TokenIndex<Token, TypeTag>::AddSubsequence_(const Sentence<Token> &sent, Of
     n->AddSize(sent[i].vid, /* add_size = */ 1);
     i--;
   }
+}
+
+template<class Token, typename TypeTag>
+void TokenIndex<Token, TypeTag>::Ack(seq_t seqNum) {
+  assert(seqNum > seqNum_);
+  if(seqNum <= seqNum_)
+    return;
+
+  seqNum_ = seqNum;
+  root_->Ack(seqNum_);
 }
 
 // --------------------------------------------------------

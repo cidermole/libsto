@@ -31,6 +31,9 @@ TreeNodeDisk<Token>::TreeNodeDisk(std::string path, std::shared_ptr<DB<Token>> d
 
   assert(db != nullptr);
 
+  if(is_root())
+    seqNum_ = db_->GetSeqNum();
+
   // TODO: no need for SuffixArrayDisk. We keep everything in memory anyway.
   // (we could unify SuffixArrayDisk and SuffixArrayMemory)
 
@@ -73,6 +76,24 @@ void TreeNodeDisk<Token>::LoadSubtree(const Vid *children, size_t num_children) 
 template<class Token>
 bool TreeNodeDisk<Token>::find_child_(Vid vid, TreeNodeDisk<Token> **child) {
   return TreeNode<Token, SuffixArray>::find_child_(vid, reinterpret_cast<TreeNode<Token, SuffixArray> **>(child));
+}
+
+template<class Token>
+void TreeNodeDisk<Token>::Ack(seq_t seqNum) {
+  assert(is_root()); // only valid conceptually at the root node.
+  assert(seqNum > seqNum_);
+  if(seqNum <= seqNum_)
+    return;
+
+  seqNum_ = seqNum;
+  db_->PutSeqNum(seqNum_);
+  db_->Flush();
+}
+
+template<class Token>
+seq_t TreeNodeDisk<Token>::seqNum() const {
+  assert(is_root()); // only valid at the root node.
+  return seqNum_;
 }
 
 template<class Token>

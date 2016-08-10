@@ -269,6 +269,9 @@ public:
   /** Write to (empty) DB. */
   virtual void Write(std::shared_ptr<DB<Token>> db) const = 0;
 
+  /** current persistence sequence number */
+  virtual seq_t seqNum() const = 0;
+
   virtual void DebugPrint(std::ostream &os) = 0;
 
 };

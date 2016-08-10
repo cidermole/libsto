@@ -133,6 +133,11 @@ std::string DB<Token>::surface_key_(const std::string &surface) {
 }
 
 template<class Token>
+std::string DB<Token>::seqnum_key_() {
+  return key_("seqn");
+}
+
+template<class Token>
 void DB<Token>::PutNodeLeaf(const std::string &path, const SuffixArrayPosition<Token> *data, size_t len) {
   std::string key = key_(path);
   rocksdb::Slice val((const char *) data, len * sizeof(SuffixArrayPosition<Token>));
@@ -178,6 +183,25 @@ NodeType DB<Token>::IsNodeLeaf(const std::string &path) {
     // no array, no children -> need empty leaf node
     return NT_LEAF_MISSING;
   }
+}
+
+template<class Token>
+seq_t DB<Token>::GetSeqNum() {
+  std::string key = seqnum_key_();
+  std::string value;
+  rocksdb::Status status = this->db_->Get(rocksdb::ReadOptions(), key, &value);
+  assert(status.ok() || status.IsNotFound());
+  if(!status.ok())
+    return 0;
+  return *reinterpret_cast<const seq_t *>(value.data());
+}
+
+template<class Token>
+void DB<Token>::PutSeqNum(seq_t seqNum) {
+  std::string key = seqnum_key_();
+  rocksdb::Slice val(reinterpret_cast<const char *>(&seqNum), sizeof(seqNum));
+  rocksdb::Status status = this->db_->Put(rocksdb::WriteOptions(), key, val);
+  assert(status.ok());
 }
 
 template<class Token>

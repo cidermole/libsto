@@ -12,6 +12,8 @@
 #include <cassert>
 #include <unordered_map>
 
+#include "Types.h"
+
 namespace sto {
 
 template<class Token> class DB;
@@ -59,11 +61,18 @@ public:
   /** write out into an empty DB */
   void Write(std::shared_ptr<DB<Token>> db) const;
 
+  /** Finalize an update with seqNum. Flush writes to DB and apply a new persistence sequence number. */
+  void Ack(seq_t seqNum);
+  /** Current persistence sequence number. */
+  seq_t seqNum() const { return seqNum_; }
+
+
 private:
   std::unordered_map<Vid, std::string> id2surface_;
   std::unordered_map<std::string, Vid> surface2id_;
   Vid size_; /** size including special reserved symbols */
   std::shared_ptr<DB<Token>> db_;
+  seq_t seqNum_ = 0; /** persistence sequence number */
 
   /** Load vocabulary from mtt-build .tdx format */
   void ugsapt_load(const std::string &filename);

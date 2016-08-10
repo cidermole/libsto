@@ -74,12 +74,18 @@ public:
   /** Write to (empty) DB and disk. */
   void Write(std::shared_ptr<BaseDB> db, const std::string &corpus_file);
 
+  /** Finalize an update with seqNum. Flush writes to DB and apply a new persistence sequence number. */
+  void Ack(seq_t seqNum);
+  /** Current persistence sequence number. */
+  seq_t seqNum() const { return seqNum_; }
+
   Domain begin() const;
   Domain end() const;
 
 private:
   Vocab<Domain> docname2id_;                  /** document name to document id mapping */
   std::shared_ptr<Corpus<Domain>> sid2docid_; /** sentence id to document id mapping */
+  seq_t seqNum_ = 0;                          /** persistence sequence number */
 };
 
 /** Domain bias for BitextSampler, backed by libsto DocumentMap. */

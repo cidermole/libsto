@@ -6,6 +6,8 @@
 
 #include <unistd.h>
 
+#include <limits>
+
 #include "Bitext.h"
 #include "DB.h"
 #include "ITokenIndex.h"
@@ -104,6 +106,15 @@ typename BitextSide<Token>::Sid BitextSide<Token>::AddToCorpus(const std::vector
   for(auto t : sent)
     toks.push_back((*vocab)[t]); // vocabulary insert/lookup
   corpus->AddSentence(toks);
+
+  // TODO: update seqNum on the Corpus. that's where the TokenIndexes get it from.
+  /*
+   * TODO: seq_t currently assumes that the first update starts with seq_t seqNum = 1;
+   * (seqNum=0 would be ignored, since we init everything there)
+   */
+  //Ack(corpus->size());
+  vocab->Ack(corpus->size()); // TODO: use proper seq_t (pass it from Bitext::AddSentencePair())
+
   return corpus->size() - 1;
 }
 
@@ -128,6 +139,23 @@ void BitextSide<Token>::Write(std::shared_ptr<DB<Token>> db, const std::string &
 
   for(auto docid : map)
     domain_indexes[docid]->Write(db->template PrefixedDB<Token>(lang, docid));
+}
+
+template<typename Token>
+seq_t BitextSide<Token>::seqNum() const {
+  // Our seqNum = min({c.seqNum | c in components})
+
+  seq_t seqNum = std::numeric_limits<seq_t>::max();
+
+  seqNum = std::min(seqNum, vocab->seqNum());
+  seqNum = std::min(seqNum, corpus->seqNum());
+  seqNum = std::min(seqNum, index->seqNum());
+
+  for(auto& d : domain_indexes)
+    seqNum = std::min(seqNum, d.second->seqNum());
+
+  // any component with a higher seqNum will have to ignore the repeated updates
+  return seqNum;
 }
 
 // explicit template instantiation
@@ -200,18 +228,18 @@ void Bitext::AddSentencePair(const std::vector<std::string> &srcSent, const std:
   assert(isrc == itrg);
   align_->AddSentence(std::vector<AlignmentLink>{alignment.begin(), alignment.end()});
 
-  // indexes:
+  // (2) indexes: also store seqNum of Corpus
 
   auto docid = doc_map_->FindOrInsert(domain);
   doc_map_->AddSentence(isrc, docid);
 
-  // (2) domain-specific first: ensures that domain-specific indexes can provide, since we query the global index for the presence of source phrases first.
+  // (3) domain-specific first: ensures that domain-specific indexes can provide, since we query the global index for the presence of source phrases first.
 
   // currently, order of these two does not matter here (we query global index first)
   trg_->AddToDomainIndex(itrg, docid);
   src_->AddToDomainIndex(isrc, docid);
 
-  // (3) global index last - everything should be stored by the time readers see a new global source index entry
+  // (4) global index last - everything should be stored by the time readers see a new global source index entry
 
   // target side first: ensures extraction will work
   trg_->index->AddSentence(trg_->corpus->sentence(itrg));

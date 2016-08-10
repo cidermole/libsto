@@ -80,6 +80,9 @@ struct BitextSide : public sto::Loggable {
    * @param base  base pathname prefix, e.g. "phrase_tables/bitext."
    */
   void Write(std::shared_ptr<DB<Token>> db, const std::string &base, const DocumentMap &map);
+
+  /** Current persistence sequence number. */
+  seq_t seqNum() const;
 };
 
 /**

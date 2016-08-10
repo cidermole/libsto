@@ -58,6 +58,9 @@ public:
     return std::shared_ptr<DB<Token>>(new DB<Token>(*this, key_prefix_ + key + id_prefix));
   }
 
+  /** Flush the writes buffered so far, atomically applying them all together. */
+  void Flush() {}
+
 protected:
   std::shared_ptr<rocksdb::DB> db_;
   std::string key_prefix_; /** prefix prepended to all keys, essentially like a namespace/schema in the database */
@@ -65,6 +68,10 @@ protected:
 
 /**
  * Persistence methods for TokenIndex and Vocab.
+ *
+ * Note that writes are buffered, and you must call Flush() to apply them.
+ * TODO: use WriteBatch and flush it in Flush()
+ *
  * Currently backed by RocksDB.
  */
 template<class Token>
@@ -133,6 +140,11 @@ public:
    */
   NodeType IsNodeLeaf(const std::string &path);
 
+  /** Get persistence sequence number */
+  seq_t GetSeqNum();
+  /** Put persistence sequence number */
+  void PutSeqNum(seq_t seqNum);
+
   /** compact the entire database */
   void CompactRange();
 
@@ -144,6 +156,7 @@ private:
 
   std::string vid_key_(Vid vid);
   std::string surface_key_(const std::string &surface);
+  std::string seqnum_key_();
 };
 
 } // namespace sto

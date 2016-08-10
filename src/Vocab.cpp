@@ -24,7 +24,10 @@ Vocab<Token>::Vocab(std::shared_ptr<DB<Token>> db) : size_(Token::kReservedVids)
       // store </s> sentinel if necessary
       if(Token::kEosVid != Token::kInvalidVid)
         db_->PutVocabPair(kEosVid, kEosSurface);
+
+      db_->PutSeqNum(seqNum_);
     }
+    seqNum_ = db_->GetSeqNum();
   }
   // put </s> sentinel if necessary
   if(Token::kEosVid != Token::kInvalidVid)
@@ -101,6 +104,18 @@ void Vocab<Token>::Write(std::shared_ptr<DB<Token>> db) const {
     assert(target.at(vid) == this->at(vid)); // inserting them in order means the surface forms should be equal as well
   }
 }
+
+template<class Token>
+void Vocab<Token>::Ack(seq_t seqNum) {
+  assert(seqNum > seqNum_);
+  if(seqNum <= seqNum_)
+    return;
+
+  seqNum_ = seqNum;
+  db_->PutSeqNum(seqNum_);
+  db_->Flush();
+}
+
 
 struct UGVocabHeader {
   uint32_t size; /** size of vocabulary (and index) */

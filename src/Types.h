@@ -23,6 +23,8 @@ typedef uint8_t offset_t; /** type of token offset within sentence */
 
 typedef uint32_t domid_t; /** domain ID type */
 
+typedef uint32_t seq_t; /** sequence number to synchronize persistent storage */
+
 /**
  * Accounting type in sentence index of corpus.
  * Hack for loading mmsapt v2 format binary word alignments (*.mam file).

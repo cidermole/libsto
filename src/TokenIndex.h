@@ -38,7 +38,7 @@ template<typename Token, typename IndexTypeTag>
 struct IndexTypes {
   // specialized below
   typedef void SuffixArray;
-  typedef void TreeNode;
+  typedef ITreeNode<Token> TreeNode;
 };
 
 /** partial specialization: types for IndexTypeDisk */
@@ -210,6 +210,8 @@ public:
   /**
    * Insert the existing Corpus Sentence into this index. Last token must be the EOS symbol </s>.
    *
+   * AddSentence() must be called in increasing sequence of seqNum. Otherwise, calls will be ignored!
+   *
    * This potentially splits existing suffix array leaves into individual TreeNodes,
    * and inserts Position entries into the suffix array. Hence, it is roughly an
    *
@@ -218,17 +220,23 @@ public:
    * operation, with l = sent.size(), k = TreeNode<Token>::kMaxArraySize
    * and n = span().size() aka the full index size.
    *
-   * Thread safety: writes concurrent to multiple reading threads
-   * do not result in invalid state being read.
+   * Thread safety: one writer, multiple reader threads.
+   * Readers always see a valid state, but no guarantees on when writes become visible.
    */
   virtual void AddSentence(const Sentence<Token> &sent);
 
-  /** Merge all Positions from 'add' into this TokenIndex. */
+  /**
+   * Merge all Positions from 'add' into this TokenIndex.
+   *
+   * 'add' must have a greater seqNum than us. Otherwise, calls will be ignored!
+   */
   virtual void Merge(const ITokenIndex<Token> &add);
 
   /** Write to (empty) DB. */
   virtual void Write(std::shared_ptr<DB<Token>> db) const;
 
+  /** current persistence sequence number */
+  virtual seq_t seqNum() const { return seqNum_; }
 
   virtual void DebugPrint(std::ostream &os);
 
@@ -240,6 +248,13 @@ private:
 
   Corpus<Token> *corpus_;
   TreeNodeT *root_; /** root of the index tree */
+  seq_t seqNum_ = 0; /** persistence sequence number */
+
+  /**
+   * Finalize an update with seqNum. Called internally after the update has been applied,
+   * to flush writes to DB and apply a new persistence sequence number.
+   */
+  void Ack(seq_t seqNum);
 };
 
 } // namespace sto

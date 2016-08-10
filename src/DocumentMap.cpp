@@ -23,7 +23,10 @@ DocumentMap::DocumentMap() : sid2docid_(new Corpus<Domain>(&docname2id_))
 DocumentMap::DocumentMap(std::shared_ptr<BaseDB> db, const std::string &corpus_file) :
     docname2id_(db->template PrefixedDB<Domain>("dmp")), // add another prefix, so we do not collide with normal Vocab DB entries
     sid2docid_(new Corpus<Domain>(corpus_file, &docname2id_))
-{}
+{
+  // any component with a higher seqNum will have to ignore the repeated updates
+  seqNum_ = std::min(docname2id_.seqNum(), sid2docid_->seqNum());
+}
 
 sapt::IBias *DocumentMap::SetupDocumentBias(std::map<std::string,float> context_weights,
                                      std::ostream* log) const
@@ -104,15 +107,27 @@ Domain DocumentMap::end() const {
 
 void DocumentMap::AddSentence(sto::sid_t sid, tpt::docid_type docid) {
   size_t next_sid = sid2docid_->size();
-  if(next_sid != sid)
+  if(sid > next_sid)
     throw std::runtime_error("DocumentMap::AddSentence() currently only supports sequential addition of sentence IDs.");
-  sid2docid_->AddSentence(std::vector<Domain>{docid});
+  if(sid == next_sid)
+    sid2docid_->AddSentence(std::vector<Domain>{docid});
+  // else, it was already added -> ignore
 }
 
 /** Write to (empty) DB and disk. */
 void DocumentMap::Write(std::shared_ptr<BaseDB> db, const std::string &corpus_file) {
   docname2id_.Write(db->template PrefixedDB<Domain>("dmp"));
   sid2docid_->Write(corpus_file);
+}
+
+void DocumentMap::Ack(seq_t seqNum) {
+  assert(seqNum > seqNum_);
+  if(seqNum <= seqNum_)
+    return;
+
+  seqNum_ = seqNum;
+  //sid2docid_->Ack(seqNum_);
+  docname2id_.Ack(seqNum_);
 }
 
 // ----------------------------------------------------------------------------

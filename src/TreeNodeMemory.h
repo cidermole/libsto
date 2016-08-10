@@ -62,6 +62,11 @@ public:
   /** @return true if child with 'vid' as the key was found, and optionally sets 'child'. */
   bool find_child_(Vid vid, TreeNodeMemory<Token> **child = nullptr);
 
+  /** Finalize an update with seqNum. Flush writes to DB and apply a new persistence sequence number. */
+  virtual void Ack(seq_t seqNum) {}
+  /** current persistence sequence number */
+  virtual seq_t seqNum() const { return 0; }
+
 private:
   /**
    * Split this leaf node (SuffixArray) into a proper TreeNode with children.

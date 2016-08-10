@@ -77,6 +77,10 @@ public:
   /** Add an empty leaf node (SuffixArray) as a child. */
   virtual void AddLeaf(Vid vid) = 0;
 
+  /** Finalize an update with seqNum. Flush writes to DB and apply a new persistence sequence number. */
+  virtual void Ack(seq_t seqNum) = 0;
+  /** current persistence sequence number */
+  virtual seq_t seqNum() const = 0;
 
   /** iterator over vids of children of internal nodes */
   virtual IVidIterator<Token> begin() const = 0;

@@ -66,8 +66,14 @@ public:
   /** total number of tokens in the entire corpus */
   size_t numTokens() const;
 
-  /** write out the entire corpus in v3 format. filename suffix must be .trk */
+  /** write out the entire corpus in v3 format. */
   void Write(const std::string &filename);
+
+  /** persistence sequence number reached after incorporating the Sentence with sid. */
+  seq_t seqNum(Sid sid) const;
+
+  /** Current persistence sequence number. */
+  seq_t seqNum() const;
 
 private:
   const Vocabulary *vocab_;
@@ -98,6 +104,9 @@ private:
 
 template<class Token> class Position;
 
+/**
+ * Lightweight reference to a sentence within a Corpus.
+ */
 template<class Token>
 class Sentence {
 public:
@@ -128,13 +137,16 @@ public:
   /** surface form for debugging. */
   std::string surface() const;
 
+  /** persistence sequence number reached after incorporating this Sentence. */
+  seq_t seqNum() const;
+
 private:
   typedef typename Token::Vid Vid;
 
   const Corpus<Token> *corpus_;
-  Sid sid_;     /** sentence ID */
+  Sid sid_;           /** sentence ID */
   const Vid *begin_;  /** corpus track begin of sentence */
-  size_t size_; /** number of tokens */
+  size_t size_;       /** number of tokens */
 };
 
 template<class Token> struct AtomicPosition;
@@ -151,7 +163,6 @@ public:
 
   Sid sid; /** sentence ID */
   Offset offset; /** offset within sentence */
-  // TODO: size_t offset() {}, offset_ private. (saves us from casting all the time)
 
   Position() noexcept: sid(0), offset(0) {}
   Position(Sid s, Offset o): sid(s), offset(o) {}
