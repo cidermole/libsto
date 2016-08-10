@@ -223,7 +223,7 @@ public:
    * Thread safety: one writer, multiple reader threads.
    * Readers always see a valid state, but no guarantees on when writes become visible.
    */
-  virtual void AddSentence(const Sentence<Token> &sent);
+  virtual void AddSentence(const Sentence<Token> &sent, seq_t seqNum = static_cast<seq_t>(-1));
 
   /**
    * Merge all Positions from 'add' into this TokenIndex.

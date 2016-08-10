@@ -36,11 +36,15 @@ IndexSpan<Token> TokenIndex<Token, TypeTag>::span() const {
 }
 
 template<class Token, typename TypeTag>
-void TokenIndex<Token, TypeTag>::AddSentence(const Sentence<Token> &sent) {
+void TokenIndex<Token, TypeTag>::AddSentence(const Sentence<Token> &sent, seq_t seqNum) {
   typedef typename Corpus<Token>::Offset Offset;
 
+  // workaround for testing
+  if(seqNum == static_cast<seq_t>(-1))
+    seqNum = sent.sid() + 1;
+
   // no update necessary
-  if(sent.seqNum() <= seqNum())
+  if(seqNum <= this->seqNum())
     return;
 
   if(TypeTag::HasAddSentence) {
@@ -49,13 +53,13 @@ void TokenIndex<Token, TypeTag>::AddSentence(const Sentence<Token> &sent) {
     for(Offset i = 0; i < sent.size(); i++)
       AddSubsequence_(sent, i);
 
-    Ack(sent.seqNum());
+    Ack(seqNum);
   } else {
     // Workaround for testing. Should not be called in production, because it's slow! Use an IndexBuffer instead.
 
     // merge every sentence
     TokenIndex<Token, IndexTypeMemory> add(*corpus());
-    add.AddSentence(sent);
+    add.AddSentence(sent, seqNum);
     Merge(add);
   }
 }

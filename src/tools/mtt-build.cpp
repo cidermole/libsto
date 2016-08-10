@@ -159,7 +159,7 @@ void read_input_lines(BitextSide<Token> &side, DocumentMap &docMap, Args &args) 
 
     if(domains) {
       auto docid = docMap.sid2did(sid);
-      side.AddToDomainIndex(sid, docid);
+      side.AddToDomainIndex(sid, docid, sid + 1);
     }
   }
   if(!args.quiet)

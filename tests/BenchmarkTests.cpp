@@ -381,7 +381,7 @@ TEST_F(BenchmarkTests, index_100k_disk) {
     for(size_t i = 0; i < corpus.size(); i++) {
       if(i % 1000 == 0)
         std::cerr << "tokenIndex @ AddSentence(i=" << i << ")..." << std::endl;
-      buffer.AddSentence(corpus.sentence(i));
+      buffer.AddSentence(corpus.sentence(i), i + 1);
     }
     buffer.Flush();
   }, "build_index");

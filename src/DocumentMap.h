@@ -55,7 +55,7 @@ public:
   std::string operator[](tpt::docid_type docid) const;
 
   /** add to sentence ID -> document ID mapping */
-  void AddSentence(sto::sid_t sid, tpt::docid_type docid);
+  void AddSentence(sid_t sid, tpt::docid_type docid, seq_t seqNum);
 
   /**
    * Load document map from a v1 sapt .dmp file.
@@ -78,14 +78,19 @@ public:
   void Ack(seq_t seqNum);
   /** Current persistence sequence number. */
   seq_t seqNum() const { return seqNum_; }
+  /** Persistence sequence number of Sentence with 'sid'. */
+  seq_t seqNum(Corpus<SentInfo>::Sid sid) const;
 
   Domain begin() const;
   Domain end() const;
 
 private:
-  Vocab<Domain> docname2id_;                  /** document name to document id mapping */
-  std::shared_ptr<Corpus<Domain>> sid2docid_; /** sentence id to document id mapping */
-  seq_t seqNum_ = 0;                          /** persistence sequence number */
+  Vocab<Domain> docname2id_;                    /** document name to document id mapping */
+  std::shared_ptr<Corpus<SentInfo>> sent_info_; /** sentence id to document id mapping */
+  seq_t seqNum_ = 0;                            /** persistence sequence number */
+
+  /** persistence sequence number of sent_info_ component */
+  seq_t sentInfoSeqNum_() const;
 };
 
 /** Domain bias for BitextSampler, backed by libsto DocumentMap. */

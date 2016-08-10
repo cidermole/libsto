@@ -261,7 +261,7 @@ public:
    * Thread safety: writes concurrent to multiple reading threads
    * do not result in invalid state being read.
    */
-  virtual void AddSentence(const Sentence<Token> &sent) = 0;
+  virtual void AddSentence(const Sentence<Token> &sent, seq_t seqNum = static_cast<seq_t>(-1)) = 0;
 
   /** Merge all Positions from 'add' into this TokenIndex. */
   virtual void Merge(const ITokenIndex<Token> &add) = 0;

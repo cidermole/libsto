@@ -101,7 +101,7 @@ private:
   static std::string child_sub_path(Vid vid);
 
   /** whether this TreeNode is the root */
-  bool is_root() const { return (path_ == "/"); }
+  bool is_root() const { return (path_ == "/"); } // unfortunately this does not work with arbitrary paths, e.g. as used in TokenIndexTests.add_sentence
 
   /** full path to /array file backing the leaf */
   std::string array_path() const { return path_ + "/array"; }

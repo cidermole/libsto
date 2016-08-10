@@ -69,12 +69,6 @@ public:
   /** write out the entire corpus in v3 format. */
   void Write(const std::string &filename);
 
-  /** persistence sequence number reached after incorporating the Sentence with sid. */
-  seq_t seqNum(Sid sid) const;
-
-  /** Current persistence sequence number. */
-  seq_t seqNum() const;
-
 private:
   const Vocabulary *vocab_;
   std::unique_ptr<MappedFile> track_;     /** mapping starts from beginning of file, includes header */
@@ -136,9 +130,6 @@ public:
 
   /** surface form for debugging. */
   std::string surface() const;
-
-  /** persistence sequence number reached after incorporating this Sentence. */
-  seq_t seqNum() const;
 
 private:
   typedef typename Token::Vid Vid;

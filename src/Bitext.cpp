@@ -56,7 +56,7 @@ void BitextSide<Token>::Open(const std::string &base, const std::string &lang) {
 }
 
 template<typename Token>
-void BitextSide<Token>::CreateGlobalIndex() {
+void BitextSide<Token>::CreateGlobalIndex(const DocumentMap &map) {
   std::string index_file = base_and_lang + ".sfa";
   if(!access(index_file.c_str(), F_OK)) {
     // load index from disk, if possible
@@ -68,7 +68,7 @@ void BitextSide<Token>::CreateGlobalIndex() {
   XVERBOSE(2, " BitextSide<Token>::CreateGlobalIndex()...\n");
   index.reset(new sto::TokenIndex<Token, IndexTypeMemory>(*corpus));
   for(size_t i = 0; i < corpus->size(); i++)
-    index->AddSentence(corpus->sentence(i));
+    index->AddSentence(corpus->sentence(i), map.seqNum(i));
 }
 
 template<typename Token>
@@ -97,7 +97,7 @@ void BitextSide<Token>::CreateDomainIndexes(const DocumentMap &map) {
 
   // put each sentence into the correct domain index
   for(size_t i = 0; i < nsents; i++)
-    domain_indexes[map.sid2did(i)]->AddSentence(corpus->sentence(i));
+    domain_indexes[map.sid2did(i)]->AddSentence(corpus->sentence(i), map.seqNum(i));
 }
 
 template<typename Token>
@@ -106,20 +106,11 @@ typename BitextSide<Token>::Sid BitextSide<Token>::AddToCorpus(const std::vector
   for(auto t : sent)
     toks.push_back((*vocab)[t]); // vocabulary insert/lookup
   corpus->AddSentence(toks);
-
-  // TODO: update seqNum on the Corpus. that's where the TokenIndexes get it from.
-  /*
-   * TODO: seq_t currently assumes that the first update starts with seq_t seqNum = 1;
-   * (seqNum=0 would be ignored, since we init everything there)
-   */
-  //Ack(corpus->size());
-  vocab->Ack(corpus->size()); // TODO: use proper seq_t (pass it from Bitext::AddSentencePair())
-
   return corpus->size() - 1;
 }
 
 template<typename Token>
-void BitextSide<Token>::AddToDomainIndex(Sid sid, tpt::docid_type docid) {
+void BitextSide<Token>::AddToDomainIndex(Sid sid, tpt::docid_type docid, seq_t seqNum) {
   if(domain_indexes.find(docid) == domain_indexes.end()) {
     if(db)
       // persisted in DB
@@ -128,7 +119,7 @@ void BitextSide<Token>::AddToDomainIndex(Sid sid, tpt::docid_type docid) {
       // memory only
       domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token, IndexTypeMemory>>(*corpus);
   }
-  domain_indexes[docid]->AddSentence(corpus->sentence(sid));
+  domain_indexes[docid]->AddSentence(corpus->sentence(sid), seqNum);
 }
 
 template<typename Token>
@@ -142,13 +133,20 @@ void BitextSide<Token>::Write(std::shared_ptr<DB<Token>> db, const std::string &
 }
 
 template<typename Token>
-seq_t BitextSide<Token>::seqNum() const {
+void BitextSide<Token>::Ack(seq_t seqNum) {
+  vocab->Ack(seqNum);
+  // Corpus seqNum is now maintained in DocumentMap
+  // TokenIndex calls its own Ack()
+}
+
+template<typename Token>
+seq_t BitextSide<Token>::seqNum(const DocumentMap &map) const {
   // Our seqNum = min({c.seqNum | c in components})
 
   seq_t seqNum = std::numeric_limits<seq_t>::max();
 
   seqNum = std::min(seqNum, vocab->seqNum());
-  seqNum = std::min(seqNum, corpus->seqNum());
+  seqNum = std::min(seqNum, map.seqNum()); // TODO: map: ref it in ctor!
   seqNum = std::min(seqNum, index->seqNum());
 
   for(auto& d : domain_indexes)
@@ -225,25 +223,32 @@ void Bitext::AddSentencePair(const std::vector<std::string> &srcSent, const std:
   // order of these three does not matter
   auto isrc = src_->AddToCorpus(srcSent);
   auto itrg = trg_->AddToCorpus(trgSent);
+  seq_t fakeSeqNum = isrc + 1; // TODO add real var from API
+  // note: TODO: seq_t currently assumes that the first update starts with seq_t seqNum = 1; (seqNum=0 would be ignored, since we init everything there)
+  seq_t seqNum = fakeSeqNum;
   assert(isrc == itrg);
   align_->AddSentence(std::vector<AlignmentLink>{alignment.begin(), alignment.end()});
 
   // (2) indexes: also store seqNum of Corpus
 
   auto docid = doc_map_->FindOrInsert(domain);
-  doc_map_->AddSentence(isrc, docid);
+  doc_map_->AddSentence(isrc, docid, seqNum);
+  doc_map_->Ack(seqNum);
 
   // (3) domain-specific first: ensures that domain-specific indexes can provide, since we query the global index for the presence of source phrases first.
 
   // currently, order of these two does not matter here (we query global index first)
-  trg_->AddToDomainIndex(itrg, docid);
-  src_->AddToDomainIndex(isrc, docid);
+  trg_->AddToDomainIndex(itrg, docid, seqNum);
+  src_->AddToDomainIndex(isrc, docid, seqNum);
 
   // (4) global index last - everything should be stored by the time readers see a new global source index entry
 
   // target side first: ensures extraction will work
-  trg_->index->AddSentence(trg_->corpus->sentence(itrg));
-  src_->index->AddSentence(src_->corpus->sentence(isrc));
+  trg_->index->AddSentence(trg_->corpus->sentence(itrg), seqNum);
+  src_->index->AddSentence(src_->corpus->sentence(isrc), seqNum);
+
+  src_->Ack(seqNum);
+  trg_->Ack(seqNum);
 }
 
 /** Write to (empty) DB and disk. */

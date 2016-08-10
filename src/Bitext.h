@@ -52,14 +52,14 @@ struct BitextSide : public sto::Loggable {
   /** Load v1/v2 vocabulary and corpus track. Does not index or load indexes. */
   void Open(const std::string &base, const std::string &lang);
 
-  void CreateIndexes(const DocumentMap &map) { CreateGlobalIndex(); CreateDomainIndexes(map); }
+  void CreateIndexes(const DocumentMap &map) { CreateGlobalIndex(map); CreateDomainIndexes(map); }
 
   /**
    * Create the global index.
    * * if present, load it from disk (old v1/v2 format)
    * * otherwise, index the entire corpus
    */
-  void CreateGlobalIndex();
+  void CreateGlobalIndex(const DocumentMap &map);
 
   /**
    * Create the domain-specific indexes.
@@ -72,7 +72,7 @@ struct BitextSide : public sto::Loggable {
   Sid AddToCorpus(const std::vector<std::string> &sent);
 
   /** Add a sentence to the domain index docid. Sentence should already be added via AddToCorpus(). */
-  void AddToDomainIndex(Sid sid, tpt::docid_type docid);
+  void AddToDomainIndex(Sid sid, tpt::docid_type docid, seq_t seqNum);
 
   /**
    * Write to (empty) DB and disk.
@@ -81,8 +81,10 @@ struct BitextSide : public sto::Loggable {
    */
   void Write(std::shared_ptr<DB<Token>> db, const std::string &base, const DocumentMap &map);
 
+  /** Finalize an update with seqNum. Flush writes to DB and apply a new persistence sequence number. */
+  void Ack(seq_t seqNum);
   /** Current persistence sequence number. */
-  seq_t seqNum() const;
+  seq_t seqNum(const DocumentMap &map) const;
 };
 
 /**

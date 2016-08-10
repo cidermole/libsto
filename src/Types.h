@@ -124,8 +124,8 @@ struct AlignmentLink {
 };
 
 /**
- * Domain compatible with Corpus and Vocab,
- * so we can persist domain name/ID mappings (Vocab) and training sentence / domain ID mappings (Corpus).
+ * Domain compatible with Vocab,
+ * so we can persist domain name/ID mappings (Vocab).
  */
 struct Domain {
   typedef Vocab<Domain> Vocabulary;
@@ -153,6 +153,31 @@ struct Domain {
   // these two make us iterable
   Domain &operator++() { ++vid; return *this; }
   Vid &operator*() { return vid; }
+};
+
+/** Auxiliary sentence information (domain ID, seqNum) for internal use. The external interface is SentInfo. */
+struct sent_info_t {
+  domid_t domid; /** domain ID */
+  seq_t seqNum;  /** persistent sequence number */
+
+  constexpr sent_info_t(domid_t domain_id, seq_t seq_num) : domid(domain_id), seqNum(seq_num) {}
+};
+
+/**
+ * Auxiliary sentence information (domain ID, seqNum) compatible with Corpus,
+ * so we can persist this information for the Bitext.
+ */
+struct SentInfo {
+  typedef DummyVocab<SentInfo> Vocabulary;
+  typedef sent_info_t Vid; /** vocabulary ID type */
+  static constexpr Vid kEosVid = {static_cast<domid_t>(-1), static_cast<seq_t>(-1)}; /** unused here */
+  Vid vid; /** domain ID (called Vid for compatibility with the remaining Corpus/Sentence implementation.) */
+  static constexpr CorpusIndexAccounting::acc_t kIndexType = CorpusIndexAccounting::IDX_CNT_ENTRIES;
+
+  /** construct invalid SentInfo */
+  SentInfo(): vid(static_cast<domid_t>(-1), static_cast<seq_t>(-1)) {}
+
+  SentInfo(domid_t domid, seq_t seqNum): vid(domid, seqNum) {}
 };
 
 

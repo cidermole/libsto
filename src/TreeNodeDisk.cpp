@@ -80,7 +80,7 @@ bool TreeNodeDisk<Token>::find_child_(Vid vid, TreeNodeDisk<Token> **child) {
 
 template<class Token>
 void TreeNodeDisk<Token>::Ack(seq_t seqNum) {
-  assert(is_root()); // only valid conceptually at the root node.
+  //assert(is_root()); // only valid conceptually at the root node.
   assert(seqNum > seqNum_);
   if(seqNum <= seqNum_)
     return;
@@ -92,7 +92,7 @@ void TreeNodeDisk<Token>::Ack(seq_t seqNum) {
 
 template<class Token>
 seq_t TreeNodeDisk<Token>::seqNum() const {
-  assert(is_root()); // only valid at the root node.
+  //assert(is_root()); // only valid at the root node.
   return seqNum_;
 }
 

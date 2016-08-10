@@ -16,16 +16,16 @@
 
 namespace sto {
 
-DocumentMap::DocumentMap() : sid2docid_(new Corpus<Domain>(&docname2id_))
+DocumentMap::DocumentMap() : sent_info_(new Corpus<SentInfo>())
 {}
 
 /** Load existing DocumentMap from DB and disk. */
 DocumentMap::DocumentMap(std::shared_ptr<BaseDB> db, const std::string &corpus_file) :
     docname2id_(db->template PrefixedDB<Domain>("dmp")), // add another prefix, so we do not collide with normal Vocab DB entries
-    sid2docid_(new Corpus<Domain>(corpus_file, &docname2id_))
+    sent_info_(new Corpus<SentInfo>(corpus_file))
 {
   // any component with a higher seqNum will have to ignore the repeated updates
-  seqNum_ = std::min(docname2id_.seqNum(), sid2docid_->seqNum());
+  seqNum_ = std::min(docname2id_.seqNum(), sentInfoSeqNum_());
 }
 
 sapt::IBias *DocumentMap::SetupDocumentBias(std::map<std::string,float> context_weights,
@@ -39,7 +39,7 @@ sapt::IBias *DocumentMap::SetupDocumentBias(std::map<std::string,float> context_
 }
 
 tpt::docid_type DocumentMap::sid2did(sto::sid_t sid) const {
-  return *sid2docid_->begin(sid);
+  return sent_info_->begin(sid)->domid;
 }
 
 void DocumentMap::Load(std::string const& fname, size_t num_sents) {
@@ -57,7 +57,7 @@ void DocumentMap::Load(std::string const& fname, size_t num_sents) {
   // sentence ranges.
   std::string buffer,docname; size_t a=0,b=0;
   assert(docname2id_.size() == 0);
-  assert(sid2docid_->size() == 0);
+  assert(sent_info_->size() == 0);
   while(getline(docmap,buffer))
   {
     std::istringstream line(buffer);
@@ -67,14 +67,14 @@ void DocumentMap::Load(std::string const& fname, size_t num_sents) {
     line >> b;
     //VERBOSE(3, "DOCUMENT MAP " << docname << " " << a << "-" << b+a << std::endl);
     for (b += a; a < b; ++a) {
-      AddSentence(a, docid);
+      AddSentence(/* sid = */ a, docid, /* seqNum = */ a + 1); // seqNum is fake here
     }
   }
-  assert(b == sid2docid_->size());
+  assert(b == sent_info_->size());
   if(b != num_sents && num_sents != static_cast<size_t>(-1))
     throw std::runtime_error(std::string("Document map doesn't match corpus! b=") + std::to_string(b) + ", num_sents=" + std::to_string(num_sents));
 
-  XVERBOSE(1, "DocumentMap::Load() loaded " << numDomains() << " domains, " << (sid2docid_->size()) << " sentences.\n");
+  XVERBOSE(1, "DocumentMap::Load() loaded " << numDomains() << " domains, " << (sent_info_->size()) << " sentences.\n");
 }
 
 tpt::docid_type DocumentMap::FindOrInsert(const std::string &docname) {
@@ -97,6 +97,10 @@ std::string DocumentMap::operator[](tpt::docid_type docid) const {
   return docname2id_.at(docid);
 }
 
+seq_t DocumentMap::seqNum(Corpus<SentInfo>::Sid sid) const {
+  return sent_info_->begin(sid)->seqNum;
+}
+
 Domain DocumentMap::begin() const {
   return docname2id_.begin();
 }
@@ -105,19 +109,23 @@ Domain DocumentMap::end() const {
   return docname2id_.end();
 }
 
-void DocumentMap::AddSentence(sto::sid_t sid, tpt::docid_type docid) {
-  size_t next_sid = sid2docid_->size();
+void DocumentMap::AddSentence(sid_t sid, tpt::docid_type docid, seq_t seqNum) {
+  size_t next_sid = sent_info_->size();
   if(sid > next_sid)
     throw std::runtime_error("DocumentMap::AddSentence() currently only supports sequential addition of sentence IDs.");
-  if(sid == next_sid)
-    sid2docid_->AddSentence(std::vector<Domain>{docid});
-  // else, it was already added -> ignore
+
+  seq_t sentInfoSeqNum = sentInfoSeqNum_();
+  assert(seqNum > sentInfoSeqNum);
+  if(seqNum <= sentInfoSeqNum)
+    return;
+
+  sent_info_->AddSentence(std::vector<SentInfo>{SentInfo{docid, seqNum}});
 }
 
 /** Write to (empty) DB and disk. */
 void DocumentMap::Write(std::shared_ptr<BaseDB> db, const std::string &corpus_file) {
   docname2id_.Write(db->template PrefixedDB<Domain>("dmp"));
-  sid2docid_->Write(corpus_file);
+  sent_info_->Write(corpus_file);
 }
 
 void DocumentMap::Ack(seq_t seqNum) {
@@ -126,8 +134,15 @@ void DocumentMap::Ack(seq_t seqNum) {
     return;
 
   seqNum_ = seqNum;
-  //sid2docid_->Ack(seqNum_);
+  //sent_info_->Ack(seqNum_);
   docname2id_.Ack(seqNum_);
+}
+
+seq_t DocumentMap::sentInfoSeqNum_() const {
+  if(sent_info_->size())
+    return sent_info_->begin(sent_info_->size()-1)->seqNum;
+  else
+    return 0;
 }
 
 // ----------------------------------------------------------------------------

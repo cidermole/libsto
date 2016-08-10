@@ -28,7 +28,7 @@ struct IndexBuffer {
    * Add a Sentence to the buffer.
    * The implementation can either decide to buffer, or add immediately to the underlying index.
    */
-  virtual void AddSentence(const Sentence<Token> &sent) = 0;
+  virtual void AddSentence(const Sentence<Token> &sent, seq_t seqNum) = 0;
 
   /** Flush out all buffered writes to the index. */
   virtual void Flush() = 0;
@@ -58,7 +58,7 @@ struct BatchIndexBuffer : public IndexBuffer<Token> {
    * Add a Sentence to the buffer.
    * The buffer may hold sentences indefinitely until you call Flush().
    */
-  virtual void AddSentence(const Sentence<Token> &sent) override;
+  virtual void AddSentence(const Sentence<Token> &sent, seq_t seqNum) override;
 
   virtual void Flush() override;
 
