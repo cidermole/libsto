@@ -65,6 +65,9 @@ public:
   /** Number of token positions. cumulative length in inner nodes, array_.size() in leaf nodes */
   virtual size_t size() const = 0;
 
+  /** distance from the root */
+  virtual size_t depth() const = 0;
+
   /**
    * Access to a position within the selected span
    * in O(log(n/k)) with k = TreeNode<Token>::kMaxArraySize.

@@ -49,6 +49,9 @@ public:
   /** Number of token positions. cumulative length in inner nodes, array_.size() in leaf nodes */
   size_t size() const;
 
+  /** distance from the root */
+  virtual size_t depth() const { return depth_; }
+
   /**
    * Access to a position within the selected span
    * in O(log(n/k)) with k = TreeNode<Token>::kMaxArraySize.
@@ -90,6 +93,8 @@ protected:
   std::atomic<bool> is_leaf_; /** whether this is a suffix array (leaf node) */
   ChildMap children_; /** TreeNode children, empty if is_leaf. Additionally carries along partial sums for child sizes. */
   std::shared_ptr<SuffixArray> array_; /** suffix array, only if is_leaf */
+  ITreeNode<Token> *parent_; /** parent of this node, nullptr for root */
+  size_t depth_; /** distance from the root */
 
   /**
    * maximum size of suffix array leaf, larger sizes are split up into TreeNodes.
@@ -101,7 +106,7 @@ protected:
    * Constructs an empty TreeNode, i.e. a leaf with a SuffixArray.
    * Used by TreeNodeDisk() and TreeNodeMemory()
    */
-  TreeNode(size_t maxArraySize = 100000);
+  TreeNode(ITreeNode<Token> *parent = nullptr, size_t maxArraySize = 100000);
 
   /**
    * Split this leaf node (SuffixArray) into a proper TreeNode with children.
