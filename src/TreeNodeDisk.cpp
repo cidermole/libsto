@@ -98,7 +98,7 @@ seq_t TreeNodeDisk<Token>::seqNum() const {
 
 template<class Token>
 template<class PositionSpan>
-void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<Token> &corpus, Offset depth) {
+void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<Token> &corpus) {
   assert(this->is_leaf());
 
   // Merge two sorted Position ranges: one from memory (addSpan) and one from disk (this node).
@@ -106,6 +106,8 @@ void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<To
 
   // note: for persistence to be crash-safe, we must tolerate it if some Positions have already
   // been persisted (from a previously crashed run) --> we have to omit duplicate Positions
+
+  size_t depth = this->depth_;
 
   size_t addSize = addSpan.size();
   size_t curSize = this->array_->size();
@@ -194,7 +196,7 @@ void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<To
 
   //assert(allow_split);
   if(allow_split && this->array_->size() > this->kMaxArraySize) {
-    SplitNode(corpus, depth);
+    SplitNode(corpus);
   }
 }
 
@@ -206,7 +208,7 @@ void TreeNodeDisk<Token>::Merge(IndexSpan<Token> &spanMemory, IndexSpan<Token> &
   assert(spanDisk.node() == this);
 
   if(spanDisk.node()->is_leaf()) {
-    MergeLeaf(spanMemory, *spanDisk.corpus(), (Offset) spanDisk.depth());
+    MergeLeaf(spanMemory, *spanDisk.corpus());
     return;
   }
 
@@ -248,8 +250,8 @@ void TreeNodeDisk<Token>::AddLeaf(Vid vid) {
 }
 
 template<class Token>
-void TreeNodeDisk<Token>::SplitNode(const Corpus<Token> &corpus, Offset depth) {
-  TreeNode<Token, SuffixArray>::SplitNode(corpus, depth, std::bind(&TreeNodeDisk<Token>::make_child_, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
+void TreeNodeDisk<Token>::SplitNode(const Corpus<Token> &corpus) {
+  TreeNode<Token, SuffixArray>::SplitNode(corpus, std::bind(&TreeNodeDisk<Token>::make_child_, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
 
   if(sync_) {
     // update the children
@@ -276,9 +278,9 @@ std::string TreeNodeDisk<Token>::child_sub_path(Vid vid) {
 }
 
 template<class Token>
-TreeNodeDisk<Token> *TreeNodeDisk<Token>::make_child_(Vid vid, typename SuffixArray::iterator first, typename SuffixArray::iterator last, const Corpus<Token> &corpus, Offset depth) {
+TreeNodeDisk<Token> *TreeNodeDisk<Token>::make_child_(Vid vid, typename SuffixArray::iterator first, typename SuffixArray::iterator last, const Corpus<Token> &corpus) {
   TreeNodeDisk<Token> *new_child = new TreeNodeDisk<Token>(child_path(vid), this->db_, this, vid, this->kMaxArraySize);
-  new_child->MergeLeaf(SuffixArrayPositionSpan<Token>(first.ptr(), last.ptr()), corpus, depth);
+  new_child->MergeLeaf(SuffixArrayPositionSpan<Token>(first.ptr(), last.ptr()), corpus);
   //new_array->insert(new_array->begin(), first, last); // this is the TreeNodeMemory interface. Maybe we could have implemented insert() here on SuffixArrayDisk, and use a common call?
   return new_child;
 }

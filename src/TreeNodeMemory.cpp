@@ -26,7 +26,7 @@ TreeNodeMemory<Token>::TreeNodeMemory(std::string filename, std::shared_ptr<void
 }
 
 template<class Token>
-void TreeNodeMemory<Token>::AddPosition(const Sentence<Token> &sent, Offset start, size_t depth) {
+void TreeNodeMemory<Token>::AddPosition(const Sentence<Token> &sent, Offset start) {
   assert(this->is_leaf()); // Exclusively for adding to a SA (leaf node).
 
   Position<Token> corpus_pos{sent.sid(), start};
@@ -75,10 +75,10 @@ void TreeNodeMemory<Token>::AddPosition(const Sentence<Token> &sent, Offset star
    * into a single number. However, the leaves contain the Corpus Positions of the entire path to the suffix,
    * which we want to sample.
    */
-  bool allow_split = sent.size() + 1 > start + depth; // +1 for implicit </s>
+  bool allow_split = sent.size() + 1 > start + this->depth_; // +1 for implicit </s>
 
   if(array->size() > this->kMaxArraySize && allow_split) {
-    SplitNode(corpus, static_cast<Offset>(depth)); // suffix array grown too large, split into TreeNode
+    SplitNode(corpus); // suffix array grown too large, split into TreeNode
   }
 }
 
@@ -93,7 +93,7 @@ bool TreeNodeMemory<Token>::find_child_(Vid vid, TreeNodeMemory<Token> **child) 
 }
 
 template<class Token>
-TreeNodeMemory<Token> *TreeNodeMemory<Token>::make_child_(Vid vid, typename SuffixArray::iterator first, typename SuffixArray::iterator last, const Corpus<Token> &corpus, Offset depth) {
+TreeNodeMemory<Token> *TreeNodeMemory<Token>::make_child_(Vid vid, typename SuffixArray::iterator first, typename SuffixArray::iterator last, const Corpus<Token> &corpus) {
   TreeNodeMemory<Token> *new_child = new TreeNodeMemory<Token>("", nullptr, this, vid, this->kMaxArraySize);
   std::shared_ptr<SuffixArray> new_array = new_child->array_;
   new_array->insert(new_array->begin(), first, last);
@@ -101,8 +101,8 @@ TreeNodeMemory<Token> *TreeNodeMemory<Token>::make_child_(Vid vid, typename Suff
 }
 
 template<class Token>
-void TreeNodeMemory<Token>::SplitNode(const Corpus<Token> &corpus, Offset depth) {
-  TreeNode<Token, SuffixArrayMemory<Token>>::SplitNode(corpus, depth, std::bind(&TreeNodeMemory<Token>::make_child_, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
+void TreeNodeMemory<Token>::SplitNode(const Corpus<Token> &corpus) {
+  TreeNode<Token, SuffixArrayMemory<Token>>::SplitNode(corpus, std::bind(&TreeNodeMemory<Token>::make_child_, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
 }
 
 template<class Token>

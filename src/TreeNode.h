@@ -90,12 +90,12 @@ public:
   IVidIterator<Token> end() const { return IVidIterator<Token>(std::shared_ptr<ITreeNodeIterator<typename Token::Vid>>(children_.end().copy())); }
 
 protected:
-  std::atomic<bool> is_leaf_; /** whether this is a suffix array (leaf node) */
-  ChildMap children_; /** TreeNode children, empty if is_leaf. Additionally carries along partial sums for child sizes. */
-  std::shared_ptr<SuffixArray> array_; /** suffix array, only if is_leaf */
-  ITreeNode<Token> *parent_; /** parent of this node, nullptr for root */
-  size_t depth_; /** distance from the root */
-  Vid vid_; /** vid_ common to all Positions up until before this depth_ (exclusive); invalid for root */
+  std::atomic<bool> is_leaf_;           /** whether this is a suffix array (leaf node) */
+  ChildMap children_;                   /** TreeNode children, empty if is_leaf. Additionally carries along partial sums for child sizes. */
+  std::shared_ptr<SuffixArray> array_;  /** suffix array, only if is_leaf */
+  ITreeNode<Token> *parent_;            /** parent of this node, nullptr for root */
+  size_t depth_;                        /** distance from the root */
+  Vid vid_;                             /** word type common to all Positions at depth_-1; invalid for root */
 
   /**
    * maximum size of suffix array leaf, larger sizes are split up into TreeNodes.
@@ -106,24 +106,29 @@ protected:
   /**
    * Constructs an empty TreeNode, i.e. a leaf with a SuffixArray.
    * Used by TreeNodeDisk() and TreeNodeMemory()
+   *
+   * @param parent        suffix trie parent; nullptr for root
+   * @param vid           word type common to all Positions at depth_-1
+   * @param maxArraySize  maximum size of suffix array leaf
    */
   TreeNode(ITreeNode<Token> *parent = nullptr, Vid vid = Token::kInvalidVid, size_t maxArraySize = 100000);
 
   /**
    * Split this leaf node (SuffixArray) into a proper TreeNode with children.
-   * depth: distance of TreeNode from the root of this tree
    */
   template<class NodeFactory>
-  void SplitNode(const Corpus<Token> &corpus, Offset depth, NodeFactory factory);
+  void SplitNode(const Corpus<Token> &corpus, NodeFactory factory);
 };
 
 
 template<class Token, class SuffixArray>
 template<class NodeFactory>
-void TreeNode<Token, SuffixArray>::SplitNode(const Corpus<Token> &corpus, Offset depth, NodeFactory factory) {
+void TreeNode<Token, SuffixArray>::SplitNode(const Corpus<Token> &corpus, NodeFactory factory) {
   typedef typename SuffixArray::iterator iter;
 
   assert(this->is_leaf()); // this method works only on suffix arrays
+
+  size_t depth = depth_;
 
   auto comp = [&corpus, depth](const Position<Token> &a, const Position<Token> &b) {
     // the suffix array at this depth should only contain positions that continue long enough without the sentence ending

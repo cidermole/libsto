@@ -156,7 +156,7 @@ public:
   Offset offset; /** offset within sentence */
 
   Position() noexcept: sid(0), offset(0) {}
-  Position(Sid s, Offset o): sid(s), offset(o) {}
+  Position(Sid s, size_t o): sid(s), offset(static_cast<Offset>(o)) {}
 
   Position(const Position &other) = default;
   Position(Position &&other) = default;
@@ -178,7 +178,7 @@ public:
   Token token(const Corpus<Token> &corpus) const;
 
   /** add offset. */
-  Position add(Offset offset, const Corpus<Token> &corpus) const;
+  Position add(size_t offset, const Corpus<Token> &corpus) const;
 };
 
 

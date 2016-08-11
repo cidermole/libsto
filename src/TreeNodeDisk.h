@@ -56,14 +56,13 @@ public:
    *
    * @param addSpan  TreeNode span to be merged in (span over the same vid); either TokenIndex<Token>::Span or SuffixArrayPositionSpan
    * @param corpus   Positions belong to this Corpus
-   * @param depth    distance of this TreeNode from the root
    */
   template<class PositionSpan>
-  void MergeLeaf(const PositionSpan &addSpan, const Corpus<Token> &corpus, Offset depth);
+  void MergeLeaf(const PositionSpan &addSpan, const Corpus<Token> &corpus);
 
   void Merge(IndexSpan<Token> &spanMemory, IndexSpan<Token> &spanDisk);
 
-  void AddPosition(const Sentence<Token> &sent, Offset start, size_t depth) { assert(0); }
+  void AddPosition(const Sentence<Token> &sent, Offset start) { assert(0); }
 
   /** Add an empty leaf node (SuffixArray) as a child. */
   void AddLeaf(Vid vid);
@@ -90,9 +89,8 @@ private:
 
   /**
    * Split this leaf node (SuffixArray) into a proper TreeNode with children.
-   * @param depth: distance of TreeNode from the root of this tree
    */
-  void SplitNode(const Corpus<Token> &corpus, Offset depth);
+  void SplitNode(const Corpus<Token> &corpus);
 
   /**
    * Creates the nested directory name for a given vid.
@@ -110,7 +108,7 @@ private:
   std::string child_path(Vid vid) const { return path_ + "/" + child_sub_path(vid); }
 
   /** factory function for TreeNode::SplitNode() */
-  TreeNodeDisk<Token> *make_child_(Vid vid, typename SuffixArray::iterator first, typename SuffixArray::iterator last, const Corpus<Token> &corpus, Offset depth);
+  TreeNodeDisk<Token> *make_child_(Vid vid, typename SuffixArray::iterator first, typename SuffixArray::iterator last, const Corpus<Token> &corpus);
 
   /** Write vids of children to persistent storage */
   void WriteChildren();

@@ -144,7 +144,7 @@ void TokenIndex<Token, TypeTag>::AddSubsequence_(const Sentence<Token> &sent, Of
       // stop after adding to a SA (entry there represents all the remaining depth)
       finished = true;
       // create SA entry
-      dynamic_cast<TreeNodeT *>(cur_span.node())->AddPosition(sent, start, cur_span.tree_depth());
+      dynamic_cast<TreeNodeT *>(cur_span.node())->AddPosition(sent, start);
       // After a split, cur_span is at the new internal TreeNode, not at the SA.
       // This is by design: since the SA insertion added a count there, the split created a TreeNode with already incremented size.
 

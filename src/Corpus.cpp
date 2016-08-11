@@ -344,8 +344,8 @@ Token Position<Token>::token(const Corpus<Token> &corpus) const {
 }
 
 template<class Token>
-Position<Token> Position<Token>::add(Offset offset, const Corpus<Token> &corpus) const {
-  assert(static_cast<Offset>(corpus.sentence(this->sid).size()) + 1 - this->offset >= offset + 1);
+Position<Token> Position<Token>::add(size_t offset, const Corpus<Token> &corpus) const {
+  assert(corpus.sentence(this->sid).size() + 1 - this->offset >= offset + 1);
   return Position(this->sid, this->offset + offset);
 }
 

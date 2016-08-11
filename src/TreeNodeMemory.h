@@ -51,10 +51,8 @@ public:
    * O(k + log(n)) operation, with k = TreeNode<Token>::kMaxArraySize
    *
    * Exclusively for adding to a SA (leaf node).
-   *
-   * depth: distance of TreeNode from the root of this tree, used in splits
    */
-  void AddPosition(const Sentence<Token> &sent, Offset start, size_t depth);
+  void AddPosition(const Sentence<Token> &sent, Offset start);
 
   /** Add an empty leaf node (SuffixArray) as a child. */
   void AddLeaf(Vid vid);
@@ -70,9 +68,8 @@ public:
 private:
   /**
    * Split this leaf node (SuffixArray) into a proper TreeNode with children.
-   * depth: distance of TreeNode from the root of this tree
    */
-  void SplitNode(const Corpus<Token> &corpus, Offset depth);
+  void SplitNode(const Corpus<Token> &corpus);
 
   /**
    * Load this leaf node (SuffixArray) from mtt-build *.sfa file on disk.
@@ -80,7 +77,7 @@ private:
   void LoadArray(const std::string &filename);
 
   /** factory function for TreeNode::SplitNode() */
-  TreeNodeMemory<Token> *make_child_(Vid vid, typename SuffixArray::iterator first, typename SuffixArray::iterator last, const Corpus<Token> &corpus, Offset depth);
+  TreeNodeMemory<Token> *make_child_(Vid vid, typename SuffixArray::iterator first, typename SuffixArray::iterator last, const Corpus<Token> &corpus);
 };
 
 } // namespace sto
