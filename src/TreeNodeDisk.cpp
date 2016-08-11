@@ -115,6 +115,7 @@ void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<To
   size_t icur = 0, iadd = 0;
 
   SuffixArray &curSpan = *this->array_;
+  //IndexSpan<Token> curSpan = this->span(); // IndexSpan, why r u so expensive to construct?
 
   // disallow splits of </s> - as argued in TreeNodeMemory::AddPosition()
   // bool allow_split = sent.size() + 1 > start + depth; // +1 for implicit </s>
