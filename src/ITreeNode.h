@@ -13,7 +13,8 @@
 
 namespace sto {
 
-template<typename Token> class IndexSpan;
+template<class Token> class IndexSpan;
+template<class Token> class ITokenIndex;
 
 /**
  * Internal interface for TreeNode::Iterator
@@ -68,6 +69,9 @@ public:
   /** distance from the root */
   virtual size_t depth() const = 0;
 
+  /** Returns the Span over all Positions with this prefix (path from root to this node). */
+  virtual IndexSpan<Token> span() = 0;
+
   /**
    * Access to a position within the selected span
    * in O(log(n/k)) with k = TreeNode<Token>::kMaxArraySize.
@@ -88,6 +92,12 @@ public:
   /** iterator over vids of children of internal nodes */
   virtual IVidIterator<Token> begin() const = 0;
   virtual IVidIterator<Token> end() const = 0;
+
+  /** word type common to all Positions at depth-1; invalid for root */
+  virtual Vid vid() const = 0;
+  /** parent of this node, nullptr for root */
+  virtual ITreeNode<Token> *parent() const = 0;
+  virtual const ITokenIndex<Token> &index() const = 0;
 };
 
 } // namespace sto

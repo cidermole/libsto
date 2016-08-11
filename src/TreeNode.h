@@ -52,6 +52,9 @@ public:
   /** distance from the root */
   virtual size_t depth() const { return depth_; }
 
+  /** Returns a Span over all Positions with this prefix (path from root to this node). */
+  virtual IndexSpan<Token> span();
+
   /**
    * Access to a position within the selected span
    * in O(log(n/k)) with k = TreeNode<Token>::kMaxArraySize.
@@ -89,6 +92,12 @@ public:
   IVidIterator<Token> begin() const { return IVidIterator<Token>(std::shared_ptr<ITreeNodeIterator<typename Token::Vid>>(children_.begin().copy())); }
   IVidIterator<Token> end() const { return IVidIterator<Token>(std::shared_ptr<ITreeNodeIterator<typename Token::Vid>>(children_.end().copy())); }
 
+  /** word type common to all Positions at depth-1; invalid for root */
+  virtual Vid vid() const { return vid_; }
+  /** parent of this node, nullptr for root */
+  virtual ITreeNode<Token> *parent() const { return parent_; }
+  virtual const ITokenIndex<Token> &index() const { return index_; }
+
 protected:
   ITokenIndex<Token> &index_;           /** TokenIndex that this TreeNode belongs to */
   std::atomic<bool> is_leaf_;           /** whether this is a suffix array (leaf node) */
@@ -96,7 +105,7 @@ protected:
   std::shared_ptr<SuffixArray> array_;  /** suffix array, only if is_leaf */
   ITreeNode<Token> *parent_;            /** parent of this node, nullptr for root */
   size_t depth_;                        /** distance from the root */
-  Vid vid_;                             /** word type common to all Positions at depth_-1; invalid for root */
+  Vid vid_;                             /** word type common to all Positions at depth-1; invalid for root */
 
   /**
    * maximum size of suffix array leaf, larger sizes are split up into TreeNodes.

@@ -182,11 +182,11 @@ public:
     }
 
   protected:
-    /** use TokenIndex::span() for constructing an IndexSpan */
+    /** use TokenIndex::span() to construct an IndexSpan */
     Span(const TokenIndex &index);
 
-    /** use TreeNode::span() for constructing an IndexSpan */
-    Span(const ITreeNode<Token> &node);
+    /** Span over the vid range of a TreeNode. use TreeNode::span() to construct an IndexSpan */
+    Span(ITreeNode<Token> &node);
 
   private:
     static constexpr size_t STO_NOT_FOUND = static_cast<size_t>(-1);
@@ -212,6 +212,9 @@ public:
 
   /** Returns the whole span of the entire index (empty lookup sequence). */
   virtual IndexSpan<Token> span() const;
+
+  /** Returns the Span over all Positions with this prefix (path from root to this node). */
+  virtual IndexSpan<Token> span(ITreeNode<Token> &node) const;
 
   virtual Corpus<Token> *corpus() const { return corpus_; }
 

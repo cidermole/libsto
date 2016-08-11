@@ -101,6 +101,11 @@ size_t TreeNode<Token, SuffixArray>::size() const {
 }
 
 template<class Token, class SuffixArray>
+IndexSpan<Token> TreeNode<Token, SuffixArray>::span() {
+  return index_.span(*this);
+}
+
+template<class Token, class SuffixArray>
 Position<Token> TreeNode<Token, SuffixArray>::At(size_t sa_offset, size_t rel_offset) {
   // thread safety: obtain reference first, check later, so we are sure to have a valid array -- avoids race with SplitNode()
   std::shared_ptr<SuffixArray> array = array_;

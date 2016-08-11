@@ -274,6 +274,9 @@ public:
   /** Returns the whole span of the entire index (empty lookup sequence). */
   virtual IndexSpan<Token> span() const = 0;
 
+  /** Returns the Span over all Positions with this prefix (path from root to this node). */
+  virtual IndexSpan<Token> span(ITreeNode<Token> &node) const = 0;
+
   virtual Corpus<Token> *corpus() const = 0;
 
   /**

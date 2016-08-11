@@ -36,6 +36,11 @@ IndexSpan<Token> TokenIndex<Token, TypeTag>::span() const {
 }
 
 template<class Token, typename TypeTag>
+IndexSpan<Token> TokenIndex<Token, TypeTag>::span(ITreeNode<Token> &node) const {
+  return IndexSpan<Token>(std::static_pointer_cast<ITokenIndexSpan<Token>>(std::shared_ptr<Span>(new Span(node))));
+}
+
+template<class Token, typename TypeTag>
 void TokenIndex<Token, TypeTag>::AddSentence(const Sentence<Token> &sent, seq_t seqNum) {
   typedef typename Corpus<Token>::Offset Offset;
 

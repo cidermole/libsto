@@ -22,7 +22,26 @@ TokenIndex<Token, TypeTag>::Span::Span(const TokenIndex<Token, TypeTag> &index) 
 
   // this sentinel should be handled in narrow(),
   // but for a leaf-only tree (rooted in a suffix array) we cannot do better:
-  if (index_->root_->is_leaf())
+  if(this->node()->is_leaf())
+    array_path_.push_back(Range{0, index_->root_->size()});
+}
+
+template<class Token, typename TypeTag>
+TokenIndex<Token, TypeTag>::Span::Span(ITreeNode<Token> &node):
+    index_(dynamic_cast<const TokenIndex<Token, TypeTag> *>(&node.index()))
+{
+  // walk backwards to the root, collect reverse path and sequence
+  ITreeNode<Token> *n = &node;
+  while(n) {
+    tree_path_.push_back(n);
+    if(n->parent()) // not root?
+      sequence_.push_back(n->vid());
+    n = n->parent();
+  }
+  std::reverse(tree_path_.begin(), tree_path_.end());
+  std::reverse(sequence_.begin(), sequence_.end());
+
+  if(this->node()->is_leaf())
     array_path_.push_back(Range{0, index_->root_->size()});
 }
 
