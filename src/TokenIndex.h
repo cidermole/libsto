@@ -99,6 +99,7 @@ public:
     friend class TokenIndex;
     typedef typename TokenIndex::TreeNodeT TreeNodeT;
     typedef typename ITokenIndexSpan<Token>::VidIterator VidIterator;
+    typedef typename ITokenIndexSpan<Token>::PosIterator PosIterator;
 
     // note: use TokenIndex::span() for constructing an IndexSpan
 
@@ -161,6 +162,10 @@ public:
     /** iterate over unique vocabulary IDs at this depth. */
     virtual VidIterator begin() const { return VidIterator(*this, /* begin = */ true); }
     virtual VidIterator end() const { return VidIterator(*this, /* begin = */ false); }
+
+    /** iterate over Positions in this Span. */
+    virtual PosIterator pos_begin() const { return PosIterator(*this, /* begin = */ true); }
+    virtual PosIterator pos_end() const { return PosIterator(*this, /* begin = */ false); }
 
     virtual Span *copy() const { return new Span(*this); }
 
