@@ -17,8 +17,8 @@ namespace sto {
 
 
 template<class Token>
-TreeNodeMemory<Token>::TreeNodeMemory(std::string filename, std::shared_ptr<void>, ITreeNode<Token> *parent, size_t maxArraySize):
-    TreeNode<Token, SuffixArrayMemory<Token>>(parent, maxArraySize)
+TreeNodeMemory<Token>::TreeNodeMemory(std::string filename, std::shared_ptr<void>, ITreeNode<Token> *parent, Vid vid, size_t maxArraySize):
+    TreeNode<Token, SuffixArrayMemory<Token>>(parent, vid, maxArraySize)
 {
   this->array_.reset(new SuffixArray);
   if(filename != "")
@@ -84,7 +84,7 @@ void TreeNodeMemory<Token>::AddPosition(const Sentence<Token> &sent, Offset star
 
 template<class Token>
 void TreeNodeMemory<Token>::AddLeaf(Vid vid) {
-  this->children_[vid] = new TreeNodeMemory<Token>("", nullptr, this, this->kMaxArraySize);
+  this->children_[vid] = new TreeNodeMemory<Token>("", nullptr, this, vid, this->kMaxArraySize);
 }
 
 template<class Token>
@@ -94,7 +94,7 @@ bool TreeNodeMemory<Token>::find_child_(Vid vid, TreeNodeMemory<Token> **child) 
 
 template<class Token>
 TreeNodeMemory<Token> *TreeNodeMemory<Token>::make_child_(Vid vid, typename SuffixArray::iterator first, typename SuffixArray::iterator last, const Corpus<Token> &corpus, Offset depth) {
-  TreeNodeMemory<Token> *new_child = new TreeNodeMemory<Token>("", nullptr, this, this->kMaxArraySize);
+  TreeNodeMemory<Token> *new_child = new TreeNodeMemory<Token>("", nullptr, this, vid, this->kMaxArraySize);
   std::shared_ptr<SuffixArray> new_array = new_child->array_;
   new_array->insert(new_array->begin(), first, last);
   return new_child;

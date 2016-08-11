@@ -37,7 +37,7 @@ public:
    * Constructs an empty TreeNode, i.e. a leaf with a SuffixArray.
    * @param filename  load mtt-build *.sfa file if specified
    */
-  TreeNodeMemory(std::string filename, std::shared_ptr<void>, ITreeNode<Token> *parent = nullptr, size_t maxArraySize = 10000);
+  TreeNodeMemory(std::string filename, std::shared_ptr<void>, ITreeNode<Token> *parent = nullptr, Vid vid = Token::kInvalidVid, size_t maxArraySize = 10000);
 
   virtual ~TreeNodeMemory() = default;
 

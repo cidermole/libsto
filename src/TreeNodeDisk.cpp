@@ -25,8 +25,8 @@
 namespace sto {
 
 template<class Token>
-TreeNodeDisk<Token>::TreeNodeDisk(std::string path, std::shared_ptr<DB<Token>> db, ITreeNode<Token> *parent, size_t maxArraySize) :
-    TreeNode<Token, SuffixArrayDisk<Token>>(parent, maxArraySize), path_(path), db_(db), sync_(true) {
+TreeNodeDisk<Token>::TreeNodeDisk(std::string path, std::shared_ptr<DB<Token>> db, ITreeNode<Token> *parent, Vid vid, size_t maxArraySize) :
+    TreeNode<Token, SuffixArrayDisk<Token>>(parent, vid, maxArraySize), path_(path), db_(db), sync_(true) {
   using namespace boost::filesystem;
 
   assert(db != nullptr);
@@ -60,7 +60,7 @@ void TreeNodeDisk<Token>::LoadSubtree(const Vid *children, size_t num_children) 
   for(const Vid *c = children; c != end; c++) {
     Vid vid = *c;
 
-    TreeNodeDisk<Token> *new_child = new TreeNodeDisk<Token>(child_path(vid), this->db_, this, this->kMaxArraySize);
+    TreeNodeDisk<Token> *new_child = new TreeNodeDisk<Token>(child_path(vid), this->db_, this, vid, this->kMaxArraySize);
     size_t new_size = new_child->size();
     this->children_.FindOrInsert(vid, /* add_size = */ new_size) = new_child;
 
@@ -236,7 +236,7 @@ void TreeNodeDisk<Token>::Merge(IndexSpan<Token> &spanMemory, IndexSpan<Token> &
 template<class Token>
 void TreeNodeDisk<Token>::AddLeaf(Vid vid) {
   //assert(!this->children_.Find(vid)); // appending to children assumes that this vid is new
-  this->children_[vid] = new TreeNodeDisk<Token>(child_path(vid), this->db_, this, this->kMaxArraySize);
+  this->children_[vid] = new TreeNodeDisk<Token>(child_path(vid), this->db_, this, vid, this->kMaxArraySize);
 
   if(sync_) {
     // (in reality, we could just append to the existing blob of vids [in RAM]... child order does not matter)
@@ -277,7 +277,7 @@ std::string TreeNodeDisk<Token>::child_sub_path(Vid vid) {
 
 template<class Token>
 TreeNodeDisk<Token> *TreeNodeDisk<Token>::make_child_(Vid vid, typename SuffixArray::iterator first, typename SuffixArray::iterator last, const Corpus<Token> &corpus, Offset depth) {
-  TreeNodeDisk<Token> *new_child = new TreeNodeDisk<Token>(child_path(vid), this->db_, this, this->kMaxArraySize);
+  TreeNodeDisk<Token> *new_child = new TreeNodeDisk<Token>(child_path(vid), this->db_, this, vid, this->kMaxArraySize);
   new_child->MergeLeaf(SuffixArrayPositionSpan<Token>(first.ptr(), last.ptr()), corpus, depth);
   //new_array->insert(new_array->begin(), first, last); // this is the TreeNodeMemory interface. Maybe we could have implemented insert() here on SuffixArrayDisk, and use a common call?
   return new_child;

@@ -14,11 +14,12 @@
 namespace sto {
 
 template<class Token, class SuffixArray>
-TreeNode<Token, SuffixArray>::TreeNode(ITreeNode<Token> *parent, size_t maxArraySize):
+TreeNode<Token, SuffixArray>::TreeNode(ITreeNode<Token> *parent, Vid vid, size_t maxArraySize):
     is_leaf_(true),
     array_(nullptr),
     parent_(parent),
     depth_(parent ? parent->depth() + 1 : 0),
+    vid_(vid),
     kMaxArraySize(maxArraySize)
 {}
 

@@ -95,6 +95,7 @@ protected:
   std::shared_ptr<SuffixArray> array_; /** suffix array, only if is_leaf */
   ITreeNode<Token> *parent_; /** parent of this node, nullptr for root */
   size_t depth_; /** distance from the root */
+  Vid vid_; /** vid_ common to all Positions up until before this depth_ (exclusive); invalid for root */
 
   /**
    * maximum size of suffix array leaf, larger sizes are split up into TreeNodes.
@@ -106,7 +107,7 @@ protected:
    * Constructs an empty TreeNode, i.e. a leaf with a SuffixArray.
    * Used by TreeNodeDisk() and TreeNodeMemory()
    */
-  TreeNode(ITreeNode<Token> *parent = nullptr, size_t maxArraySize = 100000);
+  TreeNode(ITreeNode<Token> *parent = nullptr, Vid vid = Token::kInvalidVid, size_t maxArraySize = 100000);
 
   /**
    * Split this leaf node (SuffixArray) into a proper TreeNode with children.
