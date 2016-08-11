@@ -21,7 +21,7 @@
 namespace sto {
 
 template<class Token> class IndexSpan;
-template<class Token, typename TypeTag> class TokenIndex;
+template<class Token> class ITokenIndex;
 
 /**
  * A TreeNode belongs to a TokenIndex and represents a word and its possible
@@ -90,6 +90,7 @@ public:
   IVidIterator<Token> end() const { return IVidIterator<Token>(std::shared_ptr<ITreeNodeIterator<typename Token::Vid>>(children_.end().copy())); }
 
 protected:
+  ITokenIndex<Token> &index_;           /** TokenIndex that this TreeNode belongs to */
   std::atomic<bool> is_leaf_;           /** whether this is a suffix array (leaf node) */
   ChildMap children_;                   /** TreeNode children, empty if is_leaf. Additionally carries along partial sums for child sizes. */
   std::shared_ptr<SuffixArray> array_;  /** suffix array, only if is_leaf */
@@ -107,11 +108,12 @@ protected:
    * Constructs an empty TreeNode, i.e. a leaf with a SuffixArray.
    * Used by TreeNodeDisk() and TreeNodeMemory()
    *
+   * @param index         TokenIndex that this TreeNode belongs to
    * @param parent        suffix trie parent; nullptr for root
    * @param vid           word type common to all Positions at depth_-1
    * @param maxArraySize  maximum size of suffix array leaf
    */
-  TreeNode(ITreeNode<Token> *parent = nullptr, Vid vid = Token::kInvalidVid, size_t maxArraySize = 100000);
+  TreeNode(ITokenIndex<Token> &index, size_t maxArraySize = 100000, ITreeNode<Token> *parent = nullptr, Vid vid = Token::kInvalidVid);
 
   /**
    * Split this leaf node (SuffixArray) into a proper TreeNode with children.

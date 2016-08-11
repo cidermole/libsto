@@ -185,6 +185,9 @@ public:
     /** use TokenIndex::span() for constructing an IndexSpan */
     Span(const TokenIndex &index);
 
+    /** use TreeNode::span() for constructing an IndexSpan */
+    Span(const ITreeNode<Token> &node);
+
   private:
     static constexpr size_t STO_NOT_FOUND = static_cast<size_t>(-1);
 

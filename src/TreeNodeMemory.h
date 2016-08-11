@@ -11,7 +11,6 @@
 #include <cassert>
 
 #include "TreeNode.h"
-//#include "TokenIndex.h"
 #include "SuffixArrayMemory.h"
 #include "ITokenIndex.h"
 
@@ -37,7 +36,7 @@ public:
    * Constructs an empty TreeNode, i.e. a leaf with a SuffixArray.
    * @param filename  load mtt-build *.sfa file if specified
    */
-  TreeNodeMemory(std::string filename, std::shared_ptr<void>, ITreeNode<Token> *parent = nullptr, Vid vid = Token::kInvalidVid, size_t maxArraySize = 10000);
+  TreeNodeMemory(ITokenIndex<Token> &index, size_t maxArraySize, std::string filename, std::shared_ptr<void>, ITreeNode<Token> *parent = nullptr, Vid vid = Token::kInvalidVid);
 
   virtual ~TreeNodeMemory() = default;
 
