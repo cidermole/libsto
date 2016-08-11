@@ -212,6 +212,24 @@ struct AtomicPosition {
   std::atomic<Position<Token>> pos;
 };
 
+/**
+ * Comparator for Position<Token> objects.
+ */
+template<class Token>
+struct PosComp {
+public:
+  /** compares Positions of the given 'corpus', from 'depth' onwards */
+  PosComp(const Corpus<Token> &corpus, size_t depth = 0): corpus_(corpus), depth_(depth) {}
+
+  bool operator()(const Position<Token> &a, const Position<Token> &b) {
+    typedef typename Corpus<Token>::Offset Offset;
+    return a.add(static_cast<Offset>(depth_), corpus_).compare(b.add(static_cast<Offset>(depth_), corpus_), corpus_);
+  }
+
+private:
+  const Corpus<Token> &corpus_;
+  size_t depth_;
+};
 
 } // namespace sto
 
