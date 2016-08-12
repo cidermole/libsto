@@ -176,13 +176,13 @@ int main(int argc, char **argv) {
   DocumentMap docMap;
   docMap.Load(args.base + "dmp");
 
-  BitextSide<Token> side(args.lang); // in-memory type BitextSide
+  BitextSide<Token> side(args.lang, docMap); // in-memory type BitextSide
 
   // to do: for speed, we could read as the old mtt-build, sort in parallel, and then create the TokenIndex.
   read_input_lines(side, docMap, args);
 
   if(!args.quiet) cerr << "Writing Vocab, Corpus and TokenIndex ... ";
-  side.Write(std::make_shared<DB<Token>>(*db), args.base, docMap);
+  side.Write(std::make_shared<DB<Token>>(*db), args.base);
   if(!args.quiet) cerr << "done." << endl;
 
   docMap.Write(db, args.base + "docmap.trk");
