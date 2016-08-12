@@ -23,7 +23,7 @@ TokenIndex<Token, TypeTag>::Span::Span(const TokenIndex<Token, TypeTag> &index) 
   // this sentinel should be handled in narrow(),
   // but for a leaf-only tree (rooted in a suffix array) we cannot do better:
   if(this->node()->is_leaf())
-    array_path_.push_back(Range{0, index_->root_->size()});
+    array_path_.push_back(Range{0, this->node()->size()});
 }
 
 template<class Token, typename TypeTag>
@@ -42,7 +42,7 @@ TokenIndex<Token, TypeTag>::Span::Span(ITreeNode<Token> &node):
   std::reverse(sequence_.begin(), sequence_.end());
 
   if(this->node()->is_leaf())
-    array_path_.push_back(Range{0, index_->root_->size()});
+    array_path_.push_back(Range{0, this->node()->size()});
 }
 
 template<class Token, typename TypeTag>
