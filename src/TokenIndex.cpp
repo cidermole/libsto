@@ -158,34 +158,6 @@ void TokenIndex<Token, TypeTag>::AddSubsequence_(const Sentence<Token> &sent, Of
   }
   assert(finished);
   //assert(cur_span.in_array()); // after a split, cur_span is at the new internal TreeNode, not at the SA.
-
-  // TODO: code below should probably be on TreeNode instead -> move to AddPosition()
-
-  // add to cumulative count for internal TreeNodes (excludes SA leaves which increment in AddPosition()), including the root (if it's not a SA)
-  // add sizes from deepest level towards root, so that readers will see a valid state (children being at least as big as they should be)
-  // avoid leaf, potentially avoid most recent internal TreeNode created by a split above.
-  TreeNodeT *child = dynamic_cast<TreeNodeT *>(cur_span.node());
-  TreeNodeT *parent = dynamic_cast<TreeNodeT *>(cur_span.node()->parent());
-
-  while(parent) {
-    // n->AddSize(sent[i].vid, 1);
-    parent->AddSize(child->vid(), 1); // add_size = 1
-    child = parent;
-    parent = dynamic_cast<TreeNodeT *>(parent->parent());
-  }
-
-  /*
-  auto &path = cur_span.tree_path();
-  i = start + cur_span.depth();
-  auto it = path.rbegin();
-  ++it; i--;
-  for(; it != path.rend(); ++it) {
-    TreeNodeT *n = dynamic_cast<TreeNodeT *>(*it);
-    assert(!n->is_leaf());
-    n->AddSize(sent[i].vid, 1); // add_size = 1
-    i--;
-  }
-   */
 }
 
 template<class Token, typename TypeTag>

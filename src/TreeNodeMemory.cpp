@@ -35,6 +35,7 @@ void TreeNodeMemory<Token>::AddPosition(const Sentence<Token> &sent, Offset star
 
   // find insert position in sorted suffix array
   // thread safety: single writer guarantees that the insert_pos will still be valid later below
+
   auto insert_pos = std::upper_bound(
       array->begin(), array->end(),
       corpus_pos,
@@ -42,6 +43,8 @@ void TreeNodeMemory<Token>::AddPosition(const Sentence<Token> &sent, Offset star
         return arr_pos.compare(new_pos, corpus);
       }
   );
+
+  // thread-safe insertion
 
   if(array->capacity() >= array->size() + 1) {
     // safe to insert, no reallocation: shifting elements backwards. readers may observe either old or shifted elements.
@@ -79,6 +82,20 @@ void TreeNodeMemory<Token>::AddPosition(const Sentence<Token> &sent, Offset star
 
   if(array->size() > this->kMaxArraySize && allow_split) {
     SplitNode(corpus); // suffix array grown too large, split into TreeNode
+  }
+
+  // update sizes for the TreeNodes above us
+
+  // add to cumulative count for internal TreeNodes (excludes SA leaves which increment in AddPosition()), including the root (if it's not a SA)
+  // add sizes from deepest level towards root, so that readers will see a valid state (children being at least as big as they should be)
+  // avoid leaf, potentially avoid most recent internal TreeNode created by a split above.
+  TreeNodeMemory<Token> *child = this;
+  TreeNodeMemory<Token> *parent = dynamic_cast<TreeNodeMemory<Token> *>(this->parent());
+
+  while(parent) {
+    parent->AddSize(child->vid(), 1);
+    child = parent;
+    parent = dynamic_cast<TreeNodeMemory<Token> *>(parent->parent());
   }
 }
 
