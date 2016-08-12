@@ -140,11 +140,6 @@ size_t TokenIndex<Token, TypeTag>::Span::depth() const {
 }
 
 template<class Token, typename TypeTag>
-size_t TokenIndex<Token, TypeTag>::Span::tree_depth() const {
-  return tree_path_.size() - 1; // exclude sentinel entry for root (for root, tree_depth() == 0)
-}
-
-template<class Token, typename TypeTag>
 bool TokenIndex<Token, TypeTag>::Span::in_array() const {
   return tree_path_.back()->is_leaf();
 }

@@ -143,14 +143,8 @@ public:
     /** Length of lookup sequence, or the number of times narrow() has been successfully called. */
     virtual size_t depth() const;
 
-    /** Distance from the root in number of TreeNodes. */
-    virtual size_t tree_depth() const;
-
     /** TreeNode at current depth. */
     virtual ITreeNode<Token> *node() const;
-
-    /** first part of path from root through the tree, excluding suffix array range choices */
-    virtual const std::vector<ITreeNode<Token> *>& tree_path() const { return tree_path_; }
 
     /** true if span reaches into a suffix array leaf. */
     virtual bool in_array() const;

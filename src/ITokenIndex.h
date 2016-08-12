@@ -130,14 +130,8 @@ public:
   /** Length of lookup sequence, or the number of times narrow() has been called. */
   virtual size_t depth() const = 0;
 
-  /** Distance from the root in number of TreeNodes. */
-  virtual size_t tree_depth() const = 0;
-
   /** TreeNode at current depth. */
   virtual ITreeNode<Token> *node() const = 0;
-
-  /** first part of path from root through the tree, excluding suffix array range choices */
-  virtual const std::vector<ITreeNode<Token> *>& tree_path() const = 0;
 
   /** true if span reaches into a suffix array leaf. */
   virtual bool in_array() const = 0;
@@ -226,14 +220,8 @@ public:
   /** Length of lookup sequence, or the number of times narrow() has been called. */
   size_t depth() const { return span_->depth(); }
 
-  /** Distance from the root in number of TreeNodes. */
-  size_t tree_depth() const { return span_->tree_depth(); }
-
   /** TreeNode at current depth. */
   ITreeNode<Token> *node() const { return span_->node(); }
-
-  /** first part of path from root through the tree, excluding suffix array range choices */
-  const std::vector<ITreeNode<Token> *>& tree_path() const { return span_->tree_path(); }
 
   /** true if span reaches into a suffix array leaf. */
   bool in_array() const { return span_->in_array(); }
