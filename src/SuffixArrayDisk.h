@@ -13,6 +13,7 @@
 
 #include "Corpus.h"
 #include "MappedFile.h"
+#include "ObjIterator.h"
 
 namespace rocksdb {
 class DB;
@@ -40,9 +41,14 @@ struct __attribute__((packed)) SuffixArrayPosition {
 template<class Token>
 class SuffixArrayPositionSpan {
 public:
+  typedef Position<Token> value_type;
+
   SuffixArrayPositionSpan(SuffixArrayPosition<Token> *first, SuffixArrayPosition<Token> *last) : first_(first), last_(last) {}
   Position<Token> operator[](size_t pos) const { return first_[pos]; }
   size_t size() const { return last_ - first_; }
+
+  ObjIterator<SuffixArrayPositionSpan<Token>> begin() const { return ObjIterator<SuffixArrayPositionSpan<Token>>(*this, /* begin = */ true); }
+  ObjIterator<SuffixArrayPositionSpan<Token>> end() const { return ObjIterator<SuffixArrayPositionSpan<Token>>(*this, /* begin = */ false); }
 
 private:
   SuffixArrayPosition<Token> *first_;
@@ -79,7 +85,7 @@ public:
     // compat, testing
     Iterator operator+(size_t add) { return Iterator(pos_ + add); }
     Iterator &operator+=(size_t add) { pos_ += add; return *this; }
-    size_t operator-(const Iterator &other) { return pos_ - other.pos_; } // note: should be ptrdiff_t instead!?
+    difference_type operator-(const Iterator &other) { return pos_ - other.pos_; }
 
     SuffixArrayPosition<Token> *ptr() const { return pos_; }
   private:

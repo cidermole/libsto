@@ -223,7 +223,8 @@ public:
 
   bool operator()(const Position<Token> &a, const Position<Token> &b) {
     typedef typename Corpus<Token>::Offset Offset;
-    return a.add(static_cast<Offset>(depth_), corpus_).compare(b.add(static_cast<Offset>(depth_), corpus_), corpus_);
+    // for some reason, we defined Position::compare() as an operator >
+    return !a.add(static_cast<Offset>(depth_), corpus_).compare(b.add(static_cast<Offset>(depth_), corpus_), corpus_);
   }
 
 private:

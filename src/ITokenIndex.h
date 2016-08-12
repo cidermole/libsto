@@ -14,6 +14,7 @@
 #include "Range.h"
 #include "Corpus.h"
 #include "ITreeNode.h"
+#include "ObjIterator.h"
 
 namespace sto {
 
@@ -27,6 +28,9 @@ template<class Token> class DB;
 template<typename Token>
 class ITokenIndexSpan {
 public:
+  typedef ObjIterator<ITokenIndexSpan<Token>> PosIterator;
+  typedef Position<Token> value_type;
+
   virtual ~ITokenIndexSpan() {}
 
   /**
@@ -70,32 +74,6 @@ public:
     IVidIterator<Token> iter_;
     bool is_leaf_;
   };
-
-  /**
-   * Iterator over Positions in a TokenIndex::Span
-   */
-  class PosIterator {
-  public:
-    PosIterator(const PosIterator &other) = default;
-
-    /** use TokenIndex::Span::begin() / end() instead. */
-    PosIterator(const ITokenIndexSpan &span, bool begin = true) : span_(span), index_(begin ? 0 : span.size()) {}
-
-    Position<Token> operator*() {
-      return span_[index_];
-    }
-    PosIterator &operator++() {
-      ++index_;
-      return *this;
-    }
-    bool operator!=(const PosIterator &other) {
-      return index_ != other.index_;
-    }
-  private:
-    const ITokenIndexSpan &span_;
-    size_t index_;
-  };
-
 
   /**
    * Narrow the span by adding a token to the end of the lookup sequence.
@@ -142,12 +120,12 @@ public:
   virtual Corpus<Token> *corpus() const = 0;
 
   /** iterate over unique vocabulary IDs at this depth. */
-  virtual VidIterator begin() const = 0;
-  virtual VidIterator end() const = 0;
+  virtual VidIterator vid_begin() const = 0;
+  virtual VidIterator vid_end() const = 0;
 
   /** iterate over Positions in this Span. */
-  virtual PosIterator pos_begin() const = 0;
-  virtual PosIterator pos_end() const = 0;
+  virtual PosIterator begin() const = 0;
+  virtual PosIterator end() const = 0;
 
   /** allocate a new instance that is a copy of this instance. */
   virtual ITokenIndexSpan *copy() const = 0;
@@ -232,9 +210,8 @@ public:
   Corpus<Token> *corpus() const { return span_->corpus(); }
 
   /** iterate over unique vocabulary IDs at this depth. */
-  VidIterator begin() const { return span_->begin(); }
-
-  VidIterator end() const { return span_->end(); }
+  VidIterator begin() const { return span_->vid_begin(); }
+  VidIterator end() const { return span_->vid_end(); }
 
   /**
    * @returns the number of Positions comparing equal from the current index,

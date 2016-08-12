@@ -112,7 +112,6 @@ void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<To
   size_t addSize = addSpan.size();
   size_t curSize = this->array_->size();
   size_t newSize = curSize + addSize;
-  size_t icur = 0, iadd = 0;
 
   SuffixArray &curSpan = *this->array_;
   //IndexSpan<Token> curSpan = this->span(); // IndexSpan, why r u so expensive to query using operator[]?
@@ -127,39 +126,13 @@ void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<To
   std::unique_ptr<SuffixArrayPosition<Token>[]> newArray(new SuffixArrayPosition<Token>[newSize]);
   SuffixArrayPosition<Token> *pnew = newArray.get();
 
-  assert(addSize > 0 || depth == 0); // the only time we may get a zero-size leaf is if we are merging in an empty addSpan (and even then, only with a leaf root on disk)
-  Vid vid = depth > 0 ? Position<Token>(addSpan[0]).add(depth-1, corpus).vid(corpus) : 0;
+  // the only time we may get a zero-size leaf is if we are merging in an empty addSpan (and even then, only with a leaf root on disk)
+  assert(addSize > 0 || depth == 0);
 
-  // to do: if Span had an iterator, we could use std::merge() here.
-
-  Position<Token> cur;
-  Position<Token> add;
-  while(icur < curSize && iadd < addSize) {
-    // assuming that curSpan is much larger, this loop will be most active
-    add = addSpan[iadd];
-    while(icur < curSize && add.compare((cur = curSpan[icur]), corpus)) { // add > cur
-      assert(depth == 0 || cur.add(depth-1, corpus).vid(corpus) == vid); // since span over the same vid -> each Position (at depth-1) should have the same vid.
-      *pnew++ = cur;
-      icur++;
-    }
-    while(icur < curSize && add == (cur = curSpan[icur])) { // add == cur
-      assert(depth == 0 || cur.add(depth-1, corpus).vid(corpus) == vid); // since span over the same vid -> each Position (at depth-1) should have the same vid.
-      // discard equal Positions (there should really ever be just one)
-      icur++;
-    }
-    assert(depth == 0 || add.add(depth-1, corpus).vid(corpus) == vid); // since span over the same vid -> each Position (at depth-1) should have the same vid.
-    *pnew++ = add;
-    iadd++;
-  }
-  // fill from the side that still has remaining positions
-  while(icur < curSize) {
-    cur = curSpan[icur++];
-    *pnew++ = cur;
-  }
-  while(iadd < addSize) {
-    add = addSpan[iadd++];
-    *pnew++ = add;
-  }
+  // merge the two spans' Positions into newArray
+  //PosComp<Token> comp(corpus, depth);
+  PosComp<Token> comp(corpus, 0);
+  pnew = std::set_union(curSpan.begin(), curSpan.end(), addSpan.begin(), addSpan.end(), pnew, comp);
 
 #ifndef NDEBUG
   // postconditions
@@ -209,7 +182,9 @@ void TreeNodeDisk<Token>::Merge(IndexSpan<Token> &spanMemory, IndexSpan<Token> &
   assert(spanDisk.node() == this);
 
   if(spanDisk.node()->is_leaf()) {
-    MergeLeaf(spanMemory, *spanDisk.corpus());
+    // trick: IndexSpan::begin() iterates over vid,
+    // but ITokenIndexSpan::begin() iterates over Positions, which is what we want here.
+    MergeLeaf(*spanMemory.get(), *spanDisk.corpus());
     return;
   }
 

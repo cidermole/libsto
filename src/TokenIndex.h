@@ -155,12 +155,12 @@ public:
     virtual Corpus<Token> *corpus() const;
 
     /** iterate over unique vocabulary IDs at this depth. */
-    virtual VidIterator begin() const { return VidIterator(*this, /* begin = */ true); }
-    virtual VidIterator end() const { return VidIterator(*this, /* begin = */ false); }
+    virtual VidIterator vid_begin() const { return VidIterator(*this, /* begin = */ true); }
+    virtual VidIterator vid_end() const { return VidIterator(*this, /* begin = */ false); }
 
     /** iterate over Positions in this Span. */
-    virtual PosIterator pos_begin() const { return PosIterator(*this, /* begin = */ true); }
-    virtual PosIterator pos_end() const { return PosIterator(*this, /* begin = */ false); }
+    virtual PosIterator begin() const { return PosIterator(*this, /* begin = */ true); }
+    virtual PosIterator end() const { return PosIterator(*this, /* begin = */ false); }
 
     virtual Span *copy() const { return new Span(*this); }
 
