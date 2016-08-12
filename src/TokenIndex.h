@@ -110,7 +110,7 @@ public:
     Span& operator=(Span &&other) = default;
 
     /**
-     * Narrow the span by adding a token to the end of the lookup sequence.
+     * Narrow the span by adding a Token to the end of the lookup sequence.
      * Returns new span size.
      * If the token was not found at all, returns zero without modifying the
      * IndexSpan.
@@ -135,11 +135,12 @@ public:
     /**
      * Number of token positions spanned in the index.
      *
-     * Returns a size cached when narrow() was called.
+     * Note that this always returns NON-ZERO size here (except on empty TokenIndex),
+     * even if the lookup sequence was not found. Use the return value of narrow() instead.
      */
     virtual size_t size() const;
 
-    /** Length of lookup sequence, or the number of times narrow() has been called. */
+    /** Length of lookup sequence, or the number of times narrow() has been successfully called. */
     virtual size_t depth() const;
 
     /** Distance from the root in number of TreeNodes. */
@@ -213,7 +214,7 @@ public:
   /** Returns the whole span of the entire index (empty lookup sequence). */
   virtual IndexSpan<Token> span() const;
 
-  /** Returns the Span over all Positions with this prefix (path from root to this node). */
+  /** Returns the Span over all Positions. */
   virtual IndexSpan<Token> span(ITreeNode<Token> &node) const;
 
   virtual Corpus<Token> *corpus() const { return corpus_; }

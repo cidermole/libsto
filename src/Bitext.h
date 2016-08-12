@@ -89,37 +89,64 @@ struct BitextSide : public sto::Loggable {
 };
 
 /**
- * Incrementally updatable Bitext - aggregation of backing libsto objects.
+ * Collection of word-aligned sentence pairs, which are indexed for fast lookup of phrases.
+ *
+ * Each sentence pair belongs to a specific 'domain' (called 'document' within moses).
+ * We keep both global and domain-specific indexes.
+ *
+ * Allows updating (appending sentence pairs), which is disk-persistent if the incremental variant was opened.
+ *
  *
  * This is a base class implementing the persistence interface IncrementalBitext.
  * For queries, use class SBitext (in moses).
  */
 class Bitext : public virtual sto::IncrementalBitext, public sto::Loggable {
 public:
-  /** Create an empty Bitext. */
+  /**
+   * Create an empty Bitext in-memory.
+   *
+   * @param l1  source language 2-letter code
+   * @param l2  target language 2-letter code
+   */
   Bitext(const std::string &l1, const std::string &l2);
 
   /**
-   * Load existing Bitext from DB and disk.
+   * Load existing incremental Bitext from disk, opening it in read/append mode.
    *
    * @param base  base pathname prefix, e.g. "phrase_tables/bitext."
+   * @param l1    source language 2-letter code
+   * @param l2    target language 2-letter code
    */
   Bitext(const std::string &base, const std::string &l1, const std::string &l2);
 
   virtual ~Bitext();
 
-
+  /** Opens legacy Bitext in read-only mode. */
   void OpenLegacy(const std::string &base);
-
+  /** Opens incremental Bitext in read/append mode. */
   void OpenIncremental(const std::string &base);
 
-  // to do: change IncrementalBitext interface (add (l1, l2) constructor), and remove this method
+  /**
+   * Auto-detect the type of Bitext and open it.
+   *
+   * Opens legacy Bitext in read-only mode.
+   * Opens incremental Bitext in read/append mode.
+   *
+   * @param base  base pathname prefix, e.g. "phrase_tables/model." for legacy Bitext. Suggest "phrase_tables/bitext." for incremental Bitext
+   */
   virtual void Open(const std::string &base) override;
 
+  /**
+   * Add a word-aligned sentence pair to a specific domain.
+   *
+   * If a new, incremental Bitext was opened, then this method will persist the writes to disk.
+   */
   virtual void AddSentencePair(const std::vector<std::string> &srcSent, const std::vector<std::string> &trgSent, const std::vector<std::pair<size_t, size_t>> &alignment, const std::string &domain) override;
 
   /**
    * Write to (empty) DB and disk.
+   *
+   * Useful to load a legacy bitext (which is not updatable) and write it out in the new format.
    *
    * @param base  base pathname prefix, e.g. "phrase_tables/bitext."
    */

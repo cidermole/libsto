@@ -43,20 +43,20 @@ public:
     /** use TokenIndex::Span::begin() / end() instead. */
     VidIterator(const ITokenIndexSpan &span, bool begin = true) : span_(span), index_(begin ? 0 : span.size()), depth_(span.depth()), iter_(begin ? span.node()->begin() : span.node()->end()), is_leaf_(span.in_array()) {}
 
-    virtual Vid operator*() {
+    Vid operator*() {
       if(is_leaf_)
         return span_[index_].add((Offset) depth_, *span_.corpus()).vid(*span_.corpus());
       else
         return *iter_;
     }
-    virtual VidIterator &operator++() {
+    VidIterator &operator++() {
       if(is_leaf_)
         index_ += span_.StepSize(this->operator*()); // number of Positions to skip to get to the next vid at the current depth
       else
         ++iter_;
       return *this;
     }
-    virtual bool operator!=(const VidIterator &other) {
+    bool operator!=(const VidIterator &other) {
       if(is_leaf_)
         return index_ != other.index_;
       else
@@ -262,7 +262,7 @@ private:
 
 
 /**
- * Interface to a corpus index.
+ * Interface to a Corpus index for fast lookup of phrases.
  *
  * This is the public interface, which is implemented by TokenIndex for memory or disk-backed storage.
  */

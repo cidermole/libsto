@@ -119,9 +119,11 @@ Position<Token> TokenIndex<Token, TypeTag>::Span::at_unchecked(size_t rel) const
 template<class Token, typename TypeTag>
 size_t TokenIndex<Token, TypeTag>::Span::size() const {
   if (in_array()) {
+    // leaf sizes: ranges cached from when narrow() was called
     assert(array_path_.size() > 0);
     return array_path_.back().size();
   } else {
+    // node size: queried now, returns up-to-date node size
     assert(tree_path_.size() > 0);
     return tree_path_.back()->size();
   }
