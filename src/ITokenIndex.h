@@ -244,6 +244,8 @@ public:
    */
   size_t StepSize(size_t index) const { return span_->StepSize(index); }
 
+  ITokenIndexSpan<Token> *get() const { return span_.get(); }
+
 private:
   std::shared_ptr<ITokenIndexSpan<Token>> span_;
 };
