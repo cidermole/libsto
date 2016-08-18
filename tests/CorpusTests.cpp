@@ -219,3 +219,22 @@ TEST(CorpusTests, alignment_write_read_append) {
 
   //remove_all("res/CorpusTests"); // clean up
 }
+
+/** constraint that has to be met by operator< */
+TEST(CorpusTests, operator_less_position_equality) {
+  Vocab<SrcToken> sv("res/vocab.tdx");
+  Corpus<SrcToken> corpus(&sv);
+
+  std::vector<std::string> surface = {"orange", "apple", "and", "pear"};
+  std::vector<SrcToken> sentence;
+  for(auto s : surface)
+    sentence.push_back(sv.at(s)); // vocabulary lookup
+  corpus.AddSentence(sentence);
+
+  // comparing apples and apples
+  Position<SrcToken> apple{0, 1};
+  EXPECT_EQ("apple", apple.surface(corpus));
+
+  PosComp<SrcToken> comp(corpus, 0);
+  EXPECT_FALSE(comp(apple, apple)) << "comp(a, b) means a < b. EQUALITY must mean LESS is false, since !(a < b) && !(b < a)  <=>  (a == b)";
+}
