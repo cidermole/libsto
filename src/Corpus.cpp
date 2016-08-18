@@ -320,8 +320,18 @@ bool Position<Token>::compare(const Position<Token> &other, const Corpus<Token> 
   Sentence<Token> sentOther(corpus, other.sid);
 
   // this sorts by vid (not by surface form)
-  return std::lexicographical_compare(sentThis.begin_ + offset, sentThis.begin_ + sentThis.size_,
-                                      sentOther.begin_ + other.offset, sentOther.begin_ + sentOther.size_);
+  bool smaller = std::lexicographical_compare(sentThis.begin_ + offset, sentThis.begin_ + sentThis.size_,
+                                              sentOther.begin_ + other.offset, sentOther.begin_ + sentOther.size_);
+
+  bool larger = std::lexicographical_compare(sentOther.begin_ + other.offset, sentOther.begin_ + sentOther.size_,
+                                             sentThis.begin_ + offset, sentThis.begin_ + sentThis.size_);
+
+  if(!smaller && !larger) {
+    // compared equal in Tokens? tolerate duplicate suffixes in different sentences by additional ordering
+    return sid < other.sid || (sid == other.sid && offset < other.offset);
+  } else {
+    return smaller;
+  }
 }
 
 template<class Token>
