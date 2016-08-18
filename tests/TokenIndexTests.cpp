@@ -9,6 +9,7 @@
 #include <sstream>
 #include <utility>
 #include <unordered_set>
+#include <type_traits>
 
 #include <gtest/gtest.h>
 
@@ -493,89 +494,73 @@ TYPED_TEST(TokenIndexTests, static_vs_dynamic_eim) {
   EXPECT_EQ(staticBucket, dynamicBucket);
 }
 
-/** type distinction between IndexTypeDisk and IndexTypeMemory for test_persistence) */
-template<class Token, typename TypeTag>
-struct TestPersistence {
-  void operator()(TokenIndexTests<TokenIndex<Token, TypeTag>> *self);
-};
-
-template<class Token>
-struct TestPersistence<Token, IndexTypeMemory> {
-  void operator()(TokenIndexTests<TokenIndex<Token, IndexTypeMemory>> *self) {}
-};
-
-template<class Token>
-struct TestPersistence<Token, IndexTypeDisk> {
+TYPED_TEST(TokenIndexTests, test_persistence) {
+  typedef typename TypeParam::TokenT Token;
   typedef TokenIndex<Token, IndexTypeDisk> TokenIndexType;
 
-  void operator()(TokenIndexTests<TokenIndexType> *self) {
-    // for now, like suffix_array_split
-    auto &vocab = self->vocab;
+  // run this test only on IndexTypeDisk
+  if(!std::is_same<typename TypeParam::TypeTagT, IndexTypeDisk>::value)
+    return;
 
-    //                                      1       2      3      4      5      6     7
-    std::vector<std::string> vocab_id_order{"</s>", "bit", "cat", "dog", "mat", "on", "the"};
-    for(auto s : vocab_id_order)
-      self->vocab[s]; // vocabulary insert (in this ID order, so sort by vid is intuitive)
+  // for now, like suffix_array_split
+  auto &vocab = this->vocab;
 
-    //                                     0      1      2      3      4      5     6      7
-    std::vector<std::string> sent_words = {"the", "dog", "bit", "the", "cat", "on", "the", "mat"};
+  //                                      1       2      3      4      5      6     7
+  std::vector<std::string> vocab_id_order{"</s>", "bit", "cat", "dog", "mat", "on", "the"};
+  for(auto s : vocab_id_order)
+    this->vocab[s]; // vocabulary insert (in this ID order, so sort by vid is intuitive)
 
-    //{
-      TokenIndexType tokenIndex(self->basePath, self->corpus, self->db, /* maxLeafSize = */ 7);
+  //                                     0      1      2      3      4      5     6      7
+  std::vector<std::string> sent_words = {"the", "dog", "bit", "the", "cat", "on", "the", "mat"};
 
-      Sentence<Token> sentence = self->AddSentence(sent_words);
-      tokenIndex.AddSentence(sentence);
+  //{
+  TokenIndexType tokenIndex(this->basePath, this->corpus, this->db, /* maxLeafSize = */ 7);
 
-      // tokenIndex goes out of scope, DB is closed etc.
-    //}
+  Sentence<Token> sentence = this->AddSentence(sent_words);
+  tokenIndex.AddSentence(sentence);
 
-    // use the updates directly from memory
-    TokenIndexType& loadedTokenIndex = tokenIndex;
+  // tokenIndex goes out of scope, DB is closed etc.
+  //}
 
-    // load persisted index from disk/DB
-    //TokenIndexType loadedTokenIndex(self->basePath, self->corpus, self->db, /* maxLeafSize = */ 7);
+  // use the updates directly from memory
+  TokenIndexType& loadedTokenIndex = tokenIndex;
 
-    // because of maxLeafSize=8, these accesses go via a first TreeNode level.
-    // however, the hash function % ensures that our vids are still in order, even though the API doesn't guarantee this.
-    // so this is not a good test.
+  // load persisted index from disk/DB
+  //TokenIndexType loadedTokenIndex(this->basePath, this->corpus, this->db, /* maxLeafSize = */ 7);
 
-    auto span = loadedTokenIndex.span();
-    loadedTokenIndex.DebugPrint(std::cerr);
-    EXPECT_FALSE(span.in_array()) << "the TreeNode root of TokenIndex should have been split";
-    EXPECT_EQ(sent_words.size(), span.size()) << "the Sentence should have added its tokens to the IndexSpan";
+  // because of maxLeafSize=8, these accesses go via a first TreeNode level.
+  // however, the hash function % ensures that our vids are still in order, even though the API doesn't guarantee this.
+  // so this is not a good test.
 
-    std::vector<size_t>      expect_suffix_array_offset  = {2,     4,     1,     7,     5,    3,     0,     6 };
-    std::vector<std::string> expect_suffix_array_surface = {"bit", "cat", "dog", "mat", "on", "the", "the", "the"};
+  auto span = loadedTokenIndex.span();
+  loadedTokenIndex.DebugPrint(std::cerr);
+  EXPECT_FALSE(span.in_array()) << "the TreeNode root of TokenIndex should have been split";
+  EXPECT_EQ(sent_words.size(), span.size()) << "the Sentence should have added its tokens to the IndexSpan";
 
-    for(size_t i = 0; i < expect_suffix_array_surface.size(); i++) {
-      EXPECT_EQ(expect_suffix_array_surface[i], span[i].surface(self->corpus)) << "verifying surface @ SA position " << i;
-      EXPECT_EQ(expect_suffix_array_offset[i], span[i].offset) << "verifying offset @ SA position " << i;
-    }
+  std::vector<size_t>      expect_suffix_array_offset  = {2,     4,     1,     7,     5,    3,     0,     6 };
+  std::vector<std::string> expect_suffix_array_surface = {"bit", "cat", "dog", "mat", "on", "the", "the", "the"};
 
-    //loadedTokenIndex.DebugPrint(std::cerr);
-
-    span.narrow(vocab["bit"]);
-    EXPECT_EQ(1, span.size()) << "'bit' range size check";
-    span.narrow(vocab["the"]);
-    EXPECT_EQ(1, span.size()) << "'bit the' range size check";
-    size_t newsz = span.narrow(vocab["dog"]);
-    EXPECT_EQ(0, newsz) << "'bit the dog' must be size 0, i.e. not found";
-
-    EXPECT_EQ(1, span.size()) << "failed call must not narrow the span";
-    EXPECT_EQ(1, span.narrow(vocab["cat"])) << "IndexSpan must now behave as if the failed narrow() call had not happened";
-
-    span = loadedTokenIndex.span();
-    EXPECT_EQ(3, span.narrow(vocab["the"])) << "'the' range size check";
-    EXPECT_EQ(1, span.narrow(vocab["cat"])) << "'the' range size check";
-    EXPECT_EQ(1, span.size()) << "span size";
-
-    std::cerr << "TestPersistence<Token, IndexTypeDisk>::operator() just ran" << std::endl;
+  for(size_t i = 0; i < expect_suffix_array_surface.size(); i++) {
+    EXPECT_EQ(expect_suffix_array_surface[i], span[i].surface(this->corpus)) << "verifying surface @ SA position " << i;
+    EXPECT_EQ(expect_suffix_array_offset[i], span[i].offset) << "verifying offset @ SA position " << i;
   }
-};
 
-TYPED_TEST(TokenIndexTests, test_persistence) {
-  TestPersistence<typename TypeParam::TokenT, typename TypeParam::TypeTagT> p;
-  p(this);
+  //loadedTokenIndex.DebugPrint(std::cerr);
+
+  span.narrow(vocab["bit"]);
+  EXPECT_EQ(1, span.size()) << "'bit' range size check";
+  span.narrow(vocab["the"]);
+  EXPECT_EQ(1, span.size()) << "'bit the' range size check";
+  size_t newsz = span.narrow(vocab["dog"]);
+  EXPECT_EQ(0, newsz) << "'bit the dog' must be size 0, i.e. not found";
+
+  EXPECT_EQ(1, span.size()) << "failed call must not narrow the span";
+  EXPECT_EQ(1, span.narrow(vocab["cat"])) << "IndexSpan must now behave as if the failed narrow() call had not happened";
+
+  span = loadedTokenIndex.span();
+  EXPECT_EQ(3, span.narrow(vocab["the"])) << "'the' range size check";
+  EXPECT_EQ(1, span.narrow(vocab["cat"])) << "'the' range size check";
+  EXPECT_EQ(1, span.size()) << "span size";
 }
 
 
