@@ -564,20 +564,19 @@ TYPED_TEST(TokenIndexTests, test_persistence) {
 }
 
 
-/*
- *
- * disabled because it needs basePath, which now is templated, so this fails on IndexTypeMemory instantiation
-
-TYPED_TEST(TokenIndexTests, TokenIndexDisk) {
-  typedef TypeParam TokenIndexType;
+TYPED_TEST(TokenIndexTests, test_merge) {
   typedef typename TypeParam::TokenT Token;
-  auto &tokenIndex = this->tokenIndex;
+  typedef TokenIndex<Token, IndexTypeDisk> TokenIndexType;
 
-  TokenIndex<Token, IndexTypeDisk> indexDisk(this->basePath, this->corpus);
-  // this->fill_tree_2level_common_prefix_the(indexDisk);
+  // run this test only on IndexTypeDisk
+  if(!std::is_same<typename TypeParam::TypeTagT, IndexTypeDisk>::value)
+    return;
+
+  TokenIndex<Token, IndexTypeMemory> tokenIndex(this->corpus);
+
+  TokenIndex<Token, IndexTypeDisk> indexDisk(this->basePath, this->corpus, this->db);
 
   Sentence<Token> sentence = this->AddSentence({"this", "is", "an", "example"});
-  //indexDisk.AddSentence(sentence); // not supported by IndexTypeDisk
 
   tokenIndex.AddSentence(sentence);
   //indexDisk.Merge(tokenIndex); // merge of 'sentence' into empty TokenIndex
@@ -592,7 +591,7 @@ TYPED_TEST(TokenIndexTests, TokenIndexDisk) {
   }
 
   Sentence<Token> sent2 = this->AddSentence({"this", "is", "not", "an", "example"});
-  TokenIndexType index2(this->corpus);
+  TokenIndex<Token, IndexTypeMemory> index2(this->corpus);
   tokenIndex.AddSentence(sent2);
   indexDisk.AddSentence(sent2);
   //index2.AddSentence(sent2);
@@ -601,22 +600,9 @@ TYPED_TEST(TokenIndexTests, TokenIndexDisk) {
   // this check happens to work because equal positions get appended in both cases, so the order is stable
   // otherwise, we would have to check buckets
   auto refSpan2 = tokenIndex.span();
+  span = indexDisk.span();
+  EXPECT_EQ(refSpan2.size(), span.size());
   for(size_t i = 0; i < span.size(); i++) {
     EXPECT_EQ(refSpan2[i], span[i]) << "index entry at i=" << i << " should be equal to reference";
   }
 }
-
-*/
-
-/*
-#include "TreeNodeDisk.h"
-
-TYPED_TEST(TokenIndexTests, TreeNodeDisk) {
-  typedef typename TypeParam::TokenT Token;
-
-  std::string csp1 = TreeNodeDisk<Token>::child_sub_path(0x7a120);
-  std::string csp2 = TreeNodeDisk<Token>::child_sub_path(1);
-  EXPECT_EQ("0007a/0007a120", csp1);
-  EXPECT_EQ("00000/00000001", csp2);
-}
-*/
