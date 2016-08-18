@@ -166,7 +166,7 @@ public:
 
   Position(const AtomicPosition<Token> &atomic_pos) : Position(atomic_pos.load()) {}
 
-  /** like operator>(this, other) */
+  /** like operator<(this, other) */
   bool compare(const Position<Token> &other, const Corpus<Token> &corpus) const;
 
   /** directly compares (sid,offset) pair */
@@ -179,6 +179,8 @@ public:
 
   /** add offset. */
   Position add(size_t offset, const Corpus<Token> &corpus) const;
+
+  std::string DebugStr(const Corpus<Token> &corpus) const;
 };
 
 
@@ -223,8 +225,7 @@ public:
 
   bool operator()(const Position<Token> &a, const Position<Token> &b) {
     typedef typename Corpus<Token>::Offset Offset;
-    // for some reason, we defined Position::compare() as an operator >
-    return !a.add(static_cast<Offset>(depth_), corpus_).compare(b.add(static_cast<Offset>(depth_), corpus_), corpus_);
+    return a.add(static_cast<Offset>(depth_), corpus_).compare(b.add(static_cast<Offset>(depth_), corpus_), corpus_);
   }
 
 private:

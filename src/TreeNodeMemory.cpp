@@ -39,8 +39,8 @@ void TreeNodeMemory<Token>::AddPosition(const Sentence<Token> &sent, Offset star
   auto insert_pos = std::upper_bound(
       array->begin(), array->end(),
       corpus_pos,
-      [&corpus](const Position<Token> &new_pos, const Position<Token> &arr_pos) {
-        return arr_pos.compare(new_pos, corpus);
+      [&corpus](const Position<Token> &a, const Position<Token> &b) {
+        return a.compare(b, corpus);
       }
   );
 

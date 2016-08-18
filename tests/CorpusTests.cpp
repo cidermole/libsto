@@ -238,3 +238,55 @@ TEST(CorpusTests, operator_less_position_equality) {
   PosComp<SrcToken> comp(corpus, 0);
   EXPECT_FALSE(comp(apple, apple)) << "comp(a, b) means a < b. EQUALITY must mean LESS is false, since !(a < b) && !(b < a)  <=>  (a == b)";
 }
+
+/** constraints that have to be met by operator< */
+TEST(CorpusTests, operator_less_orderings) {
+  Vocab<SrcToken> sv;
+  Corpus<SrcToken> corpus(&sv);
+
+  // insert vids in this order
+  sv["and"];
+  sv["apple"];
+  sv["orange"];
+  sv["pear"];
+
+  std::vector<std::string> surface = {"orange", "apple", "and", "pear"};
+  std::vector<SrcToken> sentence;
+  for(auto s : surface)
+    sentence.push_back(sv.at(s)); // vocabulary lookup
+  corpus.AddSentence(sentence);
+
+  // comparing apples and oranges
+  Position<SrcToken> apple{0, 1};
+  Position<SrcToken> orange{0, 0};
+  Position<SrcToken> pear{0, 3};
+
+  // true statements about our test setup
+  EXPECT_EQ("apple", apple.surface(corpus));
+  EXPECT_EQ("orange", orange.surface(corpus));
+  EXPECT_TRUE(apple.vid(corpus) < orange.vid(corpus));
+  EXPECT_TRUE(apple.vid(corpus) < pear.vid(corpus));
+
+  // testing PosComp
+  PosComp<SrcToken> comp(corpus, 0);
+
+  EXPECT_TRUE(comp(apple, orange)) << "comp(a, b) means a < b.  (apple < orange) expected.  plain single-vid ordering test.";
+
+
+  std::vector<std::string> surface2 = {"apple", "and", "apple"};
+  std::vector<SrcToken> sentence2;
+  for(auto s : surface2)
+    sentence2.push_back(sv.at(s)); // vocabulary lookup
+  corpus.AddSentence(sentence2);
+
+  Position<SrcToken> apple_and_apple{1, 0};
+  Position<SrcToken> apple_and_pear{0, 1};
+
+  // apple and apple < apple and pear
+  EXPECT_TRUE(comp(apple_and_apple, apple_and_pear)) << "comp(a, b) means a < b.  (apple and apple < apple and pear) expected.  ordering at depth=2 test.";
+
+  Position<SrcToken> apple_eos{1, 2};
+
+  // apple </s> < apple and pear </s>
+  EXPECT_TRUE(comp(apple_eos, apple_and_pear)) << "comp(a, b) means a < b.  (apple </s> < apple and ...) expected.  EOS and shorter-sequence ordering test.";
+}

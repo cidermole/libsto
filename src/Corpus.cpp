@@ -7,6 +7,7 @@
 #include <cassert>
 #include <algorithm>
 #include <sstream>
+
 #include <unistd.h>
 
 #include "Corpus.h"
@@ -318,9 +319,9 @@ bool Position<Token>::compare(const Position<Token> &other, const Corpus<Token> 
   Sentence<Token> sentThis(corpus, sid);
   Sentence<Token> sentOther(corpus, other.sid);
 
-  // this uses Token::operator<(other, this), which sorts by vid (not by surface form)
-  return std::lexicographical_compare(sentOther.begin_ + other.offset, sentOther.begin_ + sentOther.size_,
-                                      sentThis.begin_ + offset, sentThis.begin_ + sentThis.size_);
+  // this sorts by vid (not by surface form)
+  return std::lexicographical_compare(sentThis.begin_ + offset, sentThis.begin_ + sentThis.size_,
+                                      sentOther.begin_ + other.offset, sentOther.begin_ + sentOther.size_);
 }
 
 template<class Token>
@@ -347,6 +348,18 @@ template<class Token>
 Position<Token> Position<Token>::add(size_t offset, const Corpus<Token> &corpus) const {
   assert(corpus.sentence(this->sid).size() + 1 - this->offset >= offset + 1);
   return Position(this->sid, this->offset + offset);
+}
+
+template<class Token>
+std::string Position<Token>::DebugStr(const Corpus<Token> &corpus) const {
+  std::stringstream ss;
+  Sentence<Token> sent = corpus.sentence(sid);
+  ss << "[sid=" << static_cast<int>(sid) << " offset=" << static_cast<int>(offset) << "]";
+  // print a few words
+  size_t nwords_max = 4;
+  for(size_t i = 0; i < nwords_max && i + offset <= sent.size(); i++)
+    ss << " " << add(i, corpus).surface(corpus) << "(" << static_cast<int>(add(i, corpus).vid(corpus)) << ")";
+  return ss.str();
 }
 
 // explicit template instantiation
