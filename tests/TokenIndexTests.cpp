@@ -566,7 +566,6 @@ TYPED_TEST(TokenIndexTests, test_persistence) {
 
 TYPED_TEST(TokenIndexTests, test_merge) {
   typedef typename TypeParam::TokenT Token;
-  typedef TokenIndex<Token, IndexTypeDisk> TokenIndexType;
 
   // run this test only on IndexTypeDisk
   if(!std::is_same<typename TypeParam::TypeTagT, IndexTypeDisk>::value)
@@ -590,12 +589,15 @@ TYPED_TEST(TokenIndexTests, test_merge) {
     EXPECT_EQ(refSpan[i], span[i]) << "index entry at i=" << i << " should be equal to reference";
   }
 
+
   Sentence<Token> sent2 = this->AddSentence({"this", "is", "not", "an", "example"});
-  TokenIndex<Token, IndexTypeMemory> index2(this->corpus);
+  //TokenIndex<Token, IndexTypeMemory> index2(this->corpus);
   tokenIndex.AddSentence(sent2);
   indexDisk.AddSentence(sent2);
   //index2.AddSentence(sent2);
   //indexDisk.Merge(index2);
+
+  EXPECT_EQ(9, indexDisk.span().size());
 
   // this check happens to work because equal positions get appended in both cases, so the order is stable
   // otherwise, we would have to check buckets
@@ -605,4 +607,36 @@ TYPED_TEST(TokenIndexTests, test_merge) {
   for(size_t i = 0; i < span.size(); i++) {
     EXPECT_EQ(refSpan2[i], span[i]) << "index entry at i=" << i << " should be equal to reference";
   }
+}
+
+TYPED_TEST(TokenIndexTests, test_merge_duplicates) {
+  typedef typename TypeParam::TokenT Token;
+
+  // run this test only on IndexTypeDisk
+  if(!std::is_same<typename TypeParam::TypeTagT, IndexTypeDisk>::value)
+    return;
+
+  TokenIndex<Token, IndexTypeMemory> tokenIndex(this->corpus);
+
+  TokenIndex<Token, IndexTypeDisk> indexDisk(this->basePath, this->corpus, this->db);
+
+  Sentence<Token> sentence = this->AddSentence({"this", "is", "an", "example"});
+
+  tokenIndex.AddSentence(sentence);
+  //indexDisk.Merge(tokenIndex); // merge of 'sentence' into empty TokenIndex
+  indexDisk.AddSentence(sentence);
+
+  size_t i = 1;
+  do {
+    auto span = indexDisk.span();
+    EXPECT_EQ(4, span.size()) << "the Sentence should have added 4 tokens to the IndexSpan";
+
+    auto refSpan = tokenIndex.span();
+    for (size_t i = 0; i < span.size(); i++) {
+      EXPECT_EQ(refSpan[i], span[i]) << "index entry at i=" << i << " should be equal to reference";
+    }
+
+    // repeated AddSentence() should merge, avoiding duplicates -- even if seqNum is newer!
+    indexDisk.AddSentence(sentence, /* seqNum = */ i);
+  } while(i++ < 2);
 }

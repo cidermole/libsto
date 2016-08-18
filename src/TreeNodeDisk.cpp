@@ -134,15 +134,33 @@ void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<To
   PosComp<Token> comp(corpus, 0);
   pnew = std::set_union(curSpan.begin(), curSpan.end(), addSpan.begin(), addSpan.end(), pnew, comp);
 
+  newSize = pnew - newArray.get(); // if we skipped duplicate entries, this may now be smaller than newSize before
+
 #ifndef NDEBUG
   // postconditions
-  assert(pnew - newArray.get() == (ptrdiff_t) newSize); // filled the entire array
+  //assert(pnew - newArray.get() == (ptrdiff_t) newSize); // filled the entire array
+  // <<< except if we are skipping duplicate entries
+
+#if 0
+  // debug prints
+  std::cerr << "curSpan len=" << curSize << ":" << std::endl;
+  for(size_t i = 0; i < curSize; i++)
+    std::cerr << i << " " << curSpan[i].DebugStr(corpus) << std::endl;
+
+  std::cerr << "addSpan len=" << addSize << ":" << std::endl;
+  for(size_t i = 0; i < addSize; i++)
+    std::cerr << i << " " << addSpan[i].DebugStr(corpus) << std::endl;
+
+  std::cerr << "newArray len=" << newSize << ":" << std::endl;
+  for(size_t i = 0; i < newSize; i++)
+    std::cerr << i << " " << Position<Token>(newArray[i]).DebugStr(corpus) << std::endl;
+#endif
 
   // array is sorted in ascending order
   for(size_t i = 0; i + 1 < newSize; i++) {
     Position<Token> p = newArray[i], q = newArray[i+1];
     //assert(p <= q) == assert(!(p > q)); // equivalent formula if we had > operator
-    assert(!p.compare(q, corpus)); // ascending order
+    assert(!q.compare(p, corpus)); // ascending order
     assert(!(p == q)); // ensure no duplicates
   }
 #endif
