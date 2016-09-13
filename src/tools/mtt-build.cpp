@@ -113,9 +113,10 @@ struct Args {
 shared_ptr<BaseDB> open_db(string db_dir_name) {
   using namespace boost::filesystem;
 
-  if(exists(db_dir_name))
-    throw runtime_error(string("DB dir name ") + db_dir_name + " already exists");
-  create_directory(db_dir_name);
+  // two instances of mtt-build run (for source and target lang).
+  // nobody expects the empty directory!!!
+  if(!exists(db_dir_name))
+    create_directory(db_dir_name);
 
   return std::make_shared<BaseDB>(db_dir_name);
 }
