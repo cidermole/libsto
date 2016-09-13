@@ -166,8 +166,12 @@ public:
 
   Position(const AtomicPosition<Token> &atomic_pos) : Position(atomic_pos.load()) {}
 
-  /** like operator<(this, other) */
-  bool compare(const Position<Token> &other, const Corpus<Token> &corpus) const;
+  /**
+   * like operator<(this, other)
+   * @param pos_order_dupes  if true, allow identical surface forms in different sentences without merging
+   *                         (this means peculiar behavior not 100% compatible with the ordering of the old v2 mtt-build)
+   * */
+  bool compare(const Position<Token> &other, const Corpus<Token> &corpus, bool pos_order_dupes=true) const;
 
   /** directly compares (sid,offset) pair */
   bool operator==(const Position& other) const;

@@ -314,7 +314,7 @@ template class Sentence<AlignmentLink>;
 // --------------------------------------------------------
 
 template<class Token>
-bool Position<Token>::compare(const Position<Token> &other, const Corpus<Token> &corpus) const {
+bool Position<Token>::compare(const Position<Token> &other, const Corpus<Token> &corpus, bool pos_order_dupes) const {
   // should request Sentence object from Corpus instead
   Sentence<Token> sentThis(corpus, sid);
   Sentence<Token> sentOther(corpus, other.sid);
@@ -326,7 +326,7 @@ bool Position<Token>::compare(const Position<Token> &other, const Corpus<Token> 
   bool larger = std::lexicographical_compare(sentOther.begin_ + other.offset, sentOther.begin_ + sentOther.size_,
                                              sentThis.begin_ + offset, sentThis.begin_ + sentThis.size_);
 
-  if(!smaller && !larger) {
+  if(!smaller && !larger && pos_order_dupes) {
     // compared equal in Tokens? tolerate duplicate suffixes in different sentences by additional ordering
     return sid < other.sid || (sid == other.sid && offset < other.offset);
   } else {

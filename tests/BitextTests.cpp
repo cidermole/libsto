@@ -174,6 +174,8 @@ TEST(BitextTests, convert_append_eim_small) {
   remove_all(base);
   create_directory(base);
 
+  std::cerr << "legacy span size before: src=" << bitext1.Src().index->span().size() << " trg=" << bitext1.Trg().index->span().size() << std::endl;
+
   // Convert legacy bitext to v3 (persistent incremental) format
   // note: shouldn't we split it first?
   std::cerr << "Write() converting legacy bitext to v3..." << std::endl;

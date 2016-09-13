@@ -160,7 +160,7 @@ void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<To
   for(size_t i = 0; i + 1 < newSize; i++) {
     Position<Token> p = newArray[i], q = newArray[i+1];
     //assert(p <= q) == assert(!(p > q)); // equivalent formula if we had > operator
-    assert(!q.compare(p, corpus)); // ascending order
+    assert(!q.compare(p, corpus, /* pos_order_dupes = */ false)); // ascending order (tolerates old v2 mtt-build style order)
     assert(!(p == q)); // ensure no duplicates
   }
 #endif
