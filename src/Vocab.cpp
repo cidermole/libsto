@@ -112,8 +112,11 @@ void Vocab<Token>::Ack(seq_t seqNum) {
     return;
 
   seqNum_ = seqNum;
-  db_->PutSeqNum(seqNum_);
-  db_->Flush();
+
+  if(db_) {
+    db_->PutSeqNum(seqNum_);
+    db_->Flush();
+  }
 }
 
 

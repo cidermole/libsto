@@ -29,7 +29,7 @@ public:
   static constexpr Vid kEosVid = Token::kEosVid; /** vocabulary ID for </s>, the end-of-sentence sentinel token */
   static constexpr char kEosSurface[] = "</s>"; /** end of sentence sentinel marker */
 
-  /** Load vocabulary from db, or create empty vocabulary */
+  /** Load vocabulary from db, or create in-memory empty vocabulary */
   Vocab(std::shared_ptr<DB<Token>> db = nullptr);
 
   /** Load vocabulary from mtt-build .tdx format */
