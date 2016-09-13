@@ -62,7 +62,7 @@ public:
   /** Finalize an update with seqNum. Flush writes to DB and apply a new persistence sequence number. */
   virtual void Ack(seq_t seqNum) {}
   /** current persistence sequence number */
-  virtual seq_t seqNum() const { return 0; }
+  virtual seq_t seqNum() const { return 1; /* for legacy data, to make tests happy */ }
 
 private:
   /**

@@ -38,6 +38,7 @@ template<class Token>
 Vocab<Token>::Vocab(const std::string &filename) : size_(0) /* set later */ {
   ugsapt_load(filename);
   put_eos();
+  seqNum_ = 1; // for legacy data, to make tests happy
 }
 
 template<class Token>

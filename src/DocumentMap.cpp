@@ -74,6 +74,8 @@ void DocumentMap::Load(std::string const& fname, size_t num_sents) {
   if(b != num_sents && num_sents != static_cast<size_t>(-1))
     throw std::runtime_error(std::string("Document map doesn't match corpus! b=") + std::to_string(b) + ", num_sents=" + std::to_string(num_sents));
 
+  seqNum_ = 1; // for legacy data, to make tests happy
+
   XVERBOSE(1, "DocumentMap::Load() loaded " << numDomains() << " domains, " << (sent_info_->size()) << " sentences.\n");
 }
 
