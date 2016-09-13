@@ -39,6 +39,7 @@ add_subdirectory(tests)
 set(TOOL_SOURCES
         src/tools/mtt-build.cpp
         src/tools/symal2mam.cpp
+        src/tools/mmlex-build.cpp
         )
 
 foreach(toolSrc ${TOOL_SOURCES})
