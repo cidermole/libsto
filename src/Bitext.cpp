@@ -189,7 +189,7 @@ void Bitext::OpenIncremental(const std::string &base) {
   doc_map_.reset(new DocumentMap(std::make_shared<DB<Domain>>(*db_), base + "docmap.trk"));
   src_.reset(new BitextSide<sto::SrcToken>(std::make_shared<DB<SrcToken>>(*db_), base, l1_, *doc_map_));
   trg_.reset(new BitextSide<sto::TrgToken>(std::make_shared<DB<TrgToken>>(*db_), base, l2_, *doc_map_));
-  align_.reset(new sto::Corpus<sto::AlignmentLink>(base + "align.trk"));
+  align_.reset(new sto::Corpus<sto::AlignmentLink>(base + l1_ + "-" + l2_ + ".mam"));
 }
 
 void Bitext::OpenLegacy(const std::string &base) {
@@ -258,8 +258,9 @@ void Bitext::Write(const std::string &base) {
   /*
    * Directory layout: base="phrase_tables/bitext.", l1="fr", l2="en"
    *
-   * bitext.align.six   word alignment (sentence offsets)
-   * bitext.align.trk                  (sequence of alignment pairs)
+   * bitext.fr-en.six   word alignment (sentence offsets)
+   * bitext.fr-en.mam                  (sequence of alignment pairs)
+   * // should be 'bitext.align.trk' in my opinion, but left naming for compatibility reasons ('mmt build' creates these filenames for v1)
    *
    * bitext.db/         RocksDB: vocabulary, token index
    *
@@ -276,7 +277,7 @@ void Bitext::Write(const std::string &base) {
   std::shared_ptr<BaseDB> db = std::make_shared<BaseDB>(base + "db");
   src_->Write(std::make_shared<DB<SrcToken>>(*db), base);
   trg_->Write(std::make_shared<DB<TrgToken>>(*db), base);
-  align_->Write(base + "align.trk");
+  align_->Write(base + l1_ + "-" + l2_ + ".mam");
   doc_map_->Write(std::make_shared<DB<Domain>>(*db), base + "docmap.trk");
 }
 
