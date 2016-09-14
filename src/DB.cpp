@@ -99,6 +99,7 @@ template<class Token>
 void DB<Token>::PutNodeInternal(const std::string &path, const std::vector<Vid> &children) {
   rocksdb::Slice val(reinterpret_cast<const char *>(children.data()), children.size() * sizeof(Vid));
   std::string key = key_(path);
+  //std::cerr << "DB::PutNodeInternal(key=" << key << ", children.size()=" << children.size() << ")" << std::endl;
   rocksdb::Status status = this->db_->Put(rocksdb::WriteOptions(), key, val);
   assert(status.ok());
 }
@@ -140,6 +141,7 @@ std::string DB<Token>::seqnum_key_() {
 template<class Token>
 void DB<Token>::PutNodeLeaf(const std::string &path, const SuffixArrayPosition<Token> *data, size_t len) {
   std::string key = key_(path);
+  //std::cerr << "DB::PutNodeLeaf(key=" << key << ", len=" << len << ")" << std::endl;
   rocksdb::Slice val((const char *) data, len * sizeof(SuffixArrayPosition<Token>));
   rocksdb::Status status = this->db_->Put(rocksdb::WriteOptions(), key, val);
   assert(status.ok());
@@ -151,6 +153,7 @@ bool DB<Token>::GetNodeLeaf(const std::string &path, SuffixArrayDisk<Token> &arr
   std::string value;
 
   rocksdb::Status status = this->db_->Get(rocksdb::ReadOptions(), key, &value);
+  //std::cerr << "DB::GetNodeLeaf(key=" << key << ") = " << status.ok() << std::endl;
   array = value;
 
   assert(status.ok() || status.IsNotFound());
@@ -172,6 +175,8 @@ NodeType DB<Token>::IsNodeLeaf(const std::string &path) {
   std::string key = key_(path);
   std::string array_key_str = key_(path + "/array");
   std::string value_discarded;
+
+  //std::cerr << "DB::IsNodeLeaf(key=" << key << ", array_key=" << array_key_str << ")" << std::endl;
 
   if(this->db_->Get(rocksdb::ReadOptions(), array_key_str, &value_discarded).ok()) {
     // has array -> leaf

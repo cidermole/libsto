@@ -37,7 +37,11 @@ TreeNodeDisk<Token>::TreeNodeDisk(ITokenIndex<Token> &index, size_t maxArraySize
   // TODO: no need for SuffixArrayDisk. We keep everything in memory anyway.
   // (we could unify SuffixArrayDisk and SuffixArrayMemory)
 
-  this->is_leaf_ = db_->IsNodeLeaf(path_) ? true : false;
+  auto nodeType = db_->IsNodeLeaf(path_);
+  this->is_leaf_ = nodeType ? true : false;
+
+  //std::vector<std::string> nts = {"internal", "exists", "missing"};
+  //std::cerr << "TreeNodeDisk: nodeType=" << nts[nodeType] << std::endl;
 
   if(this->is_leaf_) {
     this->array_.reset(new SuffixArrayDisk<Token>());
