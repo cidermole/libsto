@@ -98,7 +98,7 @@ void DB<Token>::PutVocabPair(Vid vid, const std::string &surface) {
 template<class Token>
 void DB<Token>::PutNodeInternal(const std::string &path, const std::vector<Vid> &children) {
   rocksdb::Slice val(reinterpret_cast<const char *>(children.data()), children.size() * sizeof(Vid));
-  rocksdb::Slice key = key_(path);
+  std::string key = key_(path);
   rocksdb::Status status = this->db_->Put(rocksdb::WriteOptions(), key, val);
   assert(status.ok());
 }
@@ -106,7 +106,7 @@ void DB<Token>::PutNodeInternal(const std::string &path, const std::vector<Vid> 
 template<class Token>
 void DB<Token>::GetNodeInternal(const std::string &path, std::vector<Vid> &children) {
   std::string value;
-  rocksdb::Slice key = key_(path);
+  std::string key = key_(path);
   rocksdb::Status status = this->db_->Get(rocksdb::ReadOptions(), key, &value);
   assert(status.ok());
 
