@@ -4,14 +4,14 @@
 // mm2dTable<uint32_t> (ug_mm_2d_table.h)
 //
 // (c) 2010-2012 Ulrich Germann
-
-// to do: multi-threading
+// (c) 2016 David Madl
 
 #include <queue>
 #include <iomanip>
 #include <vector>
 #include <iterator>
 #include <sstream>
+#include <fstream>
 #include <algorithm>
 
 #include <boost/program_options.hpp>
@@ -23,26 +23,22 @@
 #include <boost/unordered_map.hpp>
 #include <boost/unordered_set.hpp>
 
-#include "moses/TranslationModel/UG/generic/program_options/ug_get_options.h"
-#include "moses/Util.h"
-#include "ug_mm_2d_table.h"
-#include "ug_mm_ttrack.h"
-#include "ug_corpus_token.h"
+#include "tpt_typedefs.h"
+#include "num_write.h"
+#include "DocumentMap.h"
+#include "Bitext.h"
+#include "DB.h"
 
 using namespace std;
-using namespace sapt;
-using namespace ugdiss;
+using namespace tpt;
+using namespace sto;
 using namespace boost::math;
-
-typedef mm2dTable<id_type,id_type,uint32_t,uint32_t> LEX_t;
-typedef SimpleWordId Token;
 
 // DECLARATIONS
 void interpret_args(int ac, char* av[]);
 
-mmTtrack<Token> T1,T2;
-mmTtrack<char>     Tx;
-TokenIndex      V1,V2;
+size_t V1_ksize = 0, V2_ksize = 0;
+size_t T1_size = 0;
 
 typedef pair<id_type,id_type> wpair;
 struct Count
@@ -60,11 +56,26 @@ operator<(pair<id_type,Count> const& a,
   return a.first < b.first;
 }
 
-
 typedef boost::unordered_map<wpair,Count> countmap_t;
 typedef vector<vector<pair<id_type,Count> > > countlist_t;
+typedef boost::dynamic_bitset<uint64_t> bitvector;
 
 vector<countlist_t> XLEX;
+
+
+/** makes a few Bitext members accessible */
+class TestBitext : public Bitext {
+public:
+  TestBitext(const std::string &l1, const std::string &l2) : Bitext(l1, l2) {}
+  TestBitext(const std::string &base, const std::string &l1, const std::string &l2) : Bitext(base, l1, l2) {}
+
+  sto::Corpus<sto::AlignmentLink>& Align() { return *this->align_; }
+  sto::BitextSide<sto::SrcToken>& Src() { return *this->src_; }
+  sto::BitextSide<sto::TrgToken>& Trg() { return *this->trg_; }
+  sto::DocumentMap& DocMap() { return *this->doc_map_; }
+};
+
+std::shared_ptr<TestBitext> bitext;
 
 class Counter
 {
@@ -73,25 +84,22 @@ public:
   countlist_t & LEX;
   size_t  offset;
   size_t    skip;
-  Counter(countlist_t& lex, size_t o, size_t s)
-    : LEX(lex), offset(o), skip(s) {}
+  int verbose;
+  Counter(countlist_t& lex, size_t o, size_t s, int v)
+    : LEX(lex), offset(o), skip(s), verbose(v) {}
   void processSentence(id_type sid);
   void operator()();
 };
 
-string bname,cfgFile,L1,L2,oname,cooc;
-int    verbose;
-size_t truncat;
-size_t num_threads;
 
 void
 Counter::
 operator()()
 {
-  for (size_t sid = offset; sid < min(truncat,T1.size()); sid += skip)
+  for (size_t sid = offset; sid < T1_size; sid += skip)
     processSentence(sid);
 
-  LEX.resize(V1.ksize());
+  LEX.resize(V1_ksize);
   for (countmap_t::const_iterator c = CNT.begin(); c != CNT.end(); ++c)
     {
       pair<id_type,Count> foo(c->first.second,c->second);
@@ -121,22 +129,22 @@ writeTableHeader(ostream& out)
 {
   filepos_type idxOffset=0;
   tpt::numwrite(out,idxOffset); // blank for the time being
-  tpt::numwrite(out,id_type(V1.ksize()));
-  tpt::numwrite(out,id_type(V2.ksize()));
+  tpt::numwrite(out,id_type(V1_ksize));
+  tpt::numwrite(out,id_type(V2_ksize));
 }
 
-void writeTable(ostream* aln_out, ostream* coc_out)
+void writeTable(ostream* aln_out, ostream* coc_out, size_t num_threads)
 {
-  vector<uint32_t> m1a(V1.ksize(),0); // marginals L1
-  vector<uint32_t> m2a(V2.ksize(),0); // marginals L2
-  vector<uint32_t> m1c(V1.ksize(),0); // marginals L1
-  vector<uint32_t> m2c(V2.ksize(),0); // marginals L2
-  vector<id_type> idxa(V1.ksize()+1,0);
-  vector<id_type> idxc(V1.ksize()+1,0);
+  vector<uint32_t> m1a(V1_ksize,0); // marginals L1
+  vector<uint32_t> m2a(V2_ksize,0); // marginals L2
+  vector<uint32_t> m1c(V1_ksize,0); // marginals L1
+  vector<uint32_t> m2c(V2_ksize,0); // marginals L2
+  vector<id_type> idxa(V1_ksize+1,0);
+  vector<id_type> idxc(V1_ksize+1,0);
   if (aln_out) writeTableHeader(*aln_out);
   if (coc_out) writeTableHeader(*coc_out);
   size_t CellCountA=0,CellCountC=0;
-  for (size_t id1 = 0; id1 < V1.ksize(); ++id1)
+  for (size_t id1 = 0; id1 < V1_ksize; ++id1)
     {
       idxa[id1] = CellCountA;
       idxc[id1] = CellCountC;
@@ -218,131 +226,165 @@ void
 Counter::
 processSentence(id_type sid)
 {
-  Token const* s1 = T1.sntStart(sid);
-  Token const* e1 = T1.sntEnd(sid);
-  Token const* s2 = T2.sntStart(sid);
-  Token const* e2 = T2.sntEnd(sid);
-  // vector<ushort> cnt1(V1.ksize(),0);
-  // vector<ushort> cnt2(V2.ksize(),0);
+  const auto *s1 = bitext->Src().corpus->begin(sid);
+  const auto *e1 = bitext->Src().corpus->end(sid);
+  const auto *s2 = bitext->Trg().corpus->begin(sid);
+  const auto *e2 = bitext->Trg().corpus->end(sid);
+
+  // vector<ushort> cnt1(V1_ksize,0);
+  // vector<ushort> cnt2(V2_ksize,0);
   // for (Token const* x = s1; x < e1; ++x)
   // ++cnt1.at(x->id());
   // for (Token const* x = s2; x < e2; ++x)
   // ++cnt2.at(x->id());
 
   // boost::unordered_set<wpair> seen;
-  bitvector check1(T1.sntLen(sid)); check1.set();
-  bitvector check2(T2.sntLen(sid)); check2.set();
+  bitvector check1(bitext->Src().corpus->sentence(sid).size()); check1.set();
+  bitvector check2(bitext->Trg().corpus->sentence(sid).size()); check2.set();
 
   // count links
-  char const*   p = Tx.sntStart(sid);
-  char const*   q = Tx.sntEnd(sid);
   tpt::offset_type r,c;
   if (verbose && sid % 1000000 == 0)
     cerr << sid/1000000 << " M sentences processed" << endl;
-  while (p < q)
-    {
-      p = tpt::numread(p,r);
-      p = tpt::numread(p,c);
-      // cout << sid << " " << r << "-" << c << endl;
-      UTIL_THROW_IF2(r >= check1.size(), "out of bounds at line " << sid);
-      UTIL_THROW_IF2(c >= check2.size(), "out of bounds at line " << sid);
-      // assert(r < check1.size());
-      // assert(c < check2.size());
-      UTIL_THROW_IF2(s1+r >= e1, "out of bounds at line " << sid);
-      UTIL_THROW_IF2(s2+c >= e2, "out of bounds at line " << sid);
-      // assert(s1+r < e1);
-      // assert(s2+c < e2);
-      check1.reset(r);
-      check2.reset(c);
-      id_type id1 = (s1+r)->id();
-      id_type id2 = (s2+c)->id();
-      wpair k(id1,id2);
-      Count& cnt = CNT[k];
-      cnt.a++;
-      // if (seen.insert(k).second)
-      // cnt.c += cnt1[id1] * cnt2[id2];
-    }
+
+  auto align = bitext->Align().sentence(sid);
+  for(size_t i = 0; i < align.size(); i++) {
+    r = align[i].vid.src;
+    c = align[i].vid.trg;
+
+    // cout << sid << " " << r << "-" << c << endl;
+    if(r >= check1.size()) throw std::runtime_error("out of bounds at line " + std::to_string(sid));
+    if(c >= check2.size()) throw std::runtime_error("out of bounds at line " + std::to_string(sid));
+    // assert(r < check1.size());
+    // assert(c < check2.size());
+    if(s1+r >= e1) throw std::runtime_error("out of bounds at line " + std::to_string(sid));
+    if(s2+c >= e2) throw std::runtime_error("out of bounds at line " + std::to_string(sid));
+    // assert(s1+r < e1);
+    // assert(s2+c < e2);
+    check1.reset(r);
+    check2.reset(c);
+    id_type id1 = *(s1+r);
+    id_type id2 = *(s2+c);
+    wpair k(id1,id2);
+    Count& cnt = CNT[k];
+    cnt.a++;
+    // if (seen.insert(k).second)
+    // cnt.c += cnt1[id1] * cnt2[id2];
+  }
+
   // count unaliged words
   for (size_t i = check1.find_first();
        i < check1.size();
        i = check1.find_next(i))
-    CNT[wpair((s1+i)->id(),0)].a++;
+    CNT[wpair(*(s1+i),0)].a++;
   for (size_t i = check2.find_first();
        i < check2.size();
        i = check2.find_next(i))
-    CNT[wpair(0,(s2+i)->id())].a++;
+    CNT[wpair(0,*(s2+i))].a++;
 }
+
+/** program arguments, shamelessly copied from Uli */
+struct Args {
+  int    verbose;
+
+  string bname;
+  string L1;
+  string L2;
+  string oname;
+  size_t truncat;
+  size_t num_threads;
+
+  Args() {}
+
+  Args(int ac, char* av[]) {
+    interpret_args(ac, av);
+  }
+
+  void interpret_args(int ac, char* av[]) {
+    namespace po=boost::program_options;
+    po::variables_map vm;
+    po::options_description o("Options");
+    po::options_description h("Hidden Options");
+    po::positional_options_description a;
+
+    o.add_options()
+        ("help,h",    "print this message")
+        //("cfg,f", po::value<string>(&cfgFile),"config file")
+        ("oname,o", po::value<string>(&oname),"output file name")
+        // ("cooc,c", po::value<string>(&cooc),
+        // "file name for raw co-occurrence counts")
+        ("verbose,v", po::value<int>(&verbose)->default_value(0)->implicit_value(1),
+        "verbosity level")
+        ("threads,t", po::value<size_t>(&num_threads)->default_value(4),
+         "count in <N> parallel threads")
+        ("truncate,n", po::value<size_t>(&truncat)->default_value(0),
+         "truncate corpus to <N> sentences (for debugging)")
+        ;
+
+    h.add_options()
+        ("bname", po::value<string>(&bname), "base name")
+        ("L1",    po::value<string>(&L1),"L1 tag")
+        ("L2",    po::value<string>(&L2),"L2 tag")
+        ;
+    h.add(o);
+    a.add("bname",1);
+    a.add("L1",1);
+    a.add("L2",1);
+
+
+    po::store(po::command_line_parser(ac,av)
+                  .options(h)
+                  .positional(a)
+                  .run(),vm);
+    po::notify(vm);
+
+    if (vm.count("help") || bname.empty() || (oname.empty()))
+    {
+      cerr << "builds lexical translation probabilities for UG Mmsapt from v3 bitext." << endl;
+      cout << "\nusage:\n\t" << av[0] << " <basename> <L1 tag> <L2 tag> -o <output file>\n" << endl; //  [-c <output file>]
+      cout << "-o must be specified." << endl;
+      cout << o << endl;
+      exit(0);
+    }
+    size_t num_cores = boost::thread::hardware_concurrency();
+    num_threads = min(num_threads,num_cores);
+  }
+};
+
 
 int
 main(int argc, char* argv[])
 {
-  interpret_args(argc,argv);
-  char c = *bname.rbegin();
-  if (c != '/' && c != '.') bname += '.';
-  T1.open(bname+L1+".mct");
-  T2.open(bname+L2+".mct");
-  Tx.open(bname+L1+"-"+L2+".mam");
-  V1.open(bname+L1+".tdx");
-  V2.open(bname+L2+".tdx");
-  if (!truncat) truncat = T1.size();
-  XLEX.resize(num_threads);
-  vector<boost::shared_ptr<boost::thread> > workers(num_threads);
-  for (size_t i = 0; i < num_threads; ++i)
-    workers[i].reset(new boost::thread(Counter(XLEX[i],i,num_threads)));
-  for (size_t i = 0; i < workers.size(); ++i)
+  Args args(argc, argv);
+
+  char c = *args.bname.rbegin();
+  if (c != '/' && c != '.') args.bname += '.';
+
+  bitext.reset(new TestBitext(args.bname, args.L1, args.L2));
+  V1_ksize = bitext->Src().index->span().size();
+  V2_ksize = bitext->Trg().index->span().size();
+  T1_size = bitext->Src().corpus->size();
+  std::cerr << "V1_ksize " << V1_ksize << " V2_ksize " << V2_ksize << " T1_size " << T1_size << std::endl;
+
+  if (!args.truncat) args.truncat = T1_size;
+  T1_size = min(args.truncat, T1_size);
+
+  XLEX.resize(args.num_threads);
+  vector<boost::shared_ptr<boost::thread> > workers(args.num_threads);
+  for (size_t i = 0; i < args.num_threads; ++i) {
+    workers[i].reset(new boost::thread(Counter(XLEX[i],i,args.num_threads, args.verbose)));
+  }
+  for (size_t i = 0; i < workers.size(); ++i) {
     workers[i]->join();
+  }
   // cerr << "done counting" << endl;
-  ofstream aln_out,coc_out;
-  if (oname.size()) aln_out.open(oname.c_str());
+  ofstream aln_out; //,coc_out;
+  if (args.oname.size()) aln_out.open(args.oname.c_str());
   // if (cooc.size())  coc_out.open(cooc.c_str());
-  writeTable(oname.size() ? &aln_out : NULL,
-	     cooc.size()  ? &coc_out : NULL);
-  if (oname.size()) aln_out.close();
+  writeTable(args.oname.size() ? &aln_out : NULL,
+	     NULL, args.num_threads);
+  if (args.oname.size()) aln_out.close();
   // if (cooc.size())  coc_out.close();
+
+  return 0;
 }
-
-void
-interpret_args(int ac, char* av[])
-{
-  namespace po=boost::program_options;
-  po::variables_map vm;
-  po::options_description o("Options");
-  po::options_description h("Hidden Options");
-  po::positional_options_description a;
-
-  o.add_options()
-    ("help,h",    "print this message")
-    ("cfg,f", po::value<string>(&cfgFile),"config file")
-    ("oname,o", po::value<string>(&oname),"output file name")
-    // ("cooc,c", po::value<string>(&cooc),
-    // "file name for raw co-occurrence counts")
-    ("verbose,v", po::value<int>(&verbose)->default_value(0)->implicit_value(1),
-     "verbosity level")
-    ("threads,t", po::value<size_t>(&num_threads)->default_value(4),
-     "count in <N> parallel threads")
-    ("truncate,n", po::value<size_t>(&truncat)->default_value(0),
-     "truncate corpus to <N> sentences (for debugging)")
-    ;
-
-  h.add_options()
-    ("bname", po::value<string>(&bname), "base name")
-    ("L1",    po::value<string>(&L1),"L1 tag")
-    ("L2",    po::value<string>(&L2),"L2 tag")
-    ;
-  a.add("bname",1);
-  a.add("L1",1);
-  a.add("L2",1);
-  get_options(ac,av,h.add(o),a,vm,"cfg");
-
-  if (vm.count("help") || bname.empty() || (oname.empty() && cooc.empty()))
-    {
-      cout << "usage:\n\t" << av[0] << " <basename> <L1 tag> <L2 tag> [-o <output file>] [-c <output file>]\n" << endl;
-      cout << "at least one of -o / -c must be specified." << endl;
-      cout << o << endl;
-      exit(0);
-    }
-  size_t num_cores = boost::thread::hardware_concurrency();
-  num_threads = min(num_threads,num_cores);
-}
-
-

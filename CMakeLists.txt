@@ -10,7 +10,7 @@ set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
 find_package(Boost REQUIRED COMPONENTS
         system
-        #thread
+        thread  # for mmlex-build
         filesystem
         #unit_test_framework
         program_options
