@@ -8,7 +8,7 @@ find_package(GTest REQUIRED)
 #configure_file(res/vocab.tdx COPYONLY)
 
 set(RESOURCES res/vocab.tdx res/corpus.mct res/align.mam res/index.sfa)
-set(TEST_SOURCES VocabTests.cpp CorpusTests.cpp TokenIndexTests.cpp BenchmarkTests.cpp RBTreeIteratorTests.cpp DocumentMapTests.cpp BitextTests.cpp)
+set(TEST_SOURCES VocabTests.cpp CorpusTests.cpp TokenIndexTests.cpp BenchmarkTests.cpp RBTreeIteratorTests.cpp DocumentMapTests.cpp BitextTests.cpp BitextBenchmarkTests.cpp)
 
 set(OTHER_SOURCES fisheryates.h filesystem.h)
 
