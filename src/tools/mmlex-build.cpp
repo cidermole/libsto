@@ -386,5 +386,6 @@ main(int argc, char* argv[])
   if (args.oname.size()) aln_out.close();
   // if (cooc.size())  coc_out.close();
 
+  bitext.reset();
   return 0;
 }
