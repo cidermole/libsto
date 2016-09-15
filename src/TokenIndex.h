@@ -28,9 +28,15 @@ template<class Token> class DB;
 
 struct IndexTypeMemory {
   static constexpr bool HasAddSentence = true;
+  static constexpr bool HasAddSubsequenceSpan = true;
+};
+struct IndexTypeMemBuf {
+  static constexpr bool HasAddSentence = true;
+  static constexpr bool HasAddSubsequenceSpan = false;
 };
 struct IndexTypeDisk {
   static constexpr bool HasAddSentence = false; /** IndexTypeDisk implementation has no AddSentence() support, so we need to use Merge() instead */
+  static constexpr bool HasAddSubsequenceSpan = true;
 };
 
 /** types for TokenIndex with different backing (Disk or Memory) */
@@ -55,6 +61,14 @@ template<typename Token>
 struct IndexTypes<Token, IndexTypeMemory> {
   typedef SuffixArrayMemory<Token> SuffixArray;
   typedef TreeNodeMemory<Token> TreeNode;
+};
+
+/** partial specialization: types for IndexTypeMemBuf */
+template<>
+template<typename Token>
+struct IndexTypes<Token, IndexTypeMemBuf> {
+  typedef SuffixArrayMemory<Token> SuffixArray;
+  typedef TreeNodeMemBuf<Token> TreeNode;
 };
 
 /**

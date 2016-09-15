@@ -38,7 +38,12 @@ struct BitextSide : public sto::Loggable {
   std::string lang; /** 2-letter language code */
   std::shared_ptr<DB<Token>> db;
 
-  /** Create empty BitextSide */
+  /**
+   * Create empty BitextSide in-memory.
+   *
+   * This is intended for bootstrapping a Bitext from scratch,
+   * hence it uses IndexTypeMemBuf for speed and so its indexes are never split, and lazy-sorted in span().
+   */
   BitextSide(const std::string &lang, const DocumentMap &documentMap);
 
   /**

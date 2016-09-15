@@ -92,6 +92,8 @@ public:
   IVidIterator<Token> begin() const { return IVidIterator<Token>(std::shared_ptr<ITreeNodeIterator<typename Token::Vid>>(children_.begin().copy())); }
   IVidIterator<Token> end() const { return IVidIterator<Token>(std::shared_ptr<ITreeNodeIterator<typename Token::Vid>>(children_.end().copy())); }
 
+  virtual void EnsureSorted(const Corpus<Token> &corpus) {}
+
   /** word type common to all Positions at depth-1; invalid for root */
   virtual Vid vid() const { return vid_; }
   /** parent of this node, nullptr for root */

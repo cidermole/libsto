@@ -19,7 +19,7 @@ template<typename Token>
 BitextSide<Token>::BitextSide(const std::string &l, const DocumentMap &map) :
     vocab(new sto::Vocab<Token>),
     corpus(new sto::Corpus<Token>(vocab.get())),
-    index(new sto::TokenIndex<Token, IndexTypeMemory>(*corpus)),
+    index(new sto::TokenIndex<Token, IndexTypeMemBuf>(*corpus, -1)),
     docMap(map),
     lang(l)
 {
@@ -119,7 +119,7 @@ void BitextSide<Token>::AddToDomainIndex(Sid sid, tpt::docid_type docid, seq_t s
       domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token, IndexTypeDisk>>(/* filename = */ "/", *corpus, db->template PrefixedDB<Token>(lang, docid));
     else
       // memory only
-      domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token, IndexTypeMemory>>(*corpus);
+      domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token, IndexTypeMemBuf>>(*corpus, -1);
   }
   domain_indexes[docid]->AddSentence(corpus->sentence(sid), seqNum);
 }

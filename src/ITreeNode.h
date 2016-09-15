@@ -81,6 +81,9 @@ public:
   /** Merge the entire IndexSpan spanMemory into this leaf. spanDisk must be a path to this TreeNode. */
   virtual void Merge(IndexSpan<Token> &spanMemory, IndexSpan<Token> &spanDisk) = 0;
 
+  /** Sorts the leaf node, for a special leaf node type TreeNodeMemBuf, does nothing for others */
+  virtual void EnsureSorted(const Corpus<Token> &corpus) = 0;
+
   /** Add an empty leaf node (SuffixArray) as a child. */
   virtual void AddLeaf(Vid vid) = 0;
 

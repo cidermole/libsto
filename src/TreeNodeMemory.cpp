@@ -100,12 +100,41 @@ void TreeNodeMemory<Token>::AddPosition(const Sentence<Token> &sent, Offset star
 }
 
 template<class Token>
+void TreeNodeMemBuf<Token>::AddPosition(const Sentence<Token> &sent, Offset start) {
+  assert(this->is_leaf()); // Exclusively for adding to a SA (leaf node).
+
+  Position<Token> corpus_pos{sent.sid(), start};
+
+  // unsorted insert. this means that our state is invalid until we are actually sorted, but this should be much quicker.
+  this->array_->push_back(corpus_pos);
+
+  assert(this->parent() == nullptr); // must be leaf-only for now
+}
+
+template<class Token>
+void TreeNodeMemBuf<Token>::EnsureSorted(const Corpus<Token> &corpus) {
+  auto array = this->array_;
+  if(array->size() > lastSortSize_.load()) {
+    PosComp<Token> comp(corpus);
+    std::cerr << "EnsureSorted() sorting TreeNodeMemBuf..." << std::endl;
+    std::sort(array->begin(), array->end(), comp);
+    std::cerr << "EnsureSorted() done sorting." << std::endl;
+    lastSortSize_.store(array->size());
+  }
+}
+
+template<class Token>
 void TreeNodeMemory<Token>::AddLeaf(Vid vid) {
   this->children_[vid] = new TreeNodeMemory<Token>(this->index_, this->kMaxArraySize, "", nullptr, this, vid);
 }
 
 template<class Token>
 bool TreeNodeMemory<Token>::find_child_(Vid vid, TreeNodeMemory<Token> **child) {
+  return TreeNode<Token, SuffixArray>::find_child_(vid, reinterpret_cast<TreeNode<Token, SuffixArray> **>(child));
+}
+
+template<class Token>
+bool TreeNodeMemBuf<Token>::find_child_(Vid vid, TreeNodeMemBuf<Token> **child) {
   return TreeNode<Token, SuffixArray>::find_child_(vid, reinterpret_cast<TreeNode<Token, SuffixArray> **>(child));
 }
 
@@ -152,5 +181,8 @@ void TreeNodeMemory<Token>::LoadArray(const std::string &filename) {
 // explicit template instantiation
 template class TreeNodeMemory<SrcToken>;
 template class TreeNodeMemory<TrgToken>;
+
+template class TreeNodeMemBuf<SrcToken>;
+template class TreeNodeMemBuf<TrgToken>;
 
 } // namespace sto

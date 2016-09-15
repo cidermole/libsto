@@ -79,6 +79,27 @@ private:
   TreeNodeMemory<Token> *make_child_(Vid vid, typename SuffixArray::iterator first, typename SuffixArray::iterator last, const Corpus<Token> &corpus);
 };
 
+/** Unsorted position array for quicker collection of positions before sorting them in one go. */
+template<class Token>
+class TreeNodeMemBuf : public TreeNodeMemory<Token> {
+  typedef SuffixArrayMemory<Token> SuffixArray;
+  typedef typename TreeNode<Token, SuffixArray>::Vid Vid;
+  typedef typename Corpus<Token>::Offset Offset;
+
+public:
+  TreeNodeMemBuf(ITokenIndex<Token> &index, size_t maxArraySize, std::string filename, std::shared_ptr<void>, ITreeNode<Token> *parent = nullptr, Vid vid = Token::kInvalidVid) : TreeNodeMemory<Token>(index, maxArraySize, filename, nullptr, parent, vid), lastSortSize_(0) {}
+
+  void AddPosition(const Sentence<Token> &sent, Offset start);
+
+  virtual void EnsureSorted(const Corpus<Token> &corpus);
+
+  /** @return true if child with 'vid' as the key was found, and optionally sets 'child'. */
+  bool find_child_(Vid vid, TreeNodeMemBuf<Token> **child = nullptr);
+
+private:
+  std::atomic<size_t> lastSortSize_;
+};
+
 } // namespace sto
 
 #endif //STO_TREENODEMEMORY_H

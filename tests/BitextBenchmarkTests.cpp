@@ -187,6 +187,9 @@ void read_input_lines(std::istream &is, BitextSide<Token> &side, DocumentMap &do
   }
 }
 
+/**
+ * Basically like mtt-build.cpp, reads a text corpus file and builds the index
+ */
 TEST(BitextBenchmarkTests, benchmark_build) {
   Args args;
 
@@ -213,4 +216,7 @@ TEST(BitextBenchmarkTests, benchmark_build) {
   // to do: for speed, we could read as the old mtt-build, sort in parallel, and then create the TokenIndex.
   read_input_lines(ifs, side, docMap, args);
 
+  if(!args.quiet) cerr << "Writing Vocab, Corpus and TokenIndex ... ";
+  side.Write(std::make_shared<DB<Token>>(*db), args.base);
+  if(!args.quiet) cerr << "done." << endl;
 }

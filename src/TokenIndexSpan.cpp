@@ -156,4 +156,7 @@ template class TokenIndex<TrgToken, IndexTypeMemory>::Span;
 template class TokenIndex<SrcToken, IndexTypeDisk>::Span;
 template class TokenIndex<TrgToken, IndexTypeDisk>::Span;
 
+template class TokenIndex<SrcToken, IndexTypeMemBuf>::Span;
+template class TokenIndex<TrgToken, IndexTypeMemBuf>::Span;
+
 } // namespace sto
