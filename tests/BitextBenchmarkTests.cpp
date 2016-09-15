@@ -6,12 +6,6 @@
 
 #include <gtest/gtest.h>
 
-/****************************************************
- * Moses - factored phrase-based language decoder   *
- * Copyright (C) 2015 University of Edinburgh       *
- * Licensed under GNU LGPL Version 2.1, see COPYING *
- ****************************************************/
-
 #include <cstdlib>
 #include <iostream>
 #include <iomanip>
@@ -25,6 +19,7 @@
 #include <boost/filesystem.hpp>
 
 #include "filesystem.h"
+#include "util/Time.h"
 #include "DocumentMap.h"
 #include "Bitext.h"
 #include "DB.h"
@@ -156,24 +151,40 @@ void read_input_lines(std::istream &is, BitextSide<Token> &side, DocumentMap &do
 
   bool domains = (docMap.numDomains() > 0);
 
+  double tot_AddToCorpus = 0, tot_AddSentence = 0, tot_AddToDomainIndex = 0;
+
   while(getline(is, line)) {
     istringstream buf(line);
     sent.clear();
     while(buf >> w)
       sent.push_back(w);
 
-    sid = side.AddToCorpus(sent);
-    side.index->AddSentence(side.corpus->sentence(sid));
+    double t_AddToCorpus = benchmark_time([&](){
+      sid = side.AddToCorpus(sent);
+    });
+
+    double t_AddSentence = benchmark_time([&](){
+      side.index->AddSentence(side.corpus->sentence(sid));
+    });
 
     if(!args.quiet) log_progress(sid);
 
-    if(domains) {
-      auto docid = docMap.sid2did(sid);
-      side.AddToDomainIndex(sid, docid, sid + 1);
-    }
+    double t_AddToDomainIndex = benchmark_time([&](){
+      if(domains) {
+        auto docid = docMap.sid2did(sid);
+        side.AddToDomainIndex(sid, docid, sid + 1);
+      }
+    });
+
+    tot_AddToCorpus += t_AddToCorpus;
+    tot_AddSentence += t_AddSentence;
+    tot_AddToDomainIndex += t_AddToDomainIndex;
   }
-  if(!args.quiet)
+  if(!args.quiet) {
     cerr << endl;
+
+    cerr << "AddToCorpus " << tot_AddToCorpus << " AddSentence " << tot_AddSentence << " AddToDomainIndex " << tot_AddToDomainIndex << endl;
+  }
 }
 
 TEST(BitextBenchmarkTests, benchmark_build) {
@@ -182,8 +193,8 @@ TEST(BitextBenchmarkTests, benchmark_build) {
   //args.base = "/home/david/Info/ownCloud/mmt/src-nosync/MMT/engines/TrainingBenchmarkTests-0613d35c-8440-4a59-afc6-7c836a00c591/models/phrase_tables/model.en.";
 
   std::string dirname = "res/BitextBenchmarkTests";
-  sto::remove_all(dirname);
-  sto::create_directory(dirname);
+  remove_all(dirname);
+  create_directory(dirname);
 
   args.base = dirname;
   args.lang = "en";

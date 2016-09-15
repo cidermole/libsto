@@ -364,7 +364,7 @@ main(int argc, char* argv[])
   V1_ksize = bitext->Src().index->span().size();
   V2_ksize = bitext->Trg().index->span().size();
   T1_size = bitext->Src().corpus->size();
-  std::cerr << "V1_ksize " << V1_ksize << " V2_ksize " << V2_ksize << " T1_size " << T1_size << std::endl;
+  std::cerr << "mmlex-build: src index size " << V1_ksize << " trg index size " << V2_ksize << " corpus lines " << T1_size << std::endl;
 
   if (!args.truncat) args.truncat = T1_size;
   T1_size = min(args.truncat, T1_size);
