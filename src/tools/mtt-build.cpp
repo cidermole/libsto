@@ -16,6 +16,7 @@
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 
+#include "util/usage.h"
 #include "DocumentMap.h"
 #include "Bitext.h"
 #include "DB.h"
@@ -179,12 +180,19 @@ int main(int argc, char **argv) {
 
   BitextSide<Token> side(args.lang, docMap); // in-memory type BitextSide
 
+  cerr << "before read_input_lines():" << endl;
+  util::PrintUsage(std::cerr);
+
   // to do: for speed, we could read as the old mtt-build, sort in parallel, and then create the TokenIndex.
   read_input_lines(side, docMap, args);
 
   if(!args.quiet) cerr << "Writing Vocab, Corpus and TokenIndex ... ";
+  util::PrintUsage(std::cerr);
+
   side.Write(std::make_shared<DB<Token>>(*db), args.base);
+
   if(!args.quiet) cerr << "done." << endl;
+  util::PrintUsage(std::cerr);
 
   docMap.Write(db, args.base + "docmap.trk");
 
