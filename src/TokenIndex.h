@@ -186,7 +186,7 @@ public:
     virtual size_t StepSize(Token t) const {
       assert(in_array());
       size_t step = this->find_bounds_array_(t).size();
-      assert(step > 0);
+      assert(step > 0); // when this is 0, that may be because you are trying to iterate over a depth reaching into </s> entries
       return step;
     }
 

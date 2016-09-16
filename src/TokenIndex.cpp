@@ -53,8 +53,10 @@ void TokenIndex<Token, TypeTag>::AddSentence(const Sentence<Token> &sent, seq_t 
     seqNum = sent.sid() + 1;
 
   // no update necessary
-  if(seqNum <= this->seqNum())
+  if(seqNum <= this->seqNum()) {
+    std::cerr << "TokenIndex<Token, TypeTag>::AddSentence() no update necessary, seqNum " << seqNum << " <= this->seqNum() " << this->seqNum() << std::endl;
     return;
+  }
 
   if(TypeTag::HasAddSentence) {
     // start a subsequence at each sentence position
@@ -83,7 +85,7 @@ void TokenIndex<Token, TypeTag>::Merge(const ITokenIndex<Token> &add) {
 
   auto us = this->span();
   auto adds = add.span();
-  
+
   benchmark_time([&](){
     root_->Merge(adds, us);
   }, "TokenIndex::Merge()");
