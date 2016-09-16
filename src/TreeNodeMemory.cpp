@@ -10,6 +10,8 @@
 #include "TokenIndex.h"
 #include "ITokenIndex.h"
 
+#include "util/Time.h"
+
 #include <algorithm>
 #include <functional>
 
@@ -117,8 +119,12 @@ void TreeNodeMemBuf<Token>::EnsureSorted(const Corpus<Token> &corpus) {
   if(array->size() > lastSortSize_.load()) {
     PosComp<Token> comp(corpus);
     std::cerr << "EnsureSorted() sorting TreeNodeMemBuf..." << std::endl;
-    std::sort(array->begin(), array->end(), comp);
-    std::cerr << "EnsureSorted() done sorting." << std::endl;
+
+    double t = benchmark_time([&](){
+      std::sort(array->begin(), array->end(), comp);
+    });
+
+    std::cerr << "EnsureSorted() sorting took " << format_time(t) << " s" << std::endl;
     lastSortSize_.store(array->size());
   }
 }

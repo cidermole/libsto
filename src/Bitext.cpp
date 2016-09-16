@@ -12,6 +12,8 @@
 #include "DB.h"
 #include "ITokenIndex.h"
 
+#include "util/Time.h"
+
 namespace sto {
 
 
@@ -126,12 +128,20 @@ void BitextSide<Token>::AddToDomainIndex(Sid sid, tpt::docid_type docid, seq_t s
 
 template<typename Token>
 void BitextSide<Token>::Write(std::shared_ptr<DB<Token>> db, const std::string &base) {
-  vocab->Write(db->template PrefixedDB<Token>("vocab." + lang));
-  corpus->Write(base + lang + ".trk");
-  index->Write(db->template PrefixedDB<Token>("index." + lang));
+  std::cerr << "BitextSide<Token>::Write()..." << std::endl;
 
-  for(auto& d : domain_indexes)
-    d.second->Write(db->template PrefixedDB<Token>(lang, d.first));
+  benchmark_time([&](){ vocab->Write(db->template PrefixedDB<Token>("vocab." + lang)); }, "vocab->Write()");
+
+  benchmark_time([&](){ corpus->Write(base + lang + ".trk"); }, "corpus->Write()");
+
+  benchmark_time([&](){ index->Write(db->template PrefixedDB<Token>("index." + lang)); }, "index->Write()");
+
+  benchmark_time([&](){
+    for(auto& d : domain_indexes)
+      d.second->Write(db->template PrefixedDB<Token>(lang, d.first));
+  }, "domain_indexes->Write()");
+
+  std::cerr << "BitextSide<Token>::Write() done." << std::endl;
 }
 
 template<typename Token>

@@ -6,6 +6,8 @@
 
 #include "TokenIndex.h"
 
+#include "util/Time.h"
+
 #include <algorithm>
 #include <cassert>
 #include <cstring>
@@ -74,12 +76,17 @@ void TokenIndex<Token, TypeTag>::AddSentence(const Sentence<Token> &sent, seq_t 
 template<class Token, typename TypeTag>
 void TokenIndex<Token, TypeTag>::Merge(const ITokenIndex<Token> &add) {
   // no update necessary
-  if(add.seqNum() <= seqNum())
+  if(add.seqNum() <= seqNum()) {
+    std::cerr << "TokenIndex::Merge() skipped, seqNum of add " << add.seqNum() << " <= our seqNum " << seqNum() << std::endl;
     return;
+  }
 
   auto us = this->span();
   auto adds = add.span();
-  root_->Merge(adds, us);
+  
+  benchmark_time([&](){
+    root_->Merge(adds, us);
+  }, "TokenIndex::Merge()");
 
   Ack(add.seqNum());
 }
@@ -87,6 +94,7 @@ void TokenIndex<Token, TypeTag>::Merge(const ITokenIndex<Token> &add) {
 template<class Token, typename TypeTag>
 void TokenIndex<Token, TypeTag>::Write(std::shared_ptr<DB<Token>> db) const {
   TokenIndex<Token, IndexTypeDisk> target(/* filename = */ "/", *this->corpus(), db); // note: filename is now only used as DB key prefix; we handle DB prefixes elsewhere
+  std::cerr << "TokenIndex::Write()..." << std::endl;
   target.Merge(*this);
 }
 
