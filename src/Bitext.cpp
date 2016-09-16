@@ -28,9 +28,9 @@ BitextSide<Token>::BitextSide(const std::string &l, const DocumentMap &map) :
 /** Load existing BitextSide from DB and disk. */
 template<typename Token>
 BitextSide<Token>::BitextSide(std::shared_ptr<DB<Token>> db, const std::string &base, const std::string &lang, const DocumentMap &map) :
-    vocab(new sto::Vocab<Token>(db->template PrefixedDB<Token>(lang))),
+    vocab(new sto::Vocab<Token>(db->template PrefixedDB<Token>("vocab." + lang))),
     corpus(new sto::Corpus<Token>(base + lang + ".trk", vocab.get())),
-    index(new sto::TokenIndex<Token, IndexTypeDisk>("/", *corpus, db->template PrefixedDB<Token>(lang))),  // note: filename is only ever used as DB prefix now (in TreeNodeDisk)
+    index(new sto::TokenIndex<Token, IndexTypeDisk>("/", *corpus, db->template PrefixedDB<Token>("index." + lang))),  // note: filename is only ever used as DB prefix now (in TreeNodeDisk)
     docMap(map),
     lang(lang),
     db(db)
@@ -126,9 +126,9 @@ void BitextSide<Token>::AddToDomainIndex(Sid sid, tpt::docid_type docid, seq_t s
 
 template<typename Token>
 void BitextSide<Token>::Write(std::shared_ptr<DB<Token>> db, const std::string &base) {
-  vocab->Write(db->template PrefixedDB<Token>(lang));
+  vocab->Write(db->template PrefixedDB<Token>("vocab." + lang));
   corpus->Write(base + lang + ".trk");
-  index->Write(db->template PrefixedDB<Token>(lang));
+  index->Write(db->template PrefixedDB<Token>("index." + lang));
 
   for(auto& d : domain_indexes)
     d.second->Write(db->template PrefixedDB<Token>(lang, d.first));
