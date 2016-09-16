@@ -219,7 +219,7 @@ public:
    *
    * Currently only available on leaf nodes, but just lazy.
    */
-  size_t StepSize(size_t index) const { return span_->StepSize(index); }
+  size_t StepSize(Token t) const { return span_->StepSize(t); }
 
   ITokenIndexSpan<Token> *get() const { return span_.get(); }
 
