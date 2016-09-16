@@ -200,7 +200,7 @@ TEST(BitextBenchmarkTests, benchmark_build) {
   remove_all(dirname);
   create_directory(dirname);
 
-  args.base = dirname;
+  args.base = dirname + "/model.";
   args.lang = "en";
 
   //cout << "base=" << args.base << " lang=" << args.lang << endl;
