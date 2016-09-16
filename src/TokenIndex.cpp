@@ -86,9 +86,9 @@ void TokenIndex<Token, TypeTag>::Merge(const ITokenIndex<Token> &add) {
   auto us = this->span();
   auto adds = add.span();
 
-  benchmark_time([&](){
+  //benchmark_time([&](){
     root_->Merge(adds, us);
-  }, "TokenIndex::Merge()");
+  //}, "TokenIndex::Merge()");
 
   Ack(add.seqNum());
 }
