@@ -14,6 +14,8 @@ namespace sto {
 void remove_all(const std::string &p) {
   boost::system::error_code ec;
   boost::filesystem::remove_all(p, ec);
+  if(ec.value() != boost::system::errc::success)
+    throw new std::runtime_error(ec.message());
 }
 
 void create_directory(const std::string &p) {
