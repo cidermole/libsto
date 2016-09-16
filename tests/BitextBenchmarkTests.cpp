@@ -144,7 +144,7 @@ void log_progress(size_t ctr) {
  * * TokenIndex global
  * * TokenIndex domain-specific
  */
-void read_input_lines(std::istream &is, BitextSide<Token> &side, DocumentMap &docMap, Args &args) {
+void read_input_lines(std::istream &is, BitextSide<Token> &side, DocumentMap &docMap, TokenIndex<Token, IndexTypeMemory> &verifyIndex, Args &args) {
   string line, w;
   vector<string> sent;
   typename Corpus<Token>::Sid sid = 0;
@@ -166,6 +166,7 @@ void read_input_lines(std::istream &is, BitextSide<Token> &side, DocumentMap &do
     double t_AddSentence = benchmark_time([&](){
       side.index->AddSentence(side.corpus->sentence(sid));
     });
+    verifyIndex.AddSentence(side.corpus->sentence(sid));
 
     if(!args.quiet) log_progress(sid);
 
@@ -204,19 +205,42 @@ TEST(BitextBenchmarkTests, benchmark_build) {
 
   //cout << "base=" << args.base << " lang=" << args.lang << endl;
 
-  shared_ptr<BaseDB> db = open_db(args.base + "db");
-
   DocumentMap docMap;
   //docMap.Load(args.base + "dmp");
   docMap.Load("/tmp/model.dmp.50k"); // europarl 10000
 
-  BitextSide<Token> side(args.lang, docMap); // in-memory type BitextSide
+  shared_ptr<TokenIndex<Token, IndexTypeMemory>> verifyIndex;
 
-  std::ifstream ifs("/tmp/model.en.50k");
-  // to do: for speed, we could read as the old mtt-build, sort in parallel, and then create the TokenIndex.
-  read_input_lines(ifs, side, docMap, args);
+  {
+    shared_ptr<BaseDB> db = open_db(args.base + "db");
 
-  if(!args.quiet) cerr << "Writing Vocab, Corpus and TokenIndex ... ";
-  side.Write(std::make_shared<DB<Token>>(*db), args.base);
-  if(!args.quiet) cerr << "done." << endl;
+    BitextSide<Token> side(args.lang, docMap); // in-memory type BitextSide
+    verifyIndex.reset(new TokenIndex<Token, IndexTypeMemory>(*side.corpus));
+
+    std::ifstream ifs("/tmp/model.en.50k");
+    // to do: for speed, we could read as the old mtt-build, sort in parallel, and then create the TokenIndex.
+    read_input_lines(ifs, side, docMap, *verifyIndex, args);
+
+    if(!args.quiet) cerr << "Writing Vocab, Corpus and TokenIndex ... ";
+    benchmark_time([&]() {
+      side.Write(std::make_shared<DB<Token>>(*db), args.base);
+    }, "BitextSide::Write()");
+    if(!args.quiet) cerr << "done." << endl;
+  }
+
+  // read back and check
+  shared_ptr<BaseDB> db2 = open_db(args.base + "db");
+  BitextSide<Token> sideDisk(std::make_shared<DB<Token>>(*db2), args.base, args.lang, docMap); // on-disk BitextSide
+
+
+  auto vspan = verifyIndex->span();
+  auto ispan = sideDisk.index->span();
+
+  std::cerr << "verifying " << vspan.size() << " Positions in index..." << std::endl;
+  EXPECT_EQ(vspan.size(), ispan.size());
+
+  for(size_t i = 0; i < vspan.size(); i++) {
+    // expect full equality (sort should have been stable, and exactly the same ordering/compare operator)
+    EXPECT_EQ(vspan[i], ispan[i]);
+  }
 }
