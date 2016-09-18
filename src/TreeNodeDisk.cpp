@@ -25,7 +25,7 @@
 namespace sto {
 
 template<class Token>
-TreeNodeDisk<Token>::TreeNodeDisk(ITokenIndex<Token> &index, size_t maxArraySize, std::string path, std::shared_ptr<DB<Token>> db, ITreeNode<Token> *parent, Vid vid) :
+TreeNodeDisk<Token>::TreeNodeDisk(ITokenIndex<Token> &index, size_t maxArraySize, std::string path, std::shared_ptr<DB<Token>> db, ITreeNode<Token> *parent, Vid vid, bool create_new_leaf) :
     TreeNode<Token, SuffixArrayDisk<Token>>(index, maxArraySize, parent, vid), path_(path), db_(db), sync_(true) {
   using namespace boost::filesystem;
 
@@ -37,15 +37,21 @@ TreeNodeDisk<Token>::TreeNodeDisk(ITokenIndex<Token> &index, size_t maxArraySize
   // TODO: no need for SuffixArrayDisk. We keep everything in memory anyway.
   // (we could unify SuffixArrayDisk and SuffixArrayMemory)
 
-  auto nodeType = db_->IsNodeLeaf(path_);
-  this->is_leaf_ = nodeType ? true : false;
+  if(create_new_leaf) {
+    // we are sure to be a new leaf (from SplitNode() or AddLeaf())
+    this->is_leaf_ = true;
+  } else {
+    auto nodeType = db_->IsNodeLeaf(path_);
+    this->is_leaf_ = nodeType ? true : false;
 
-  //std::vector<std::string> nts = {"internal", "exists", "missing"};
-  //std::cerr << "TreeNodeDisk: nodeType=" << nts[nodeType] << std::endl;
+    //std::vector<std::string> nts = {"internal", "exists", "missing"};
+    //std::cerr << "TreeNodeDisk: nodeType=" << nts[nodeType] << std::endl;
+  }
 
   if(this->is_leaf_) {
     this->array_.reset(new SuffixArrayDisk<Token>());
-    db_->GetNodeLeaf(array_path(), *this->array_);
+    if(!create_new_leaf)
+      db_->GetNodeLeaf(array_path(), *this->array_);
   } else {
     // recursively load the subtree rooted at this path
     //LoadSubtree(reinterpret_cast<const Vid *>(children.data()), children.size() / sizeof(Vid));
@@ -207,7 +213,7 @@ std::shared_ptr<typename TreeNodeDisk<Token>::SuffixArray> TreeNodeDisk<Token>::
 template<class Token>
 void TreeNodeDisk<Token>::AddLeaf(Vid vid) {
   //assert(!this->children_.Find(vid)); // appending to children assumes that this vid is new
-  this->children_[vid] = new TreeNodeDisk<Token>(this->index_, this->kMaxArraySize, child_path(vid), this->db_, this, vid);
+  this->children_[vid] = new TreeNodeDisk<Token>(this->index_, this->kMaxArraySize, child_path(vid), this->db_, this, vid, /* create_new_leaf = */ true);
 
   if(sync_) {
     // (in reality, we could just append to the existing blob of vids [in RAM]... child order does not matter)
@@ -248,7 +254,7 @@ std::string TreeNodeDisk<Token>::child_sub_path(Vid vid) {
 
 template<class Token>
 TreeNodeDisk<Token> *TreeNodeDisk<Token>::make_child_(Vid vid, typename SuffixArray::iterator first, typename SuffixArray::iterator last, const Corpus<Token> &corpus) {
-  TreeNodeDisk<Token> *new_child = new TreeNodeDisk<Token>(this->index_, this->kMaxArraySize, child_path(vid), this->db_, this, vid);
+  TreeNodeDisk<Token> *new_child = new TreeNodeDisk<Token>(this->index_, this->kMaxArraySize, child_path(vid), this->db_, this, vid, /* create_new_leaf = */ true);
   new_child->Assign(first.ptr(), last.ptr(), corpus);
   //new_array->insert(new_array->begin(), first, last); // this is the TreeNodeMemory interface. Maybe we could have implemented insert() here on SuffixArrayDisk, and use a common call?
   return new_child;

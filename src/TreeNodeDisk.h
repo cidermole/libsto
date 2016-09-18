@@ -44,7 +44,7 @@ public:
    *
    * @param path  path to the backing directory
    */
-  TreeNodeDisk(ITokenIndex<Token> &index, size_t maxArraySize, std::string path, std::shared_ptr<DB<Token>> db, ITreeNode<Token> *parent = nullptr, Vid vid = Token::kInvalidVid);
+  TreeNodeDisk(ITokenIndex<Token> &index, size_t maxArraySize, std::string path, std::shared_ptr<DB<Token>> db, ITreeNode<Token> *parent = nullptr, Vid vid = Token::kInvalidVid, bool create_new_leaf = false);
 
   virtual ~TreeNodeDisk() = default;
 
