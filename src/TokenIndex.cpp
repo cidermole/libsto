@@ -78,6 +78,11 @@ void TokenIndex<Token, TypeTag>::AddSentence(const Sentence<Token> &sent, seq_t 
 
 template<class Token, typename TypeTag>
 void TokenIndex<Token, TypeTag>::Merge(const ITokenIndex<Token> &add) {
+  Merge(add, *root_);
+}
+
+template<class Token, typename TypeTag>
+void TokenIndex<Token, TypeTag>::Merge(const ITokenIndex<Token> &add, LeafMerger<Token, SuffixArray> &merger) {
   // no update necessary
   if(add.seqNum() <= seqNum()) {
     std::cerr << "TokenIndex::Merge() skipped, seqNum of add " << add.seqNum() << " <= our seqNum " << seqNum() << std::endl;
@@ -88,10 +93,15 @@ void TokenIndex<Token, TypeTag>::Merge(const ITokenIndex<Token> &add) {
   auto adds = add.span();
 
   //benchmark_time([&](){
-    root_->Merge(adds, us);
+    root_->Merge(adds, us, merger);
   //}, "TokenIndex::Merge()");
 
   Ack(add.seqNum());
+}
+
+template<class Token, typename TypeTag>
+void TokenIndex<Token, TypeTag>::Split() {
+  root_->SplitNode(*corpus_);
 }
 
 template<class Token, typename TypeTag>

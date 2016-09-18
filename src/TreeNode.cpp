@@ -86,7 +86,7 @@ Range TreeNode<Token, SuffixArray>::find_bounds_array_(Corpus<Token> &corpus, Ra
 }
 
 template<class Token, class SuffixArray>
-void TreeNode<Token, SuffixArray>::Merge(IndexSpan<Token> &spanSource, IndexSpan<Token> &spanTarget) {
+void TreeNode<Token, SuffixArray>::Merge(IndexSpan<Token> &spanSource, IndexSpan<Token> &spanTarget, LeafMerger<Token, SuffixArray> &merger) {
   // iterate through children, recursively calling Merge() until we reach the TreeNodeDisk leaf level.
   // spanSource may not hit leaves at the same depth, but we can still iterate over the entire span to merge it.
 
@@ -95,7 +95,7 @@ void TreeNode<Token, SuffixArray>::Merge(IndexSpan<Token> &spanSource, IndexSpan
   if(spanTarget.node()->is_leaf()) {
     // trick: IndexSpan::begin() iterates over vid,
     // but ITokenIndexSpan::begin() iterates over Positions, which is what we want here.
-    MergeLeaf(*spanSource.get(), *spanTarget.corpus());
+    MergeLeaf(*spanSource.get(), merger);
     return;
   }
 
@@ -113,7 +113,7 @@ void TreeNode<Token, SuffixArray>::Merge(IndexSpan<Token> &spanSource, IndexSpan
       spant.narrow(Token{vid}); // step IndexSpan into the node just created (which contains an empty SA)
       assert(spant.in_array());
     }
-    spant.node()->Merge(spans, spant);
+    dynamic_cast<TreeNode<Token, SuffixArray> *>(spant.node())->Merge(spans, spant, merger); // TODO: reinterpret_cast? (faster? correct?)
     this->AddSize(vid, num_new);
   }
 }

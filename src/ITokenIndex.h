@@ -265,6 +265,9 @@ public:
   /** Merge all Positions from 'add' into this TokenIndex. */
   virtual void Merge(const ITokenIndex<Token> &add) = 0;
 
+  /** Split the root node. */
+  virtual void Split() = 0;
+
   /** Write to (empty) DB. */
   virtual void Write(std::shared_ptr<DB<Token>> db) const = 0;
 

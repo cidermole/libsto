@@ -65,7 +65,11 @@ public:
   typedef sto::SuffixArrayPosition<Token> value_type;
 
   SuffixArrayDisk();
+  /** Allocate 'len' Positions */
+  SuffixArrayDisk(size_t len);
+  /** Make a copy of 'bytes', interpreted as Positions array. */
   SuffixArrayDisk(const std::string &bytes);
+  /** Make a copy of the given Positions in 'data'. */
   SuffixArrayDisk(const SuffixArrayPosition<Token> *data, size_t len);
 
   class Iterator {
@@ -98,6 +102,10 @@ public:
   size_t size() const { return length_; }
 
   Position<Token> operator[](size_t pos) const { return array_[pos]; }
+
+  SuffixArrayPosition<Token> *data() { return array_; }
+
+  void resize(size_t len);
 
   SuffixArrayDisk &operator=(const std::string &bytes);
 

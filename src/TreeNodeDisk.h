@@ -55,9 +55,11 @@ public:
    * Assumes there is at most one writer at all times (one process, and only one writing thread).
    *
    * @param addSpan  TreeNode span to be merged in (span over the same vid); either TokenIndex<Token>::Span or SuffixArrayPositionSpan
-   * @param corpus   Positions belong to this Corpus
+   * @param merger   leaf merging strategy
    */
-  virtual void MergeLeaf(const ITokenIndexSpan<Token> &addSpan, const Corpus<Token> &corpus) override;
+  virtual void MergeLeaf(const ITokenIndexSpan<Token> &addSpan, LeafMerger<Token, SuffixArray> &merger) override;
+
+  virtual std::shared_ptr<SuffixArray> MergeLeafArray(std::shared_ptr<SuffixArray> curSpan, const ITokenIndexSpan<Token> &addSpan) override;
 
   virtual void AddPosition(const Sentence<Token> &sent, Offset start) override { assert(0); }
 
@@ -68,6 +70,11 @@ public:
   bool find_child_(Vid vid, TreeNodeDisk<Token> **child = nullptr);
 
   void Assign(typename SuffixArray::iterator first, typename SuffixArray::iterator last, const Corpus<Token> &corpus);
+
+  /**
+   * Split this leaf node (SuffixArray) into a proper TreeNode with children.
+   */
+  virtual void SplitNode(const Corpus<Token> &corpus) override;
 
   /**
    * Finalize an update with seqNum. Flush writes to DB and apply a new persistence sequence number.
@@ -85,11 +92,6 @@ private:
 
   /** load child nodes below 'path' as indicated by the passed sequence of child vids. */
   void LoadSubtree(const Vid *children, size_t num_children);
-
-  /**
-   * Split this leaf node (SuffixArray) into a proper TreeNode with children.
-   */
-  void SplitNode(const Corpus<Token> &corpus);
 
   /**
    * Creates the nested directory name for a given vid.

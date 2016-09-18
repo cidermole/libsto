@@ -101,7 +101,7 @@ seq_t TreeNodeDisk<Token>::seqNum() const {
 }
 
 template<class Token>
-void TreeNodeDisk<Token>::MergeLeaf(const ITokenIndexSpan<Token> &addSpan, const Corpus<Token> &corpus) {
+void TreeNodeDisk<Token>::MergeLeaf(const ITokenIndexSpan<Token> &addSpan, LeafMerger<Token, SuffixArray> &merger) {
   assert(this->is_leaf());
 
   // Merge two sorted Position ranges: one from memory (addSpan) and one from disk (this node).
@@ -110,11 +110,16 @@ void TreeNodeDisk<Token>::MergeLeaf(const ITokenIndexSpan<Token> &addSpan, const
   // note: for persistence to be crash-safe, we must tolerate it if some Positions have already
   // been persisted (from a previously crashed run) --> we have to omit duplicate Positions
 
+  Corpus<Token> &corpus = *addSpan.corpus();
+
   size_t depth = this->depth_;
 
   size_t addSize = addSpan.size();
   size_t curSize = this->array_->size();
-  size_t newSize = curSize + addSize;
+  //size_t newSize = curSize + addSize;
+
+  // the only time we may get a zero-size leaf is if we are merging in an empty addSpan (and even then, only with a leaf root on disk)
+  assert(addSize > 0 || depth == 0);
 
   SuffixArray &curSpan = *this->array_;
   //IndexSpan<Token> curSpan = this->span(); // IndexSpan, why r u so expensive to query using operator[]?
@@ -126,18 +131,45 @@ void TreeNodeDisk<Token>::MergeLeaf(const ITokenIndexSpan<Token> &addSpan, const
   // because shorter sequences come first in lexicographic order, we can compare the length of the first entry
   // (of either available index -- either cur or add may be empty, unfortunately)
 
-  std::unique_ptr<SuffixArrayPosition<Token>[]> newArray(new SuffixArrayPosition<Token>[newSize]);
-  SuffixArrayPosition<Token> *pnew = newArray.get();
+  auto array = merger.MergeLeafArray(this->array_, addSpan);
 
-  // the only time we may get a zero-size leaf is if we are merging in an empty addSpan (and even then, only with a leaf root on disk)
-  assert(addSize > 0 || depth == 0);
+  if(sync_) {
+    // overwrite the DB key now; the existing array_ continues to hold the old data afterwards
+    db_->PutNodeLeaf(array_path(), array->data(), array->size());
+  }
+
+  // replace atomically
+  this->array_ = array;
+
+  /*
+   * note: should it become necessary to split </s> array, a simple sharding concept
+   * would involve fixed-size blocks. For that, we need to change Merge() to deal with shards
+   * and SuffixArrayDisk to transparently map access to several blocks as one sequence.
+   *
+   * We implement a much easier workaround: for allow_split=false arrays (like ". </s>"), appending the new
+   * Positions will always be legal. Therefore, don't build in RAM, and just append to the file on disk.
+   * See above at if(!allow_split) "optimized case".
+   */
+
+  //assert(allow_split);
+  if(allow_split && this->array_->size() > this->kMaxArraySize) {
+    SplitNode(corpus);
+  }
+}
+
+template<class Token>
+std::shared_ptr<typename TreeNodeDisk<Token>::SuffixArray> TreeNodeDisk<Token>::MergeLeafArray(std::shared_ptr<typename TreeNodeDisk<Token>::SuffixArray> curSpan, const ITokenIndexSpan<Token> &addSpan) {
+  Corpus<Token> &corpus = *addSpan.corpus();
+  size_t newSize = curSpan->size() + addSpan.size();
+  std::shared_ptr<SuffixArrayDisk<Token>> newArray = std::make_shared<SuffixArrayDisk<Token>>(newSize);
+  SuffixArrayPosition<Token> *pnew = newArray->data();
 
   // merge the two spans' Positions into newArray
   //PosComp<Token> comp(corpus, depth);
   PosComp<Token> comp(corpus, 0);
-  pnew = std::set_union(curSpan.begin(), curSpan.end(), addSpan.begin(), addSpan.end(), pnew, comp);
+  pnew = std::set_union(curSpan->begin(), curSpan->end(), addSpan.begin(), addSpan.end(), pnew, comp);
 
-  newSize = pnew - newArray.get(); // if we skipped duplicate entries, this may now be smaller than newSize before
+  newSize = pnew - newArray->data(); // if we skipped duplicate entries, this may now be smaller than newSize before
 
 #ifndef NDEBUG
   // postconditions
@@ -161,38 +193,15 @@ void TreeNodeDisk<Token>::MergeLeaf(const ITokenIndexSpan<Token> &addSpan, const
 
   // array is sorted in ascending order
   for(size_t i = 0; i + 1 < newSize; i++) {
-    Position<Token> p = newArray[i], q = newArray[i+1];
+    Position<Token> p = (*newArray)[i], q = (*newArray)[i+1];
     //assert(p <= q) == assert(!(p > q)); // equivalent formula if we had > operator
     assert(!q.compare(p, corpus, /* pos_order_dupes = */ false)); // ascending order (tolerates old v2 mtt-build style order)
     assert(!(p == q)); // ensure no duplicates
   }
 #endif
 
-  if(sync_) {
-    // overwrite the DB key now; the existing array_ continues to hold the old data afterwards
-    db_->PutNodeLeaf(array_path(), newArray.get(), newSize);
-  }
-  // atomically replace the old array_
-  this->array_.reset(new SuffixArrayDisk<Token>(newArray.get(), newSize));
-
-  newArray.reset();
-
-  assert(this->array_->size() == newSize);
-
-  /*
-   * note: should it become necessary to split </s> array, a simple sharding concept
-   * would involve fixed-size blocks. For that, we need to change Merge() to deal with shards
-   * and SuffixArrayDisk to transparently map access to several blocks as one sequence.
-   *
-   * We implement a much easier workaround: for allow_split=false arrays (like ". </s>"), appending the new
-   * Positions will always be legal. Therefore, don't build in RAM, and just append to the file on disk.
-   * See above at if(!allow_split) "optimized case".
-   */
-
-  //assert(allow_split);
-  if(allow_split && this->array_->size() > this->kMaxArraySize) {
-    SplitNode(corpus);
-  }
+  newArray->resize(newSize);
+  return newArray;
 }
 
 template<class Token>

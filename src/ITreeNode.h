@@ -79,7 +79,7 @@ public:
   virtual Position<Token> At(size_t abs_offset, size_t rel_offset) = 0;
 
   /** Merge the entire IndexSpan spanMemory into this leaf. spanDisk must be a path to this TreeNode. */
-  virtual void Merge(IndexSpan<Token> &spanMemory, IndexSpan<Token> &spanDisk) = 0;
+  //virtual void Merge(IndexSpan<Token> &spanMemory, IndexSpan<Token> &spanDisk) = 0;
 
   /** Sorts the leaf node, for a special leaf node type TreeNodeMemBuf, does nothing for others */
   virtual void EnsureSorted(const Corpus<Token> &corpus) = 0;

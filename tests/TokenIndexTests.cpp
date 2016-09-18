@@ -563,12 +563,25 @@ TYPED_TEST(TokenIndexTests, test_persistence) {
   EXPECT_EQ(1, span.size()) << "span size";
 }
 
+/*
+template<class Token, class SuffixArray>
+class BreakLeafMerger : public LeafMerger<Token, SuffixArray> {
+public:
+  virtual std::shared_ptr<SuffixArray> MergeLeafArray(std::shared_ptr<SuffixArray> curSpan, const ITokenIndexSpan<Token> &addSpan) override {
+    Corpus<Token> &corpus = *addSpan.corpus();
+    size_t newSize = curSpan->size() + addSpan.size();
+    std::shared_ptr<SuffixArray> newArray = std::make_shared<SuffixArray>(newSize);
+    return newArray; // breaks the test by returning a zero-initialized SuffixArray
+  }
+};
+ */
 
 TYPED_TEST(TokenIndexTests, test_merge) {
   typedef TypeParam TokenIndexType;
   typedef typename TypeParam::TokenT Token;
 
   TokenIndex<Token, IndexTypeMemory> tokenIndex(this->corpus);
+  //BreakLeafMerger<Token, typename TokenIndexType::SuffixArray> breaker;
 
   TokenIndexType indexTarget(this->basePath, this->corpus, this->db);
 
@@ -576,6 +589,7 @@ TYPED_TEST(TokenIndexTests, test_merge) {
 
   tokenIndex.AddSentence(sentence);
   indexTarget.Merge(tokenIndex); // merge of 'sentence' into empty TokenIndex
+  //indexTarget.Merge(tokenIndex, breaker); // merge of 'sentence' into empty TokenIndex
   //indexTarget.AddSentence(sentence);
 
   auto span = indexTarget.span();

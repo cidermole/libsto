@@ -251,6 +251,10 @@ public:
    * 'add' must have a greater seqNum than us. Otherwise, calls will be ignored!
    */
   virtual void Merge(const ITokenIndex<Token> &add);
+  virtual void Merge(const ITokenIndex<Token> &add, LeafMerger<Token, SuffixArray> &merger);
+
+  /** Split the root node. */
+  virtual void Split();
 
   /** Write to (empty) DB. */
   virtual void Write(std::shared_ptr<DB<Token>> db) const;

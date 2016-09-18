@@ -24,6 +24,16 @@ template<class Token> class IndexSpan;
 template<class Token> class ITokenIndex;
 template<class Token> class ITokenIndexSpan;
 
+
+/**
+ * Defines a strategy for merging leaves. Can be passed to Merge(), to implement filtering for domains.
+ */
+template<class Token, class SuffixArray>
+class LeafMerger {
+public:
+  virtual std::shared_ptr<SuffixArray> MergeLeafArray(std::shared_ptr<SuffixArray> curSpan, const ITokenIndexSpan<Token> &addSpan) = 0;
+};
+
 /**
  * A TreeNode belongs to a TokenIndex and represents a word and its possible
  * suffix extensions.
@@ -33,7 +43,7 @@ template<class Token> class ITokenIndexSpan;
  * size low.
  */
 template<class Token, class SuffixArray>
-class TreeNode : public ITreeNode<Token> {
+class TreeNode : public ITreeNode<Token>, public LeafMerger<Token, SuffixArray> {
 public:
   typedef typename Corpus<Token>::Vid Vid;
   typedef typename Corpus<Token>::Offset Offset;
@@ -66,7 +76,7 @@ public:
 
 
   /** Merge 'spanSource' into this TreeNode. 'spanTarget' must be a span over this TreeNode. */
-  void Merge(IndexSpan<Token> &spanSource, IndexSpan<Token> &spanTarget);
+  void Merge(IndexSpan<Token> &spanSource, IndexSpan<Token> &spanTarget, LeafMerger<Token, SuffixArray> &merger);
 
   /**
    * Merge 'addSpan' into this leaf.
@@ -74,10 +84,11 @@ public:
    *
    * Assumes there is at most one writer at all times (one process, and only one writing thread).
    *
-   * @param addSpan  TreeNode span to be merged in (span over the same vid); either TokenIndex<Token>::Span or SuffixArrayPositionSpan
-   * @param corpus   Positions belong to this Corpus
+   * @param addSpan  TreeNode span to be merged in (span over the same vid)
+   * @param merger   leaf merging strategy
    */
-  virtual void MergeLeaf(const ITokenIndexSpan<Token> &addSpan, const Corpus<Token> &corpus) = 0;
+  virtual void MergeLeaf(const ITokenIndexSpan<Token> &addSpan, LeafMerger<Token, SuffixArray> &merger) = 0;
+  //virtual std::shared_ptr<SuffixArray> MergeLeafArray(std::shared_ptr<SuffixArray> curSpan, const ITokenIndexSpan<Token> &addSpan) override;
 
   /**
    * Insert the existing Corpus Position into this leaf node (SuffixArray).
@@ -103,6 +114,11 @@ public:
 
   /** @return true if child with 'vid' as the key was found, and optionally sets 'child'. */
   bool find_child_(Vid vid, TreeNode<Token, SuffixArray> **child = nullptr);
+
+  /**
+   * Split this leaf node (SuffixArray) into a proper TreeNode with children.
+   */
+  virtual void SplitNode(const Corpus<Token> &corpus) = 0;
 
   /** iterator over vids of children of internal nodes */
   IVidIterator<Token> begin() const { return IVidIterator<Token>(std::shared_ptr<ITreeNodeIterator<typename Token::Vid>>(children_.begin().copy())); }
@@ -164,35 +180,37 @@ void TreeNode<Token, SuffixArray>::SplitNode(const Corpus<Token> &corpus, NodeFa
     return a.add(depth, corpus).vid(corpus) < b.add(depth, corpus).vid(corpus);
   };
 
-  assert(this->size() > 0);
   std::pair<iter, iter> vid_range;
   std::shared_ptr<SuffixArray> array = this->array_;
-  Position<Token> pos = (*array)[0]; // first position with first vid
+  size_t size = array->size();
+  Position<Token> pos = size ? Position<Token>((*array)[0]) : Position<Token>(); // first position with first vid
 
   // thread safety: we build the TreeNode while is_leaf_ == true, so children_ is not accessed while being modified
 
   // for each top-level word, find the suffix array range and populate individual split arrays
-  while(true) {
-    vid_range = std::equal_range(array->begin(), array->end(), pos, comp);
-    Vid vid = pos.add(depth, corpus).vid(corpus);
+  if(size) {
+    while(true) {
+      vid_range = std::equal_range(array->begin(), array->end(), pos, comp);
+      Vid vid = pos.add(depth, corpus).vid(corpus);
 
-    // copy each range into its own suffix array
-    TreeNode<Token, SuffixArray> *new_child = factory(vid, vid_range.first, vid_range.second, corpus, depth); // Span would be easier...
-    size_t new_size = vid_range.second - vid_range.first;
-    //children_[vid] = new_child;
-    this->children_.FindOrInsert(vid, /* add_size = */ new_size) = new_child;
+      // copy each range into its own suffix array
+      TreeNode<Token, SuffixArray> *new_child = factory(vid, vid_range.first, vid_range.second, corpus, depth); // Span would be easier...
+      size_t new_size = vid_range.second - vid_range.first;
+      //children_[vid] = new_child;
+      this->children_.FindOrInsert(vid, /* add_size = */ new_size) = new_child;
 
 #ifndef NDEBUG
-    TreeNode<Token, SuffixArray> *n = nullptr;
-    assert(this->children_.Find(vid, &n));
-    assert(n == new_child);
-    assert(this->children_.ChildSize(vid) == new_size);
+      TreeNode<Token, SuffixArray> *n = nullptr;
+      assert(this->children_.Find(vid, &n));
+      assert(n == new_child);
+      assert(this->children_.ChildSize(vid) == new_size);
 #endif
 
-    if(vid_range.second != array->end())
-      pos = *vid_range.second; // position with next vid
-    else
-      break;
+      if(vid_range.second != array->end())
+        pos = *vid_range.second; // position with next vid
+      else
+        break;
+    }
   }
   assert(this->children_.Size() == array->size());
 

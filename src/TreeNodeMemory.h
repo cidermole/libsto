@@ -45,9 +45,11 @@ public:
    * Creates a temporary suffix array first, before moving it to replace the old suffix array.
    *
    * @param addSpan  TreeNode span to be merged in (span over the same vid); either TokenIndex<Token>::Span or SuffixArrayPositionSpan
-   * @param corpus   Positions belong to this Corpus
+   * @param merger   leaf merging strategy
    */
-  virtual void MergeLeaf(const ITokenIndexSpan<Token> &addSpan, const Corpus<Token> &corpus) override;
+  virtual void MergeLeaf(const ITokenIndexSpan<Token> &addSpan, LeafMerger<Token, SuffixArray> &merger) override;
+
+  virtual std::shared_ptr<SuffixArray> MergeLeafArray(std::shared_ptr<SuffixArray> curSpan, const ITokenIndexSpan<Token> &addSpan) override;
 
   /**
    * Insert the existing Corpus Position into this leaf node (SuffixArray).
@@ -65,17 +67,17 @@ public:
   /** @return true if child with 'vid' as the key was found, and optionally sets 'child'. */
   bool find_child_(Vid vid, TreeNodeMemory<Token> **child = nullptr);
 
+  /**
+   * Split this leaf node (SuffixArray) into a proper TreeNode with children.
+   */
+  virtual void SplitNode(const Corpus<Token> &corpus) override;
+
   /** Finalize an update with seqNum. Flush writes to DB and apply a new persistence sequence number. */
   virtual void Ack(seq_t seqNum) {}
   /** current persistence sequence number */
   virtual seq_t seqNum() const { return seqNum_; }
 
 private:
-  /**
-   * Split this leaf node (SuffixArray) into a proper TreeNode with children.
-   */
-  void SplitNode(const Corpus<Token> &corpus);
-
   /**
    * Load this leaf node (SuffixArray) from mtt-build *.sfa file on disk.
    */
@@ -104,8 +106,16 @@ public:
   /** @return true if child with 'vid' as the key was found, and optionally sets 'child'. */
   bool find_child_(Vid vid, TreeNodeMemBuf<Token> **child = nullptr);
 
+  /**
+   * Split this leaf node (SuffixArray) into a proper TreeNode with children.
+   */
+  void SplitNode(const Corpus<Token> &corpus);
+
 private:
   std::atomic<size_t> lastSortSize_;
+
+  /** factory function for TreeNode::SplitNode() */
+  TreeNodeMemBuf<Token> *make_child_(Vid vid, typename SuffixArray::iterator first, typename SuffixArray::iterator last, const Corpus<Token> &corpus);
 };
 
 } // namespace sto
