@@ -93,10 +93,17 @@ void TreeNode<Token, SuffixArray>::Merge(IndexSpan<Token> &spanSource, IndexSpan
   assert(spanTarget.node() == this);
 
   if(spanTarget.node()->is_leaf()) {
-    // trick: IndexSpan::begin() iterates over vid,
-    // but ITokenIndexSpan::begin() iterates over Positions, which is what we want here.
-    MergeLeaf(*spanSource.get(), merger);
-    return;
+    if(spanSource.size() + spanTarget.size() > this->kMaxArraySize && this->vid_ != 1) { // and not </s> which we cannot split
+      // we already know it's not going to fit, create another internal level
+      std::cerr << "TreeNodeDisk::Merge() -> SplitNode() targeting size=" <<
+        (spanSource.size() + spanTarget.size()) << " so splitting early at depth=" << spanTarget.depth() << std::endl;
+      SplitNode(*spanTarget.corpus());
+      //std::cerr << "SplitNode() done." << std::endl;
+    } else {
+      // TokenIndexSpan::begin() iterates over Positions, which is what we want here.  (note that IndexSpan::begin() would iterate over vid)
+      MergeLeaf(*spanSource.get(), merger);
+      return;
+    }
   }
 
   for(auto vid : spanSource) {
