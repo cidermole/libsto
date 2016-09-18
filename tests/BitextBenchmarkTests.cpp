@@ -219,7 +219,10 @@ TEST(BitextBenchmarkTests, benchmark_build) {
 
     std::ifstream ifs("/tmp/model.en.50k");
     // to do: for speed, we could read as the old mtt-build, sort in parallel, and then create the TokenIndex.
-    read_input_lines(ifs, side, docMap, *verifyIndex, args);
+
+    benchmark_time([&]() {
+      read_input_lines(ifs, side, docMap, *verifyIndex, args);
+    }, "read_input_lines");
 
     if(!args.quiet) cerr << "Writing Vocab, Corpus and TokenIndex ... ";
     benchmark_time([&]() {
