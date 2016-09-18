@@ -148,7 +148,7 @@ void TreeNodeMemory<Token>::MergeLeaf(const ITokenIndexSpan<Token> &addSpan, Lea
 
   size_t addSize = addSpan.size();
   size_t curSize = this->array_->size();
-  size_t newSize = curSize + addSize;
+  //size_t newSize = curSize + addSize;
 
   // the only time we may get a zero-size leaf is if we are merging in an empty addSpan (and even then, only with a leaf root on disk)
   assert(addSize > 0 || depth == 0);
