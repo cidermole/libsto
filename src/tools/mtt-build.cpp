@@ -255,7 +255,6 @@ int main(int argc, char **argv) {
 
   // again could be parallelized
   //auto top_span = side.index->span();
-  unordered_map<domid_t, IndexSpan<Token>> dom_spans;
   unordered_map<domid_t, TreeNodeMemBuf<Token> *> dom_nodes;
   for(auto vid : top_span) {
     // sweep through each suffix array, add positions to the correct domain index
@@ -264,10 +263,10 @@ int main(int argc, char **argv) {
 
     // step each domain into the current 'vid' leaf
     for(auto domain : docMap) {
-      dom_spans.insert(make_pair(domain, side.domain_indexes[domain]->span()));
-      dom_spans.at(domain).narrow(vid);
-      assert(dom_spans.at(domain).depth() == 1);
-      dom_nodes[domain] = dynamic_cast<TreeNodeMemBuf<Token> *>(dom_spans.at(domain).node());
+      auto spand = side.domain_indexes[domain]->span();
+      spand.narrow(vid);
+      assert(spand.depth() == 1);
+      dom_nodes[domain] = dynamic_cast<TreeNodeMemBuf<Token> *>(spand.node());
     }
 
     size_t spans_size = spans.size();
