@@ -5,6 +5,7 @@
  ****************************************************/
 
 #include "TokenIndex.h"
+#include "ITokenIndex.h"
 
 #include "util/Time.h"
 

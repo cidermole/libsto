@@ -40,8 +40,14 @@ public:
 
   virtual ~TreeNodeMemory() = default;
 
-  // not implemented
-  void Merge(IndexSpan<Token> &spanMemory, IndexSpan<Token> &spanUs) { assert(0); }
+  /**
+   * Merge 'addSpan' into this leaf.
+   * Creates a temporary suffix array first, before moving it to replace the old suffix array.
+   *
+   * @param addSpan  TreeNode span to be merged in (span over the same vid); either TokenIndex<Token>::Span or SuffixArrayPositionSpan
+   * @param corpus   Positions belong to this Corpus
+   */
+  virtual void MergeLeaf(const ITokenIndexSpan<Token> &addSpan, const Corpus<Token> &corpus) override;
 
   /**
    * Insert the existing Corpus Position into this leaf node (SuffixArray).

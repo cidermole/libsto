@@ -22,6 +22,7 @@ namespace sto {
 
 template<class Token> class IndexSpan;
 template<class Token> class ITokenIndex;
+template<class Token> class ITokenIndexSpan;
 
 /**
  * A TreeNode belongs to a TokenIndex and represents a word and its possible
@@ -62,6 +63,21 @@ public:
   Position<Token> At(size_t abs_offset, size_t rel_offset);
 
   void DebugPrint(std::ostream &os, const Corpus<Token> &corpus, size_t depth = 0);
+
+
+  /** Merge 'spanSource' into this TreeNode. 'spanTarget' must be a span over this TreeNode. */
+  void Merge(IndexSpan<Token> &spanSource, IndexSpan<Token> &spanTarget);
+
+  /**
+   * Merge 'addSpan' into this leaf.
+   * Creates a temporary suffix array first, before moving it to replace the old suffix array.
+   *
+   * Assumes there is at most one writer at all times (one process, and only one writing thread).
+   *
+   * @param addSpan  TreeNode span to be merged in (span over the same vid); either TokenIndex<Token>::Span or SuffixArrayPositionSpan
+   * @param corpus   Positions belong to this Corpus
+   */
+  virtual void MergeLeaf(const ITokenIndexSpan<Token> &addSpan, const Corpus<Token> &corpus) { assert(0); }
 
   /**
    * Insert the existing Corpus Position into this leaf node (SuffixArray).

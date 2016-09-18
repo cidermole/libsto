@@ -565,23 +565,20 @@ TYPED_TEST(TokenIndexTests, test_persistence) {
 
 
 TYPED_TEST(TokenIndexTests, test_merge) {
+  typedef TypeParam TokenIndexType;
   typedef typename TypeParam::TokenT Token;
-
-  // run this test only on IndexTypeDisk
-  if(!std::is_same<typename TypeParam::TypeTagT, IndexTypeDisk>::value)
-    return;
 
   TokenIndex<Token, IndexTypeMemory> tokenIndex(this->corpus);
 
-  TokenIndex<Token, IndexTypeDisk> indexDisk(this->basePath, this->corpus, this->db);
+  TokenIndexType indexTarget(this->basePath, this->corpus, this->db);
 
   Sentence<Token> sentence = this->AddSentence({"this", "is", "an", "example"});
 
   tokenIndex.AddSentence(sentence);
-  //indexDisk.Merge(tokenIndex); // merge of 'sentence' into empty TokenIndex
-  indexDisk.AddSentence(sentence);
+  indexTarget.Merge(tokenIndex); // merge of 'sentence' into empty TokenIndex
+  //indexTarget.AddSentence(sentence);
 
-  auto span = indexDisk.span();
+  auto span = indexTarget.span();
   EXPECT_EQ(4, span.size()) << "the Sentence should have added 4 tokens to the IndexSpan";
 
   auto refSpan = tokenIndex.span();
@@ -591,18 +588,18 @@ TYPED_TEST(TokenIndexTests, test_merge) {
 
 
   Sentence<Token> sent2 = this->AddSentence({"this", "is", "not", "an", "example"});
-  //TokenIndex<Token, IndexTypeMemory> index2(this->corpus);
+  TokenIndex<Token, IndexTypeMemory> index2(this->corpus);
   tokenIndex.AddSentence(sent2);
-  indexDisk.AddSentence(sent2);
-  //index2.AddSentence(sent2);
-  //indexDisk.Merge(index2);
+  //indexTarget.AddSentence(sent2);
+  index2.AddSentence(sent2);
+  indexTarget.Merge(index2);
 
-  EXPECT_EQ(9, indexDisk.span().size());
+  EXPECT_EQ(9, indexTarget.span().size());
 
   // this check happens to work because equal positions get appended in both cases, so the order is stable
   // otherwise, we would have to check buckets
   auto refSpan2 = tokenIndex.span();
-  span = indexDisk.span();
+  span = indexTarget.span();
   EXPECT_EQ(refSpan2.size(), span.size());
   for(size_t i = 0; i < span.size(); i++) {
     EXPECT_EQ(refSpan2[i], span[i]) << "index entry at i=" << i << " should be equal to reference";

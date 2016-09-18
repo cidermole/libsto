@@ -101,8 +101,7 @@ seq_t TreeNodeDisk<Token>::seqNum() const {
 }
 
 template<class Token>
-template<class PositionSpan>
-void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<Token> &corpus) {
+void TreeNodeDisk<Token>::MergeLeaf(const ITokenIndexSpan<Token> &addSpan, const Corpus<Token> &corpus) {
   assert(this->is_leaf());
 
   // Merge two sorted Position ranges: one from memory (addSpan) and one from disk (this node).
@@ -197,43 +196,6 @@ void TreeNodeDisk<Token>::MergeLeaf(const PositionSpan &addSpan, const Corpus<To
 }
 
 template<class Token>
-void TreeNodeDisk<Token>::Merge(IndexSpan<Token> &spanMemory, IndexSpan<Token> &spanDisk) {
-  // iterate through children, recursively calling Merge() until we reach the TreeNodeDisk leaf level.
-  // spanMemory may not hit leaves at the same depth, but we can still iterate over the entire span to merge it.
-
-  assert(spanDisk.node() == this);
-
-  if(spanDisk.node()->is_leaf()) {
-    // trick: IndexSpan::begin() iterates over vid,
-    // but ITokenIndexSpan::begin() iterates over Positions, which is what we want here.
-    MergeLeaf(*spanMemory.get(), *spanDisk.corpus());
-    return;
-  }
-
-  for(auto vid : spanMemory) {
-    IndexSpan<Token> spanm = spanMemory;
-    size_t num_new = spanm.narrow(Token{vid});
-
-    assert(num_new > 0); // since we iterate precisely spanMemory
-
-    IndexSpan<Token> spand = spanDisk;
-    size_t spanSize = spand.narrow(Token{vid});
-    if(spanSize == 0) {
-      // (1) create tree entry (leaf)
-      spand.node()->AddLeaf(vid);
-      spand.narrow(Token{vid}); // step IndexSpan into the node just created (which contains an empty SA)
-      assert(spand.in_array());
-    }
-    spand.node()->Merge(spanm, spand);
-    this->AddSize(vid, num_new);
-  }
-
-  if(spanDisk.depth() == 0) {
-    //db_->CompactRange(); // compact the entire database
-  }
-}
-
-template<class Token>
 void TreeNodeDisk<Token>::AddLeaf(Vid vid) {
   //assert(!this->children_.Find(vid)); // appending to children assumes that this vid is new
   this->children_[vid] = new TreeNodeDisk<Token>(this->index_, this->kMaxArraySize, child_path(vid), this->db_, this, vid);
@@ -278,9 +240,22 @@ std::string TreeNodeDisk<Token>::child_sub_path(Vid vid) {
 template<class Token>
 TreeNodeDisk<Token> *TreeNodeDisk<Token>::make_child_(Vid vid, typename SuffixArray::iterator first, typename SuffixArray::iterator last, const Corpus<Token> &corpus) {
   TreeNodeDisk<Token> *new_child = new TreeNodeDisk<Token>(this->index_, this->kMaxArraySize, child_path(vid), this->db_, this, vid);
-  new_child->MergeLeaf(SuffixArrayPositionSpan<Token>(first.ptr(), last.ptr()), corpus);
+  new_child->Assign(first.ptr(), last.ptr(), corpus);
   //new_array->insert(new_array->begin(), first, last); // this is the TreeNodeMemory interface. Maybe we could have implemented insert() here on SuffixArrayDisk, and use a common call?
   return new_child;
+}
+
+template<class Token>
+void TreeNodeDisk<Token>::Assign(typename SuffixArray::iterator first, typename SuffixArray::iterator last, const Corpus<Token> &corpus) {
+  size_t newSize = last.ptr() - first.ptr();
+  std::shared_ptr<SuffixArrayDisk<Token>> newArray = std::make_shared<SuffixArrayDisk<Token>>(first.ptr(), newSize);
+
+  if(sync_) {
+    // overwrite the DB key now; the existing array_ continues to hold the old data afterwards
+    db_->PutNodeLeaf(array_path(), newArray->begin().ptr(), newSize);
+  }
+  // atomically replace the old array_
+  this->array_ = newArray;
 }
 
 template<class Token>

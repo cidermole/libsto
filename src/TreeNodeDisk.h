@@ -49,18 +49,15 @@ public:
   virtual ~TreeNodeDisk() = default;
 
   /**
-   * For now, leaves only. Merge the entire IndexSpan into this leaf.
-   * Writes to a temporary file first, before moving it to replace the old suffix array.
+   * Merge 'addSpan' into this leaf.
+   * Creates a temporary suffix array first, before moving it to replace the old suffix array.
    *
    * Assumes there is at most one writer at all times (one process, and only one writing thread).
    *
    * @param addSpan  TreeNode span to be merged in (span over the same vid); either TokenIndex<Token>::Span or SuffixArrayPositionSpan
    * @param corpus   Positions belong to this Corpus
    */
-  template<class PositionSpan>
-  void MergeLeaf(const PositionSpan &addSpan, const Corpus<Token> &corpus);
-
-  void Merge(IndexSpan<Token> &spanMemory, IndexSpan<Token> &spanDisk);
+  virtual void MergeLeaf(const ITokenIndexSpan<Token> &addSpan, const Corpus<Token> &corpus) override;
 
   void AddPosition(const Sentence<Token> &sent, Offset start) { assert(0); }
 
@@ -69,6 +66,8 @@ public:
 
   /** @return true if child with 'vid' as the key was found, and optionally sets 'child'. */
   bool find_child_(Vid vid, TreeNodeDisk<Token> **child = nullptr);
+
+  void Assign(typename SuffixArray::iterator first, typename SuffixArray::iterator last, const Corpus<Token> &corpus);
 
   /**
    * Finalize an update with seqNum. Flush writes to DB and apply a new persistence sequence number.

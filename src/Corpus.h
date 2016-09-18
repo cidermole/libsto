@@ -194,7 +194,8 @@ public:
 template<class Token>
 struct AtomicPosition {
   static constexpr std::memory_order order = std::memory_order_relaxed;
-  
+
+  AtomicPosition() {}
   AtomicPosition(const Position<Token> &p) {
     pos.store(p, order);
   }

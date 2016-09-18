@@ -135,6 +135,94 @@ void TreeNodeMemory<Token>::AddLeaf(Vid vid) {
 }
 
 template<class Token>
+void TreeNodeMemory<Token>::MergeLeaf(const ITokenIndexSpan<Token> &addSpan, const Corpus<Token> &corpus) {
+  assert(this->is_leaf());
+
+  // Merge two sorted Position ranges: one from memory (addSpan) and one from disk (this node).
+  // Since this is where we grow, it may be necessary to split this node afterwards.
+
+  // note: for persistence to be crash-safe, we must tolerate it if some Positions have already
+  // been persisted (from a previously crashed run) --> we have to omit duplicate Positions
+
+  size_t depth = this->depth_;
+
+  size_t addSize = addSpan.size();
+  size_t curSize = this->array_->size();
+  size_t newSize = curSize + addSize;
+
+  SuffixArray &curSpan = *this->array_;
+  //IndexSpan<Token> curSpan = this->span(); // IndexSpan, why r u so expensive to query using operator[]?
+
+  // disallow splits of </s> - as argued in TreeNodeMemory::AddPosition()
+  // bool allow_split = sent.size() + 1 > start + depth; // +1 for implicit </s>
+  bool allow_split = (curSize > 0 && corpus.sentence(Position<Token>(curSpan[0]).sid).size() + 1 > Position<Token>(curSpan[0]).offset + depth) ||
+                     (addSize > 0 && corpus.sentence(Position<Token>(addSpan[0]).sid).size() + 1 > Position<Token>(addSpan[0]).offset + depth);
+  // because shorter sequences come first in lexicographic order, we can compare the length of the first entry
+  // (of either available index -- either cur or add may be empty, unfortunately)
+
+  std::shared_ptr<SuffixArray> newArray = std::make_shared<SuffixArray>(newSize);
+  auto *pnew = newArray->data();
+
+  // the only time we may get a zero-size leaf is if we are merging in an empty addSpan (and even then, only with a leaf root on disk)
+  assert(addSize > 0 || depth == 0);
+
+  // merge the two spans' Positions into newArray
+  //PosComp<Token> comp(corpus, depth);
+  PosComp<Token> comp(corpus, 0);
+  pnew = std::set_union(curSpan.begin(), curSpan.end(), addSpan.begin(), addSpan.end(), pnew, comp);
+
+  newSize = pnew - newArray->data(); // if we skipped duplicate entries, this may now be smaller than newSize before
+
+#ifndef NDEBUG
+  // postconditions
+  //assert(pnew - newArray.get() == (ptrdiff_t) newSize); // filled the entire array
+  // <<< except if we are skipping duplicate entries
+
+#if 0
+  // debug prints
+  std::cerr << "curSpan len=" << curSize << ":" << std::endl;
+  for(size_t i = 0; i < curSize; i++)
+    std::cerr << i << " " << curSpan[i].DebugStr(corpus) << std::endl;
+
+  std::cerr << "addSpan len=" << addSize << ":" << std::endl;
+  for(size_t i = 0; i < addSize; i++)
+    std::cerr << i << " " << addSpan[i].DebugStr(corpus) << std::endl;
+
+  std::cerr << "newArray len=" << newSize << ":" << std::endl;
+  for(size_t i = 0; i < newSize; i++)
+    std::cerr << i << " " << Position<Token>(newArray[i]).DebugStr(corpus) << std::endl;
+#endif
+
+  // array is sorted in ascending order
+  for(size_t i = 0; i + 1 < newSize; i++) {
+    Position<Token> p = (*newArray)[i], q = (*newArray)[i+1];
+    //assert(p <= q) == assert(!(p > q)); // equivalent formula if we had > operator
+    assert(!q.compare(p, corpus, /* pos_order_dupes = */ false)); // ascending order (tolerates old v2 mtt-build style order)
+    assert(!(p == q)); // ensure no duplicates
+  }
+#endif
+
+  this->array_ = newArray; // atomic replace
+
+  assert(this->array_->size() == newSize);
+
+  /*
+   * note: should it become necessary to split </s> array, a simple sharding concept
+   * would involve fixed-size blocks. For that, we need to change Merge() to deal with shards
+   * and SuffixArrayDisk to transparently map access to several blocks as one sequence.
+   *
+   * We implement a much easier workaround: for allow_split=false arrays (like ". </s>"), appending the new
+   * Positions will always be legal. Therefore, don't build in RAM, and just append to the file on disk.
+   * See above at if(!allow_split) "optimized case".
+   */
+
+  //assert(allow_split);
+  if(allow_split && this->array_->size() > this->kMaxArraySize) {
+    SplitNode(corpus);
+  }
+}
+
+template<class Token>
 bool TreeNodeMemory<Token>::find_child_(Vid vid, TreeNodeMemory<Token> **child) {
   return TreeNode<Token, SuffixArray>::find_child_(vid, reinterpret_cast<TreeNode<Token, SuffixArray> **>(child));
 }
