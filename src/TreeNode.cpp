@@ -102,8 +102,8 @@ void TreeNode<Token, SuffixArray>::Merge(IndexSpan<Token> &spanSource, IndexSpan
   for(auto vid : spanSource) {
     IndexSpan<Token> spans = spanSource;
     size_t num_new = spans.narrow(Token{vid});
-
-    assert(num_new > 0); // since we iterate precisely spanSource
+    if(num_new == 0)
+      continue; // tolerate (skip) empty leaf nodes
 
     IndexSpan<Token> spant = spanTarget;
     size_t spanSize = spant.narrow(Token{vid});

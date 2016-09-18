@@ -274,6 +274,8 @@ public:
   /** current persistence sequence number */
   virtual seq_t seqNum() const = 0;
 
+  virtual void SetSeqNum(seq_t seqNum) = 0;
+
   virtual void DebugPrint(std::ostream &os) = 0;
 
 };

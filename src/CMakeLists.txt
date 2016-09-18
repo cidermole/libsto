@@ -40,6 +40,10 @@ set(SOURCES
         ITokenIndex.h
         ITreeNode.h
         IndexBuffer.cpp
-        IndexBuffer.h ObjIterator.h)
+        IndexBuffer.h
+        ObjIterator.h
+        util/ug_thread_pool.h
+        util/ug_thread_pool.cc
+        )
 
 add_library(sto OBJECT ${SOURCES})  # no real lib, just collection of objs

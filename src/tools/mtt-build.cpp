@@ -16,7 +16,9 @@
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 
+#include "util/ug_thread_pool.h"
 #include "util/usage.h"
+#include "util/Time.h"
 #include "DocumentMap.h"
 #include "Bitext.h"
 #include "DB.h"
@@ -36,6 +38,7 @@ struct Args {
   string lang;              /** 2-letter language code */
   string mttFile;           /** name of actual track file */
   string docMap;            /** optional document map name */
+  string inputFile;         /** if not empty, use inputFile instead of stdin */
   int with_global_index;    /** whether to build a global token index from all domains (1 if so) */
 
   Args() {}
@@ -56,6 +59,8 @@ struct Args {
         ("incremental,i", po::bool_switch(&incremental), "incremental mode; rewrites vocab files!")
 
         //("vocab-base,v", po::value<string>(&vocabBase), "base name of various vocabularies")
+
+        ("input-file,f", po::value<string>(&inputFile)->default_value(""), "use input-file instead of stdin")
 
         ("output,o", po::value<string>(&baseName), "base file name of the resulting file(s)")
 
@@ -146,9 +151,15 @@ void read_input_lines(BitextSide<Token> &side, DocumentMap &docMap, Args &args) 
   vector<string> sent;
   typename Corpus<Token>::Sid sid = 0;
 
-  bool domains = (docMap.numDomains() > 0);
+  shared_ptr<istream> in(&cin, [](istream *p){});
 
-  while(getline(cin, line)) {
+  if(args.inputFile != "") {
+    in.reset(new ifstream(args.inputFile));
+    if(!in->good())
+      throw runtime_error(string("bad input file ") + args.inputFile);
+  }
+
+  while(getline(*in, line)) {
     istringstream buf(line);
     sent.clear();
     while(buf >> w)
@@ -158,15 +169,26 @@ void read_input_lines(BitextSide<Token> &side, DocumentMap &docMap, Args &args) 
     side.index->AddSentence(side.corpus->sentence(sid));
 
     if(!args.quiet) log_progress(sid);
-
-    if(domains) {
-      auto docid = docMap.sid2did(sid);
-      side.AddToDomainIndex(sid, docid, sid + 1);
-    }
   }
   if(!args.quiet)
     cerr << endl;
 }
+
+std::string now() {
+  return std::string("[") + format_time(current_time()) + "] ";
+}
+
+template<class Token>
+class Sorter {
+public:
+  Sorter(ITreeNode<Token> *node, Corpus<Token> &corpus): node_(node), corpus_(corpus) {}
+  void operator()() {
+    node_->EnsureSorted(corpus_);
+  }
+private:
+  ITreeNode<Token> *node_;
+  Corpus<Token> &corpus_;
+};
 
 int main(int argc, char **argv) {
   Args args(argc, argv);
@@ -180,18 +202,99 @@ int main(int argc, char **argv) {
 
   BitextSide<Token> side(args.lang, docMap); // in-memory type BitextSide
 
-  cerr << "before read_input_lines():" << endl;
-  util::PrintUsage(std::cerr);
+  side.index->Split(); // build the index in parts (so we can sort them in parallel)
 
-  // to do: for speed, we could read as the old mtt-build, sort in parallel, and then create the TokenIndex.
+  if(!args.quiet) cerr << now() << "before read_input_lines()" << endl;
+  if(!args.quiet) util::PrintUsage(cerr);
+
   read_input_lines(side, docMap, args);
+  cerr << "global index size=" << side.index->span().size() << endl;
 
-  if(!args.quiet) cerr << "Writing Vocab, Corpus and TokenIndex ... ";
+  if(!args.quiet) cerr << now() << "after read_input_lines()" << endl;
+  if(!args.quiet) util::PrintUsage(cerr);
+
+
+  boost::scoped_ptr<ug::ThreadPool> tpool;
+  tpool.reset(new ug::ThreadPool(boost::thread::hardware_concurrency()));
+
+  const auto top_span = side.index->span();
+  for(auto vid : top_span) {
+    auto spans = top_span;
+    spans.narrow(vid);
+
+    Sorter<Token> sorter(spans.node(), *side.corpus);
+    tpool->add(sorter);
+  }
+
+  tpool.reset();
+
+  if(!args.quiet) cerr << now() << "after sorting" << endl;
+
+  // create domain indexes, create leaves for domain indexes
+  //auto top_span = side.index->span();
+  for(auto domain : docMap) {
+    auto domain_index = std::make_shared<sto::TokenIndex<Token, IndexTypeMemBuf>>(*side.corpus, -1);
+    side.domain_indexes[domain] = domain_index;
+    domain_index->Split(); // build individual indexes in parts, too.
+
+    for(auto vid : top_span) {
+      // this will create empty leaves if no positions belong to that domain at all
+      // empty leaves will be taken care of (ignored) in Write() -> Merge()
+
+      auto spant = domain_index->span();
+      size_t spanSize = spant.narrow(vid);
+      assert(spanSize == 0); // since we are merging into empty domain_indexes
+      // (1) create tree entry (leaf)
+      spant.node()->AddLeaf(vid);
+      spant.narrow(Token{vid}); // step IndexSpan into the node just created (which contains an empty SA)
+      assert(spant.in_array());
+    }
+  }
+
+  if(!args.quiet) cerr << now() << "after creating leaves for domain indexes" << endl;
+
+  // again could be parallelized
+  //auto top_span = side.index->span();
+  unordered_map<domid_t, IndexSpan<Token>> dom_spans;
+  unordered_map<domid_t, TreeNodeMemBuf<Token> *> dom_nodes;
+  for(auto vid : top_span) {
+    // sweep through each suffix array, add positions to the correct domain index
+    auto spans = top_span;
+    spans.narrow(vid);
+
+    // step each domain into the current 'vid' leaf
+    for(auto domain : docMap) {
+      dom_spans.insert(make_pair(domain, side.domain_indexes[domain]->span()));
+      dom_spans.at(domain).narrow(vid);
+      assert(dom_spans.at(domain).depth() == 1);
+      dom_nodes[domain] = dynamic_cast<TreeNodeMemBuf<Token> *>(dom_spans.at(domain).node());
+    }
+
+    size_t spans_size = spans.size();
+    for(size_t i = 0; i < spans_size; i++) {
+      Position<Token> pos = spans[i];
+      auto domain = docMap.sid2did(pos.sid);
+      // "side.domain_indexes[domain].add(pos);"
+      dom_nodes[domain]->AddPosition(side.corpus->sentence(pos.sid), pos.offset);
+    }
+  }
+
+  cerr << "global index size=" << side.index->span().size() << endl;
+  for(auto domain : docMap) {
+    // manually notify the domain indexes about seqNum -- AddPosition() is quite low-level
+    side.domain_indexes[domain]->SetSeqNum(side.index->seqNum());
+
+    cerr << "domain " << docMap[domain] << " index size=" << side.domain_indexes[domain]->span().size() << endl;
+  }
+
+  if(!args.quiet) cerr << now() << "after splitting into domain indexes" << endl;
+
+  if(!args.quiet) cerr << "Writing Vocab, Corpus and TokenIndex ... " << endl;
   util::PrintUsage(std::cerr);
 
   side.Write(std::make_shared<DB<Token>>(*db), args.base);
 
-  if(!args.quiet) cerr << "done." << endl;
+  if(!args.quiet) cerr << now() << "done." << endl;
   util::PrintUsage(std::cerr);
 
   docMap.Write(db, args.base + "docmap.trk");

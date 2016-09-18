@@ -190,6 +190,13 @@ void TokenIndex<Token, TypeTag>::Ack(seq_t seqNum) {
   root_->Ack(seqNum_);
 }
 
+template<class Token, typename TypeTag>
+void TokenIndex<Token, TypeTag>::SetSeqNum(seq_t seqNum) {
+  if(seqNum <= seqNum_)
+    return;
+  Ack(seqNum);
+}
+
 // --------------------------------------------------------
 
 // explicit template instantiation

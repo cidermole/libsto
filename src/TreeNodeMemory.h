@@ -62,7 +62,7 @@ public:
   virtual void AddPosition(const Sentence<Token> &sent, Offset start) override;
 
   /** Add an empty leaf node (SuffixArray) as a child. */
-  void AddLeaf(Vid vid);
+  virtual void AddLeaf(Vid vid);
 
   /** @return true if child with 'vid' as the key was found, and optionally sets 'child'. */
   bool find_child_(Vid vid, TreeNodeMemory<Token> **child = nullptr);
@@ -102,6 +102,9 @@ public:
   virtual void AddPosition(const Sentence<Token> &sent, Offset start) override;
 
   virtual void EnsureSorted(const Corpus<Token> &corpus) override;
+
+  /** Add an empty leaf node (SuffixArray) as a child. */
+  virtual void AddLeaf(Vid vid) override;
 
   /** @return true if child with 'vid' as the key was found, and optionally sets 'child'. */
   bool find_child_(Vid vid, TreeNodeMemBuf<Token> **child = nullptr);

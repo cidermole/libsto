@@ -259,6 +259,8 @@ public:
   /** current persistence sequence number */
   virtual seq_t seqNum() const { return seqNum_; }
 
+  virtual void SetSeqNum(seq_t seqNum) override;
+
   virtual void DebugPrint(std::ostream &os);
 
   /** Insert the subsequence from start into this index. Potentially splits. */

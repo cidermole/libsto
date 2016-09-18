@@ -110,7 +110,13 @@ void TreeNodeMemBuf<Token>::AddPosition(const Sentence<Token> &sent, Offset star
   // unsorted insert. this means that our state is invalid until we are actually sorted, but this should be much quicker.
   this->array_->push_back(corpus_pos);
 
-  assert(this->parent() == nullptr); // must be leaf-only for now
+  TreeNodeMemory<Token> *child = this;
+  TreeNodeMemory<Token> *parent = dynamic_cast<TreeNodeMemory<Token> *>(this->parent());
+  while(parent) {
+    parent->AddSize(child->vid(), 1);
+    child = parent;
+    parent = dynamic_cast<TreeNodeMemory<Token> *>(parent->parent());
+  }
 }
 
 template<class Token>
@@ -118,13 +124,7 @@ void TreeNodeMemBuf<Token>::EnsureSorted(const Corpus<Token> &corpus) {
   auto array = this->array_;
   if(array->size() > lastSortSize_.load()) {
     PosComp<Token> comp(corpus);
-    std::cerr << "EnsureSorted() sorting TreeNodeMemBuf..." << std::endl;
-
-    double t = benchmark_time([&](){
-      std::sort(array->begin(), array->end(), comp);
-    });
-
-    std::cerr << "EnsureSorted() sorting took " << format_time(t) << " s" << std::endl;
+    std::sort(array->begin(), array->end(), comp);
     lastSortSize_.store(array->size());
   }
 }
@@ -132,6 +132,11 @@ void TreeNodeMemBuf<Token>::EnsureSorted(const Corpus<Token> &corpus) {
 template<class Token>
 void TreeNodeMemory<Token>::AddLeaf(Vid vid) {
   this->children_[vid] = new TreeNodeMemory<Token>(this->index_, this->kMaxArraySize, "", nullptr, this, vid);
+}
+
+template<class Token>
+void TreeNodeMemBuf<Token>::AddLeaf(Vid vid) {
+  this->children_[vid] = new TreeNodeMemBuf<Token>(this->index_, this->kMaxArraySize, "", nullptr, this, vid);
 }
 
 template<class Token>
