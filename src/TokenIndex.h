@@ -28,15 +28,12 @@ template<class Token> class DB;
 
 struct IndexTypeMemory {
   static constexpr bool HasAddSentence = true;
-  static constexpr bool HasAddSubsequenceSpan = true;
 };
 struct IndexTypeMemBuf {
   static constexpr bool HasAddSentence = true;
-  static constexpr bool HasAddSubsequenceSpan = false;
 };
 struct IndexTypeDisk {
   static constexpr bool HasAddSentence = false; /** IndexTypeDisk implementation has no AddSentence() support, so we need to use Merge() instead */
-  static constexpr bool HasAddSubsequenceSpan = true;
 };
 
 /** types for TokenIndex with different backing (Disk or Memory) */

@@ -35,13 +35,11 @@ TokenIndex<Token, TypeTag>::~TokenIndex() {
 
 template<class Token, typename TypeTag>
 IndexSpan<Token> TokenIndex<Token, TypeTag>::span() const {
-  root_->EnsureSorted(*corpus()); // only does something for IndexTypeMemBuf / TreeNodeMemBuf
   return IndexSpan<Token>(std::static_pointer_cast<ITokenIndexSpan<Token>>(std::shared_ptr<Span>(new Span(*this))));
 }
 
 template<class Token, typename TypeTag>
 IndexSpan<Token> TokenIndex<Token, TypeTag>::span(ITreeNode<Token> &node) const {
-  root_->EnsureSorted(*corpus()); // only does something for IndexTypeMemBuf / TreeNodeMemBuf
   return IndexSpan<Token>(std::static_pointer_cast<ITokenIndexSpan<Token>>(std::shared_ptr<Span>(new Span(node))));
 }
 
@@ -149,14 +147,6 @@ void TokenIndex<Token, TypeTag>::AddSubsequence_(const Sentence<Token> &sent, Of
    *   a small zebra ...
    * }
    */
-
-  if(!TypeTag::HasAddSubsequenceSpan) {
-    // IndexTypeMemBuf: avoid calling span() which would have to sort the Position array
-    assert(root_->is_leaf()); // we are always depth 0
-    root_->AddPosition(sent, start);
-    return;
-  }
-
 
   // track the position to insert at
   auto cur_span = span();
