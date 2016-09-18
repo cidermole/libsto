@@ -59,7 +59,7 @@ public:
    */
   virtual void MergeLeaf(const ITokenIndexSpan<Token> &addSpan, const Corpus<Token> &corpus) override;
 
-  void AddPosition(const Sentence<Token> &sent, Offset start) { assert(0); }
+  virtual void AddPosition(const Sentence<Token> &sent, Offset start) override { assert(0); }
 
   /** Add an empty leaf node (SuffixArray) as a child. */
   void AddLeaf(Vid vid);

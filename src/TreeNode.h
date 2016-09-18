@@ -77,7 +77,7 @@ public:
    * @param addSpan  TreeNode span to be merged in (span over the same vid); either TokenIndex<Token>::Span or SuffixArrayPositionSpan
    * @param corpus   Positions belong to this Corpus
    */
-  virtual void MergeLeaf(const ITokenIndexSpan<Token> &addSpan, const Corpus<Token> &corpus) { assert(0); }
+  virtual void MergeLeaf(const ITokenIndexSpan<Token> &addSpan, const Corpus<Token> &corpus) = 0;
 
   /**
    * Insert the existing Corpus Position into this leaf node (SuffixArray).
@@ -89,11 +89,11 @@ public:
    *
    * depth: distance of TreeNode from the root of this tree, used in splits
    */
-  // in TreeNodeMemory:
-  //void AddPosition(const Sentence<Token> &sent, Offset start, size_t depth);
+  // only in TreeNodeMemory:
+  virtual void AddPosition(const Sentence<Token> &sent, Offset start) = 0;
 
   /** Add an empty leaf node (SuffixArray) as a child. */
-  void AddLeaf(Vid vid) { assert(0); }
+  //virtual void AddLeaf(Vid vid) = 0;
 
   /** Increase the given vid child's size. */
   void AddSize(Vid vid, size_t add_size);
@@ -108,7 +108,7 @@ public:
   IVidIterator<Token> begin() const { return IVidIterator<Token>(std::shared_ptr<ITreeNodeIterator<typename Token::Vid>>(children_.begin().copy())); }
   IVidIterator<Token> end() const { return IVidIterator<Token>(std::shared_ptr<ITreeNodeIterator<typename Token::Vid>>(children_.end().copy())); }
 
-  virtual void EnsureSorted(const Corpus<Token> &corpus) {}
+  virtual void EnsureSorted(const Corpus<Token> &corpus) override {}
 
   /** word type common to all Positions at depth-1; invalid for root */
   virtual Vid vid() const { return vid_; }

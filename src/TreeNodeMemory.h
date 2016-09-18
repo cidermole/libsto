@@ -57,7 +57,7 @@ public:
    *
    * Exclusively for adding to a SA (leaf node).
    */
-  void AddPosition(const Sentence<Token> &sent, Offset start);
+  virtual void AddPosition(const Sentence<Token> &sent, Offset start) override;
 
   /** Add an empty leaf node (SuffixArray) as a child. */
   void AddLeaf(Vid vid);
@@ -97,9 +97,9 @@ class TreeNodeMemBuf : public TreeNodeMemory<Token> {
 public:
   TreeNodeMemBuf(ITokenIndex<Token> &index, size_t maxArraySize, std::string filename, std::shared_ptr<void>, ITreeNode<Token> *parent = nullptr, Vid vid = Token::kInvalidVid) : TreeNodeMemory<Token>(index, maxArraySize, filename, nullptr, parent, vid), lastSortSize_(0) {}
 
-  void AddPosition(const Sentence<Token> &sent, Offset start);
+  virtual void AddPosition(const Sentence<Token> &sent, Offset start) override;
 
-  virtual void EnsureSorted(const Corpus<Token> &corpus);
+  virtual void EnsureSorted(const Corpus<Token> &corpus) override;
 
   /** @return true if child with 'vid' as the key was found, and optionally sets 'child'. */
   bool find_child_(Vid vid, TreeNodeMemBuf<Token> **child = nullptr);
