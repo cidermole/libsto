@@ -18,12 +18,10 @@
 
 using namespace sto;
 
-TEST(DocumentMapTests, load_v1) {
+void test_load_v1(std::vector<std::string> domain_names, std::vector<size_t> line_counts) {
   std::string filename = "res/test.dmp";
   std::ofstream dmp(filename);
 
-  std::vector<std::string> domain_names = {"dom1", "dom2", "dom3"};
-  std::vector<size_t> line_counts = {3, 5, 1};
   size_t nlines = 0;
 
   // write .dmp document map (text file)
@@ -60,11 +58,26 @@ TEST(DocumentMapTests, load_v1) {
 
   // test iteration
 
-  domain_ids.clear();
+  std::set<size_t> iter_domain_ids;
   for(auto d : docmap)
-    domain_ids.insert(d);
+    iter_domain_ids.insert(d);
 
-  EXPECT_EQ(domain_names.size(), domain_ids.size()) << "each domain should have a unique ID in iteration (iteration should have covered all domain IDs)";
+  EXPECT_EQ(domain_names.size(), iter_domain_ids.size()) << "each domain should have a unique ID in iteration (iteration should have covered all domain IDs)";
+  EXPECT_EQ(domain_ids, iter_domain_ids) << "iteration should have covered all domain IDs";
+}
+
+TEST(DocumentMapTests, load_v1) {
+  std::vector<std::string> domain_names = {"dom1", "dom2", "dom3"};
+  std::vector<size_t> line_counts =       {     3,      5,      1};
+
+  test_load_v1(domain_names, line_counts);
+}
+
+TEST(DocumentMapTests, map_iterator_v1) {
+  std::vector<std::string> domain_names = {"3", "5"};
+  std::vector<size_t> line_counts =       {  1,   1};
+
+  test_load_v1(domain_names, line_counts);
 }
 
 TEST(DocumentMapTests, save_load_append) {
