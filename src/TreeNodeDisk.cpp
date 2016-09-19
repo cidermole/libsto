@@ -237,19 +237,8 @@ void TreeNodeDisk<Token>::SplitNode(const Corpus<Token> &corpus) {
 
 template<class Token>
 std::string TreeNodeDisk<Token>::child_sub_path(Vid vid) {
-  constexpr size_t kVidDigits = sizeof(Vid)*2;
-  constexpr size_t kSignificantDigitsDir2 = 3;
-  //static_assert(kVidDigits > kSignificantDigitsDir2); // for dir1 size to work
-
-  // e.g. vid=0x0007a120 -> "000007a/0007a120" (dir1/dir2)
-  std::stringstream hexVid;
-  hexVid << std::setfill('0') << std::setw((int)kVidDigits) << std::hex << vid;
-  std::string dir1 = hexVid.str().substr(0, kVidDigits - kSignificantDigitsDir2);
-  std::string dir2 = hexVid.str(); // dir2 has the full number again, for completeness
-
-  std::stringstream path;
-  path << dir1 << "/" << dir2;
-  return path.str();
+  std::string id(reinterpret_cast<const char *>(&vid), sizeof(vid));
+  return id;
 }
 
 template<class Token>

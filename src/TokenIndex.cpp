@@ -104,7 +104,7 @@ void TokenIndex<Token, TypeTag>::Split() {
 
 template<class Token, typename TypeTag>
 void TokenIndex<Token, TypeTag>::Write(std::shared_ptr<DB<Token>> db) const {
-  TokenIndex<Token, IndexTypeDisk> target(/* filename = */ "/", *this->corpus(), db); // note: filename is now only used as DB key prefix; we handle DB prefixes elsewhere
+  TokenIndex<Token, IndexTypeDisk> target(/* filename = */ "", *this->corpus(), db); // note: filename is now only used as DB key prefix; we handle DB prefixes elsewhere
   std::cerr << "TokenIndex::Write()..." << std::endl;
   target.Merge(*this);
 }

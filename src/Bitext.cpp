@@ -30,16 +30,16 @@ BitextSide<Token>::BitextSide(const std::string &l, const DocumentMap &map) :
 /** Load existing BitextSide from DB and disk. */
 template<typename Token>
 BitextSide<Token>::BitextSide(std::shared_ptr<DB<Token>> db, const std::string &base, const std::string &lang, const DocumentMap &map) :
-    vocab(new sto::Vocab<Token>(db->template PrefixedDB<Token>("vocab." + lang))),
+    vocab(new sto::Vocab<Token>(db->template PrefixedDB<Token>("V" + lang))),
     corpus(new sto::Corpus<Token>(base + lang + ".trk", vocab.get())),
-    index(new sto::TokenIndex<Token, IndexTypeDisk>("/", *corpus, db->template PrefixedDB<Token>("index." + lang))),  // note: filename is only ever used as DB prefix now (in TreeNodeDisk)
+    index(new sto::TokenIndex<Token, IndexTypeDisk>("", *corpus, db->template PrefixedDB<Token>("I" + lang))),  // note: filename is only ever used as DB prefix now (in TreeNodeDisk)
     docMap(map),
     lang(lang),
     db(db)
 {
   // load domain indexes
   for(auto docid : map)
-    domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token, IndexTypeDisk>>(/* filename = */ "/", *corpus, db->template PrefixedDB<Token>(lang, docid));
+    domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token, IndexTypeDisk>>(/* filename = */ "", *corpus, db->template PrefixedDB<Token>(lang, docid));
 }
 
 template<typename Token>
@@ -118,7 +118,7 @@ void BitextSide<Token>::AddToDomainIndex(Sid sid, tpt::docid_type docid, seq_t s
   if(domain_indexes.find(docid) == domain_indexes.end()) {
     if(db)
       // persisted in DB
-      domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token, IndexTypeDisk>>(/* filename = */ "/", *corpus, db->template PrefixedDB<Token>(lang, docid));
+      domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token, IndexTypeDisk>>(/* filename = */ "", *corpus, db->template PrefixedDB<Token>(lang, docid));
     else
       // memory only
       domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token, IndexTypeMemBuf>>(*corpus, -1);
@@ -130,11 +130,11 @@ template<typename Token>
 void BitextSide<Token>::Write(std::shared_ptr<DB<Token>> db, const std::string &base) {
   std::cerr << "BitextSide<Token>::Write()..." << std::endl;
 
-  benchmark_time([&](){ vocab->Write(db->template PrefixedDB<Token>("vocab." + lang)); }, "vocab->Write()");
+  benchmark_time([&](){ vocab->Write(db->template PrefixedDB<Token>("V" + lang)); }, "vocab->Write()");
 
   benchmark_time([&](){ corpus->Write(base + lang + ".trk"); }, "corpus->Write()");
 
-  benchmark_time([&](){ index->Write(db->template PrefixedDB<Token>("index." + lang)); }, "index->Write()");
+  benchmark_time([&](){ index->Write(db->template PrefixedDB<Token>("I" + lang)); }, "index->Write()");
 
   benchmark_time([&](){
     for(auto& d : domain_indexes)

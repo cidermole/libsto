@@ -94,16 +94,15 @@ private:
   void LoadSubtree(const Vid *children, size_t num_children);
 
   /**
-   * Creates the nested directory name for a given vid.
-   * E.g. for vid=0x7a120, "0..07a/0..07a120" (two levels to avoid too many directory entries)
+   * Creates the nested key name for a given vid.
    */
   static std::string child_sub_path(Vid vid);
 
   /** whether this TreeNode is the root */
-  bool is_root() const { return (path_ == "/"); } // unfortunately this does not work with arbitrary paths, e.g. as used in TokenIndexTests.add_sentence
+  bool is_root() const { return (this->parent_ == nullptr); }
 
   /** full path to directory backing child with given vid. */
-  std::string child_path(Vid vid) const { return path_ + "/" + child_sub_path(vid); }
+  std::string child_path(Vid vid) const { return path_ + child_sub_path(vid); }
 
   /** factory function for TreeNode::SplitNode() */
   TreeNodeDisk<Token> *make_child_(Vid vid, typename SuffixArray::iterator first, typename SuffixArray::iterator last, const Corpus<Token> &corpus);
