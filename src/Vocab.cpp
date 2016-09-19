@@ -79,15 +79,17 @@ Token Vocab<Token>::at(const std::string &surface) const {
 }
 
 template<class Token>
-Token Vocab<Token>::begin() const {
+typename Vocab<Token>::VocabIterator Vocab<Token>::begin() const {
   // for regular Tokens, this should include </s>
   // for other Vocab use (see DocumentMap), we start from the first valid entry
-  return Token{1};
+  //return Token{1};
+
+  return VocabIterator(id2surface_.begin(), id2surface_.end());
 }
 
 template<class Token>
-Token Vocab<Token>::end() const {
-  return Token{size_};
+typename Vocab<Token>::VocabIterator Vocab<Token>::end() const {
+  return VocabIterator(id2surface_.end(), id2surface_.end());
 }
 
 template<class Token>
@@ -101,8 +103,7 @@ void Vocab<Token>::Write(std::shared_ptr<DB<Token>> db) const {
   assert(target.size() == 0); // make sure that DB is empty (should not contain a Vocab, so we start from scratch)
 
   for(auto vid : (*this)) {
-    target[this->at(vid)]; // insert vids in order
-    assert(target.at(vid) == this->at(vid)); // inserting them in order means the surface forms should be equal as well
+    target[this->at(vid)];
   }
 }
 

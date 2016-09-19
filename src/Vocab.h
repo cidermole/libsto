@@ -50,9 +50,6 @@ public:
   /** Returns the Token for the given `surface` form. */
   Token at(const std::string &surface) const;
 
-  Token begin() const;
-  Token end() const;
-
   /** number of word types, excluding special reserved symbols (currently 2: the unmapped vid 0, and vid = kEOS.) */
   Vid size() const { return size_ - Token::kReservedVids; }
 
@@ -66,6 +63,40 @@ public:
   /** Current persistence sequence number. */
   seq_t seqNum() const { return seqNum_; }
 
+  class VocabIterator {
+  public:
+    VocabIterator(const VocabIterator &other): it_(other.it_), end_(other.end_) {}
+    VocabIterator(const typename std::unordered_map<Vid, std::string>::const_iterator &it,
+                  const typename std::unordered_map<Vid, std::string>::const_iterator &end): it_(it), end_(end) {}
+
+    VocabIterator &operator++() {
+      ++it_;
+      /*
+       *    two users of Vocab::begin()/end()
+       *
+       *    Vocab.cpp:110  -- Write() - must include </s>
+       *    DocumentMap.cpp:107
+       *
+       *    neither needs skipping.
+       *
+      // skip reserved IDs (never show those in iteration)
+      while(it_->first < Token::kReservedVids && it_ != end_)
+        ++it_;
+      */
+      return *this;
+    }
+
+    const Vid &operator*() const { return it_->first; }
+    bool operator!=(const VocabIterator &other) const { return it_ != other.it_; }
+
+  private:
+    typename std::unordered_map<Vid, std::string>::const_iterator it_;
+    typename std::unordered_map<Vid, std::string>::const_iterator end_;
+  };
+
+  // note: does NOT keep sorted vid order (iterates unordered_map)
+  VocabIterator begin() const;
+  VocabIterator end() const;
 
 private:
   std::unordered_map<Vid, std::string> id2surface_;

@@ -103,11 +103,11 @@ seq_t DocumentMap::seqNum(Corpus<SentInfo>::Sid sid) const {
   return sent_info_->begin(sid)->seqNum;
 }
 
-Domain DocumentMap::begin() const {
+typename DocumentMap::iterator DocumentMap::begin() const {
   return docname2id_.begin();
 }
 
-Domain DocumentMap::end() const {
+typename DocumentMap::iterator DocumentMap::end() const {
   return docname2id_.end();
 }
 

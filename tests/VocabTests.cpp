@@ -47,7 +47,8 @@ TEST(VocabTests, load) {
 }
 
 TEST(VocabTests, persist) {
-  SrcToken apple, orange, ref_end;
+  SrcToken apple, orange;
+  size_t vocab_size;
 
   std::string basePath = "res/VocabTests";
   remove_all(basePath); // ensure no leftovers
@@ -60,7 +61,7 @@ TEST(VocabTests, persist) {
     apple = vocab["apple"];   // insert apple
     orange = vocab["orange"]; // insert orange
 
-    ref_end = vocab.end();
+    vocab_size = vocab.size();
 
     // close and re-open existing DB
     std::cerr << "ref count before close = " << db.use_count() << std::endl;
@@ -81,7 +82,7 @@ TEST(VocabTests, persist) {
 
   EXPECT_EQ("apple", sv.at(apple)) << "first Token must be apple";
 
-  EXPECT_EQ(ref_end, sv.end()) << "vocabulary sizes should match";
+  EXPECT_EQ(vocab_size, sv.size()) << "vocabulary sizes should match";
 
   ASSERT_THROW(sv.at("banana"), std::out_of_range) << "out-of-range access must throw an exception";
 

@@ -29,6 +29,8 @@ class BaseDB;
  */
 class DocumentMap : public Loggable {
 public:
+  typedef typename Vocab<Domain>::VocabIterator iterator;
+
   /** Create an empty DocumentMap. */
   DocumentMap();
 
@@ -81,8 +83,9 @@ public:
   /** Persistence sequence number of Sentence with 'sid'. */
   seq_t seqNum(Corpus<SentInfo>::Sid sid) const;
 
-  Domain begin() const;
-  Domain end() const;
+  // note: unordered iteration
+  iterator begin() const;
+  iterator end() const;
 
 private:
   Vocab<Domain> docname2id_;                    /** document name to document id mapping */

@@ -80,7 +80,7 @@ void BitextSide<Token>::CreateDomainIndexes() {
   size_t nsents = corpus->size();
 
   assert(docMap.numDomains() > 0); // we must have at least 1 domain... otherwise we could just load the global idx.
-  std::string index1_file = base_and_lang + "." + docMap[docMap.begin()] + ".sfa";
+  std::string index1_file = base_and_lang + "." + docMap[*docMap.begin()] + ".sfa";
   if(!access(index1_file.c_str(), F_OK)) {
     // load indexes from disk, if possible
 
