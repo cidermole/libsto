@@ -124,7 +124,7 @@ shared_ptr<BaseDB> open_db(string db_dir_name) {
   if(!exists(db_dir_name))
     create_directory(db_dir_name);
 
-  return std::make_shared<BaseDB>(db_dir_name);
+  return std::make_shared<BaseDB>(db_dir_name, /* bulkLoad = */ true);
 }
 
 void log_progress(size_t ctr) {
@@ -174,7 +174,7 @@ void read_input_lines(BitextSide<Token> &side, DocumentMap &docMap, Args &args) 
     cerr << endl;
 }
 
-std::string now() {
+static std::string now() {
   return std::string("[") + format_time(current_time()) + "] ";
 }
 

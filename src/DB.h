@@ -37,9 +37,11 @@ template<class Token> class DB;
  */
 class BaseDB {
 public:
-  BaseDB(const std::string &basePath);
+  BaseDB(const std::string &basePath, bool bulkLoad=false);
 
   BaseDB(const BaseDB &other, const std::string &key_prefix);
+
+  ~BaseDB();
 
   /**
    * Make a shallow copy referencing a different area in the same underlying rocksdb::DB object.
@@ -64,6 +66,10 @@ public:
 protected:
   std::shared_ptr<rocksdb::DB> db_;
   std::string key_prefix_; /** prefix prepended to all keys, essentially like a namespace/schema in the database */
+  bool bulk_;
+
+  /** compact the entire database */
+  void CompactRange();
 };
 
 /**
@@ -144,9 +150,6 @@ public:
   seq_t GetSeqNum();
   /** Put persistence sequence number */
   void PutSeqNum(seq_t seqNum);
-
-  /** compact the entire database */
-  void CompactRange();
 
 private:
   //friend class BaseDB; // was for private: DB(const BaseDB &other, std::string key_prefix);

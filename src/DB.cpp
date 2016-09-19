@@ -14,13 +14,20 @@
 // for SuffixArrayPosition, SuffixArrayDisk
 #include "SuffixArrayDisk.h"
 
+#include "util/Time.h"
+
 namespace sto {
 
-BaseDB::BaseDB(const std::string &basePath) {
+static std::string now() {
+  return std::string("[") + format_time(current_time()) + "] ";
+}
+
+BaseDB::BaseDB(const std::string &basePath, bool bulkLoad): bulk_(bulkLoad) {
   rocksdb::DB *db = nullptr;
   rocksdb::Options options;
 
-  //options.PrepareForBulkLoad();
+  if(bulkLoad)
+    options.PrepareForBulkLoad();
   options.create_if_missing = true;
   //options.use_fsync = true;
 
@@ -35,6 +42,18 @@ BaseDB::BaseDB(const std::string &basePath) {
 
 BaseDB::BaseDB(const BaseDB &other, const std::string &key_prefix) : db_(other.db_), key_prefix_(key_prefix)
 {}
+
+BaseDB::~BaseDB() {
+  if(bulk_) {
+    std::cerr << now() << "~BaseDB() running CompactRange()..." << std::endl;
+    CompactRange();
+    std::cerr << now() << "~BaseDB() CompactRange() finished." << std::endl;
+  }
+}
+
+void BaseDB::CompactRange() {
+  this->db_->CompactRange(rocksdb::CompactRangeOptions(), nullptr, nullptr);
+}
 
 // ----------------------------------------------------------------------------
 
@@ -216,11 +235,6 @@ DB<Token>::DB(const BaseDB &other, std::string key_prefix) : BaseDB(other, key_p
 template<class Token>
 std::string DB<Token>::key_(const std::string &k) {
   return this->key_prefix_ + k;
-}
-
-template<class Token>
-void DB<Token>::CompactRange() {
-  this->db_->CompactRange(rocksdb::CompactRangeOptions(), nullptr, nullptr);
 }
 
 // explicit template instantiation
