@@ -44,7 +44,7 @@ BaseDB::BaseDB(const BaseDB &other, const std::string &key_prefix) : db_(other.d
 {}
 
 BaseDB::~BaseDB() {
-  if(bulk_) {
+  if(bulk_ && key_prefix_ == "") {
     std::cerr << now() << "~BaseDB() running CompactRange()..." << std::endl;
     CompactRange();
     std::cerr << now() << "~BaseDB() CompactRange() finished." << std::endl;
@@ -68,6 +68,8 @@ DB<Token>::DB(const BaseDB &base) : BaseDB(base, "")
 template<class Token>
 DB<Token>::~DB() {
   //std::cerr << "closing DB." << std::endl;
+  if(this->nleaves_)
+    std::cerr << "DB: written " << this->nleaves_ << " in " << format_time(this->putLeafTime_) << " s" << std::endl;
 }
 
 /*
@@ -167,8 +169,12 @@ void DB<Token>::PutNodeLeaf(const std::string &path, const SuffixArrayPosition<T
   std::string key = leaf_key_(path);
   //std::cerr << "DB::PutNodeLeaf(key=" << key << ", len=" << len << ")" << std::endl;
   rocksdb::Slice val((const char *) data, len * sizeof(SuffixArrayPosition<Token>));
-  rocksdb::Status status = this->db_->Put(rocksdb::WriteOptions(), key, val);
-  assert(status.ok());
+  this->putLeafTime_ += benchmark_time([&](){
+    rocksdb::Status status = this->db_->Put(rocksdb::WriteOptions(), key, val);
+    assert(status.ok());
+  });
+
+  this->nleaves_++;
 }
 
 template<class Token>

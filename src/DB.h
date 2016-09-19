@@ -41,7 +41,7 @@ public:
 
   BaseDB(const BaseDB &other, const std::string &key_prefix);
 
-  ~BaseDB();
+  virtual ~BaseDB();
 
   /**
    * Make a shallow copy referencing a different area in the same underlying rocksdb::DB object.
@@ -96,7 +96,7 @@ public:
   DB(const BaseDB &other, std::string key_prefix);
 
   DB(const DB &other) = delete;
-  ~DB();
+  virtual ~DB();
 
   /**
    * Load all vocabulary IDs and their surface forms.
@@ -152,6 +152,8 @@ public:
   void PutSeqNum(seq_t seqNum);
 
 private:
+  double putLeafTime_ = 0.0;
+  size_t nleaves_ = 0;
   //friend class BaseDB; // was for private: DB(const BaseDB &other, std::string key_prefix);
 
   /** @returns key_prefix_ + key */
