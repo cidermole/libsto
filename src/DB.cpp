@@ -153,13 +153,18 @@ std::string DB<Token>::surface_key_(const std::string &surface) {
 }
 
 template<class Token>
+std::string DB<Token>::leaf_key_(const std::string &k) {
+  return key_("arr_" + k);
+}
+
+template<class Token>
 std::string DB<Token>::seqnum_key_() {
   return key_("seqn");
 }
 
 template<class Token>
 void DB<Token>::PutNodeLeaf(const std::string &path, const SuffixArrayPosition<Token> *data, size_t len) {
-  std::string key = key_(path);
+  std::string key = leaf_key_(path);
   //std::cerr << "DB::PutNodeLeaf(key=" << key << ", len=" << len << ")" << std::endl;
   rocksdb::Slice val((const char *) data, len * sizeof(SuffixArrayPosition<Token>));
   rocksdb::Status status = this->db_->Put(rocksdb::WriteOptions(), key, val);
@@ -168,7 +173,7 @@ void DB<Token>::PutNodeLeaf(const std::string &path, const SuffixArrayPosition<T
 
 template<class Token>
 bool DB<Token>::GetNodeLeaf(const std::string &path, SuffixArrayDisk<Token> &array) {
-  std::string key = key_(path);
+  std::string key = leaf_key_(path);
   std::string value;
 
   rocksdb::Status status = this->db_->Get(rocksdb::ReadOptions(), key, &value);
@@ -181,7 +186,7 @@ bool DB<Token>::GetNodeLeaf(const std::string &path, SuffixArrayDisk<Token> &arr
 
 template<class Token>
 void DB<Token>::DeleteNodeLeaf(const std::string &path) {
-  std::string key = key_(path);
+  std::string key = leaf_key_(path);
   this->db_->Delete(rocksdb::WriteOptions(), key);
 }
 

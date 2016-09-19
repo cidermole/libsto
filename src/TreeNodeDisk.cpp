@@ -51,12 +51,12 @@ TreeNodeDisk<Token>::TreeNodeDisk(ITokenIndex<Token> &index, size_t maxArraySize
   if(this->is_leaf_) {
     this->array_.reset(new SuffixArrayDisk<Token>());
     if(!create_new_leaf)
-      db_->GetNodeLeaf(array_path(), *this->array_);
+      db_->GetNodeLeaf(path_, *this->array_);
   } else {
     // recursively load the subtree rooted at this path
     //LoadSubtree(reinterpret_cast<const Vid *>(children.data()), children.size() / sizeof(Vid));
     std::vector<Vid> children;
-    db_->GetNodeInternal(path_, children);
+    db_->GetNodeInternal(this->path_, children);
     LoadSubtree(children.data(), children.size());
   }
 }
@@ -141,7 +141,7 @@ void TreeNodeDisk<Token>::MergeLeaf(const ITokenIndexSpan<Token> &addSpan, LeafM
 
   if(sync_) {
     // overwrite the DB key now; the existing array_ continues to hold the old data afterwards
-    db_->PutNodeLeaf(array_path(), array->data(), array->size());
+    db_->PutNodeLeaf(this->path_, array->data(), array->size());
   }
 
   // replace atomically
@@ -231,7 +231,7 @@ void TreeNodeDisk<Token>::SplitNode(const Corpus<Token> &corpus) {
   if(sync_) {
     // update the children
     WriteChildren();
-    db_->DeleteNodeLeaf(array_path());
+    db_->DeleteNodeLeaf(this->path_);
   }
 }
 
@@ -267,7 +267,7 @@ void TreeNodeDisk<Token>::Assign(typename SuffixArray::iterator first, typename 
 
   if(sync_) {
     // overwrite the DB key now; the existing array_ continues to hold the old data afterwards
-    db_->PutNodeLeaf(array_path(), newArray->begin().ptr(), newSize);
+    db_->PutNodeLeaf(this->path_, newArray->begin().ptr(), newSize);
   }
   // atomically replace the old array_
   this->array_ = newArray;

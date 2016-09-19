@@ -159,6 +159,7 @@ private:
 
   std::string vid_key_(Vid vid);
   std::string surface_key_(const std::string &surface);
+  std::string leaf_key_(const std::string &k);
   std::string seqnum_key_();
 };
 
