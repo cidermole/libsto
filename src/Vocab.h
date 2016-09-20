@@ -28,8 +28,8 @@ public:
   typedef typename Token::Vid Vid;
   static constexpr Vid kEosVid = Token::kEosVid; /** vocabulary ID for </s>, the end-of-sentence sentinel token */
   static constexpr Vid kUnkVid = Token::kUnkVid; /** vocabulary ID for <unk>, the unknown word sentinel token */
-  static constexpr char kEosSurface[] = "</s>"; /** end of sentence sentinel marker */
-  static constexpr char kUnkSurface[] = "<UNK>"; /** end of sentence sentinel marker */
+  static constexpr char kEosSurface[] = "1"; /** end of sentence sentinel marker */
+  static constexpr char kUnkSurface[] = "2"; /** end of sentence sentinel marker */
 
   /** Load vocabulary from db, or create in-memory empty vocabulary */
   Vocab(std::shared_ptr<DB<Token>> db = nullptr);
@@ -38,7 +38,7 @@ public:
   Vocab(const std::string &filename);
 
   /** Returns the surface form of `token`. */
-  const std::string& operator[](const Token token) const;
+  std::string operator[](const Token token) const;
 
   /** Returns the Token for the given `surface` form. May insert `surface`. */
   Token operator[](const std::string &surface);
@@ -52,8 +52,11 @@ public:
   /** Returns the Token for the given `surface` form. If not found, returns kUnkVid. */
   Token at(const std::string &surface) const;
 
-  /** number of word types, excluding special reserved symbols (currently 2: the unmapped vid 0, and vid = kEOS.) */
-  Vid size() const { return size_ - Token::kReservedVids; }
+  /**
+   * Number of word types (including special sentinel symbols).
+   * Because vids are not sequential in general, this is NOT THE FIRST FREE vid.
+   */
+  Vid size() const { return size_; }
 
   bool contains(const std::string &surface) const;
 

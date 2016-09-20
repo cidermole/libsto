@@ -17,7 +17,7 @@
 namespace sto {
 
 template<class Token>
-Vocab<Token>::Vocab(std::shared_ptr<DB<Token>> db) : size_(Token::kReservedVids), db_(db) {
+Vocab<Token>::Vocab(std::shared_ptr<DB<Token>> db) : size_(0), db_(db) {
   if(db_) {
     bool exists = db_load();
     if(!exists) {
@@ -42,7 +42,7 @@ Vocab<Token>::Vocab(const std::string &filename) : size_(0) /* set later */ {
 }
 
 template<class Token>
-const std::string& Vocab<Token>::operator[](const Token token) const {
+std::string Vocab<Token>::operator[](const Token token) const {
   return id2surface_.at(token.vid);
 }
 
@@ -54,7 +54,8 @@ Token Vocab<Token>::operator[](const std::string &surface) {
     return Token{result->second};
   } else {
     // insert
-    Vid id = size_++;
+    size_++;
+    Vid id = std::stoi(surface);
     surface2id_[surface] = id;
     id2surface_[id] = surface;
     if(db_)
@@ -65,20 +66,25 @@ Token Vocab<Token>::operator[](const std::string &surface) {
 
 template<class Token>
 std::string Vocab<Token>::at(const Token token) const {
-  return id2surface_.at(token.vid);
+  //return id2surface_.at(token.vid);
+  return std::to_string(token.vid);
 }
 
 template<class Token>
 std::string Vocab<Token>::at_vid(Vid vid) const {
-  return id2surface_.at(vid);
+  //return id2surface_.at(vid);
+  return std::to_string(vid);
 }
 
 template<class Token>
 Token Vocab<Token>::at(const std::string &surface) const {
+  return Token{static_cast<Vid>(std::stoi(surface))};
+/*
   auto it = surface2id_.find(surface);
   if(it == surface2id_.end())
     return Token{kUnkVid};
   return Token{surface2id_.at(surface)};
+*/
 }
 
 template<class Token>
@@ -102,9 +108,13 @@ bool Vocab<Token>::contains(const std::string &surface) const {
 
 template<class Token>
 void Vocab<Token>::Write(std::shared_ptr<DB<Token>> db) const {
-  Vocab<Token> target(db); // Vocab with DB backing
-  assert(target.size() == 0); // make sure that DB is empty (should not contain a Vocab, so we start from scratch)
+  // ensure that DB does not have a vocabulary here
+  std::unordered_map<Vid, std::string> tmp;
+  db_->LoadVocab(tmp);
+  if(tmp.size())
+    throw std::runtime_error("Vocab::Write() does not yet support overwrite."); // is it valid to issue Delete() to RocksDB while iterating?
 
+  // write entries
   typename std::unordered_map<Vid, std::string>::const_iterator it = id2surface_.begin();
   for(; it != id2surface_.end(); ++it)
     db_->PutVocabPair(it->first, it->second);
@@ -187,18 +197,21 @@ bool Vocab<Token>::db_load() {
 
 template<class Token>
 void Vocab<Token>::put_sentinels() {
-  if(Token::kEosVid != Token::kInvalidVid) {
+  // needed for this vocab type, and not loaded from DB?
+  if(Token::kEosVid != Token::kInvalidVid && id2surface_.find(kEosVid) == id2surface_.end()) {
     surface2id_[kEosSurface] = kEosVid;
     id2surface_[kEosVid] = kEosSurface;
+    size_++;
 
     // vid == kEOS must not be used by any word because we use it in TokenIndex as a sentinel.
     // </s> must also have the lowest vid for correctness of comparing shorter sequences as less in TokenIndex.
     assert(at(kEosSurface).vid == kEosVid);
   }
 
-  if(Token::kUnkVid != Token::kInvalidVid) {
+  if(Token::kUnkVid != Token::kInvalidVid && id2surface_.find(kUnkVid) == id2surface_.end()) {
     surface2id_[kUnkSurface] = kUnkVid;
     id2surface_[kUnkVid] = kUnkSurface;
+    size_++;
   }
 }
 

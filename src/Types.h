@@ -42,7 +42,6 @@ struct SrcToken {
   static constexpr Vid kInvalidVid = 0;
   static constexpr Vid kEosVid = 1; /** vocabulary ID for </s>, the end-of-sentence sentinel token */
   static constexpr Vid kUnkVid = 2; /** vocabulary ID for <unk>, the unknown word sentinel token */
-  static constexpr Vid kReservedVids = 3; /** number of reserved vids starting from 0 */
   static constexpr CorpusIndexAccounting::acc_t kIndexType = CorpusIndexAccounting::IDX_CNT_ENTRIES;
 
   Vid vid; /** vocabulary ID */
@@ -67,7 +66,6 @@ struct TrgToken {
   static constexpr Vid kInvalidVid = 0;
   static constexpr Vid kEosVid = 1; /** vocabulary ID for </s>, the end-of-sentence sentinel token */
   static constexpr Vid kUnkVid = 2; /** vocabulary ID for <unk>, the unknown word sentinel token */
-  static constexpr Vid kReservedVids = 3; /** number of reserved vids starting from 0 */
   static constexpr CorpusIndexAccounting::acc_t kIndexType = CorpusIndexAccounting::IDX_CNT_ENTRIES;
 
   Vid vid; /** vocabulary ID */
@@ -137,7 +135,6 @@ struct Domain {
   static constexpr Vid kInvalidVid = static_cast<Vid>(-1);
   static constexpr Vid kEosVid = kInvalidVid; /** unused here */
   static constexpr Vid kUnkVid = kInvalidVid; /** unused here */
-  static constexpr Vid kReservedVids = 1; /** number of reserved vids starting from 0 */
   static constexpr CorpusIndexAccounting::acc_t kIndexType = CorpusIndexAccounting::IDX_CNT_ENTRIES;
 
   Vid vid; /** domain ID (called Vid for compatibility with the remaining Corpus/Sentence implementation.) */
