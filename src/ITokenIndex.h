@@ -19,6 +19,7 @@
 namespace sto {
 
 template<class Token> class DB;
+template<class Token> class ITokenIndex;
 
 /**
  * Internal, abstract TokenIndexSpan interface, implemented e.g. by TokenIndex::Span
@@ -54,10 +55,34 @@ public:
         return *iter_;
     }
     VidIterator &operator++() {
-      if(is_leaf_)
-        index_ += span_.StepSize(this->operator*()); // number of Positions to skip to get to the next vid at the current depth
-      else
+      if(is_leaf_) {
+        size_t step_size = span_.StepSize(this->operator*()); // number of Positions to skip to get to the next vid at the current depth
+        if(step_size == 0) {
+          std::cerr << "StepSize(" << ((unsigned int) this->operator*()) << ")==0 at VidIterator::operator++() in seq len=" << span_.sequence().size() << " is" << std::endl;
+          auto seq = span_.sequence();
+          for(auto s : seq)
+              std::cerr << " " << ((unsigned int) s.vid);
+          std::cerr << std::endl;
+          std::cerr << "span size=" << span_.size() << std::endl;
+
+          auto test_span = span_.index()->span();
+          std::cerr << "Stepping in a new span. Full index size=" << test_span.size() << std::endl;
+          for(auto s : seq)
+            std::cerr << "narrow(" << ((unsigned int) s.vid) << ")=" << test_span.narrow(s) << std::endl;
+          std::cerr << "after narrow sequence, span size=" << test_span.size() << std::endl;
+
+          std::cerr << "verifying node consistency..." << std::endl;
+          span_.node()->DebugCheckVidConsistency();
+
+          std::cerr << "verifying full index consistency..." << std::endl;
+          span_.index()->span().node()->DebugCheckVidConsistency();
+
+          throw std::runtime_error("StepSize()==0. This should never happen.");
+        }
+        index_ += step_size;
+      } else {
         ++iter_;
+      }
       return *this;
     }
     bool operator!=(const VidIterator &other) {
@@ -136,6 +161,8 @@ public:
    * Currently only available on leaf nodes, but just lazy.
    */
   virtual size_t StepSize(Token t) const = 0;
+
+  virtual ITokenIndex<Token> *index() const = 0;
 };
 
 
@@ -222,6 +249,8 @@ public:
   size_t StepSize(Token t) const { return span_->StepSize(t); }
 
   ITokenIndexSpan<Token> *get() const { return span_.get(); }
+
+  virtual ITokenIndex<Token> *index() const { return span_->index(); }
 
 private:
   std::shared_ptr<ITokenIndexSpan<Token>> span_;

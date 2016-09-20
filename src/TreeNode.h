@@ -132,6 +132,9 @@ public:
   virtual ITreeNode<Token> *parent() const { return parent_; }
   virtual const ITokenIndex<Token> &index() const { return index_; }
 
+  /** check whether all Positions have our vid at depth. */
+  virtual void DebugCheckVidConsistency() const override;
+
 protected:
   ITokenIndex<Token> &index_;           /** TokenIndex that this TreeNode belongs to */
   std::atomic<bool> is_leaf_;           /** whether this is a suffix array (leaf node) */

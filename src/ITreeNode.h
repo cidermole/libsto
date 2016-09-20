@@ -101,6 +101,9 @@ public:
   /** parent of this node, nullptr for root */
   virtual ITreeNode<Token> *parent() const = 0;
   virtual const ITokenIndex<Token> &index() const = 0;
+
+  /** check whether all Positions have our vid at depth. */
+  virtual void DebugCheckVidConsistency() const = 0;
 };
 
 } // namespace sto

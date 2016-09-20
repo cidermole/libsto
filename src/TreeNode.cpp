@@ -185,6 +185,38 @@ void TreeNode<Token, SuffixArray>::DebugPrint(std::ostream &os, const Corpus<Tok
   }
 }
 
+template<class Token, class SuffixArray>
+void TreeNode<Token, SuffixArray>::DebugCheckVidConsistency() const {
+  auto node_span = const_cast<TreeNode<Token, SuffixArray> *>(this)->span();
+  size_t span_size = node_span.size();
+  Position<Token> prev_pos;
+  Corpus<Token> &corpus = *this->index().corpus();
+
+  for(size_t i = 0; i < span_size; i++) {
+    Position<Token> pos = node_span[i];
+    Sentence<Token> sent = corpus.sentence(pos.sid);
+    if(pos.offset + this->depth_ > sent.size())
+      throw std::runtime_error("DebugCheckVidConsistency(): offset+depth > sent.size()");
+    if(this->depth_ > 0 && pos.add(this->depth_, corpus).vid(corpus) != this->vid_)
+      throw std::runtime_error("DebugCheckVidConsistency(): vid at depth != node vid");
+    if(i > 0) {
+      if(prev_pos.add(this->depth_, corpus).vid(corpus) > pos.add(this->depth_, corpus).vid(corpus))
+        throw std::runtime_error("DebugCheckVidConsistency(): sort order violation");
+    }
+    prev_pos = pos;
+  }
+
+  if(!this->is_leaf()) {
+    for(auto vid : (*this)) {
+      TreeNode<Token, SuffixArray> *n = nullptr;
+      bool ok = this->children_.Find(vid, &n);
+      if(!ok)
+        throw std::runtime_error("DebugCheckVidConsistency(): failed to find own child vid");
+      n->DebugCheckVidConsistency();
+    }
+  }
+}
+
 // explicit template instantiation
 template class TreeNode<SrcToken, SuffixArrayMemory<SrcToken>>;
 template class TreeNode<TrgToken, SuffixArrayMemory<TrgToken>>;

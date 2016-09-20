@@ -165,6 +165,8 @@ public:
 
     virtual Corpus<Token> *corpus() const;
 
+    virtual ITokenIndex<Token> *index() const { return const_cast<TokenIndex *>(index_); }
+
     /** iterate over unique vocabulary IDs at this depth. */
     virtual VidIterator vid_begin() const { return VidIterator(*this, /* begin = */ true); }
     virtual VidIterator vid_end() const { return VidIterator(*this, /* begin = */ false); }
