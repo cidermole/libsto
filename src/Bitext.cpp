@@ -200,6 +200,10 @@ void Bitext::OpenIncremental(const std::string &base) {
   src_.reset(new BitextSide<sto::SrcToken>(std::make_shared<DB<SrcToken>>(*db_), base, l1_, *doc_map_));
   trg_.reset(new BitextSide<sto::TrgToken>(std::make_shared<DB<TrgToken>>(*db_), base, l2_, *doc_map_));
   align_.reset(new sto::Corpus<sto::AlignmentLink>(base + l1_ + "-" + l2_ + ".mam"));
+
+  XVERBOSE(2, "Bitext: src vocab size=" << src_->vocab->size() << " trg vocab size=" << trg_->vocab->size() << "\n");
+  XVERBOSE(2, "Bitext: src global index size=" << src_->index->span().size() << "\n");
+  XVERBOSE(2, "Bitext: trg global index size=" << trg_->index->span().size() << "\n");
 }
 
 void Bitext::OpenLegacy(const std::string &base) {
