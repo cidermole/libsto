@@ -95,8 +95,7 @@ void TreeNode<Token, SuffixArray>::Merge(IndexSpan<Token> &spanSource, IndexSpan
   if(spanTarget.node()->is_leaf()) {
     if(spanSource.size() + spanTarget.size() > this->kMaxArraySize && this->vid_ != 1) { // and not </s> which we cannot split
       // we already know it's not going to fit, create another internal level
-      std::cerr << "TreeNodeDisk::Merge() -> SplitNode() targeting size=" <<
-        (spanSource.size() + spanTarget.size()) << " so splitting early at depth=" << spanTarget.depth() << std::endl;
+      //std::cerr << "TreeNodeDisk::Merge() -> SplitNode() targeting size=" << (spanSource.size() + spanTarget.size()) << " so splitting early at depth=" << spanTarget.depth() << std::endl;
       SplitNode(*spanTarget.corpus());
       //std::cerr << "SplitNode() done." << std::endl;
     } else {

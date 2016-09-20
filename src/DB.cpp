@@ -40,11 +40,12 @@ BaseDB::BaseDB(const std::string &basePath, bool bulkLoad): bulk_(bulkLoad) {
   db_.reset(db);
 }
 
-BaseDB::BaseDB(const BaseDB &other, const std::string &key_prefix) : db_(other.db_), key_prefix_(key_prefix)
+BaseDB::BaseDB(const BaseDB &other, const std::string &key_prefix) : db_(other.db_), key_prefix_(key_prefix), bulk_(other.bulk_)
 {}
 
 BaseDB::~BaseDB() {
-  if(bulk_ && key_prefix_ == "") {
+  // bulk load and we are the last user?
+  if(bulk_ && this->db_.use_count() == 1) {
     std::cerr << now() << "~BaseDB() running CompactRange()..." << std::endl;
     CompactRange();
     std::cerr << now() << "~BaseDB() CompactRange() finished." << std::endl;
