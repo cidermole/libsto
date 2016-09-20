@@ -28,7 +28,8 @@ TEST(VocabTests, insertion) {
 
   EXPECT_EQ("apple", sv.at(apple)) << "first Token must be apple";
 
-  ASSERT_THROW(sv.at("banana"), std::out_of_range) << "out-of-range access must throw an exception";
+  //ASSERT_THROW(sv.at("banana"), std::out_of_range) << "out-of-range access must throw an exception";
+  EXPECT_EQ(Vocab<SrcToken>::kUnkVid, sv.at("banana").vid);
 }
 
 TEST(VocabTests, load) {
@@ -43,7 +44,8 @@ TEST(VocabTests, load) {
   EXPECT_TRUE(sv.at("and").vid > 0);
   EXPECT_TRUE(sv.at("pear").vid > 0);
 
-  ASSERT_THROW(sv.at("banana"), std::out_of_range) << "out-of-range access must throw an exception";
+  //ASSERT_THROW(sv.at("banana"), std::out_of_range) << "out-of-range access must throw an exception";
+  EXPECT_EQ(Vocab<SrcToken>::kUnkVid, sv.at("banana").vid);
 }
 
 TEST(VocabTests, persist) {
@@ -84,11 +86,8 @@ TEST(VocabTests, persist) {
 
   EXPECT_EQ(vocab_size, sv.size()) << "vocabulary sizes should match";
 
-  ASSERT_THROW(sv.at("banana"), std::out_of_range) << "out-of-range access must throw an exception";
-
-  // clean up:
-
-  // TODO: need a test fixture / RAII-finally which cleans up despite the throw above
+  //ASSERT_THROW(sv.at("banana"), std::out_of_range) << "out-of-range access must throw an exception";
+  EXPECT_EQ(Vocab<SrcToken>::kUnkVid, sv.at("banana").vid);
 
   //delete db; // done by shared_ptr
 

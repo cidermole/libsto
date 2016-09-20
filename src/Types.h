@@ -41,7 +41,8 @@ struct SrcToken {
   typedef vid_t Vid; /** vocabulary ID type */
   static constexpr Vid kInvalidVid = 0;
   static constexpr Vid kEosVid = 1; /** vocabulary ID for </s>, the end-of-sentence sentinel token */
-  static constexpr Vid kReservedVids = 2; /** number of reserved vids starting from 0 */
+  static constexpr Vid kUnkVid = 2; /** vocabulary ID for <unk>, the unknown word sentinel token */
+  static constexpr Vid kReservedVids = 3; /** number of reserved vids starting from 0 */
   static constexpr CorpusIndexAccounting::acc_t kIndexType = CorpusIndexAccounting::IDX_CNT_ENTRIES;
 
   Vid vid; /** vocabulary ID */
@@ -65,7 +66,8 @@ struct TrgToken {
   typedef vid_t Vid; /** vocabulary ID type */
   static constexpr Vid kInvalidVid = 0;
   static constexpr Vid kEosVid = 1; /** vocabulary ID for </s>, the end-of-sentence sentinel token */
-  static constexpr Vid kReservedVids = 2; /** number of reserved vids starting from 0 */
+  static constexpr Vid kUnkVid = 2; /** vocabulary ID for <unk>, the unknown word sentinel token */
+  static constexpr Vid kReservedVids = 3; /** number of reserved vids starting from 0 */
   static constexpr CorpusIndexAccounting::acc_t kIndexType = CorpusIndexAccounting::IDX_CNT_ENTRIES;
 
   Vid vid; /** vocabulary ID */
@@ -105,6 +107,7 @@ struct AlignmentLink {
   typedef aln_link_t Vid; /** vocabulary ID type */
   static constexpr offset_t kInvalidOffset = static_cast<offset_t>(-1);
   static constexpr Vid kEosVid = {kInvalidOffset, kInvalidOffset}; /** value should never be used, just for template completion */
+  static constexpr Vid kUnkVid = {kInvalidOffset, kInvalidOffset};
   static constexpr CorpusIndexAccounting::acc_t kIndexType = CorpusIndexAccounting::IDX_CNT_BYTES;
 
   Vid vid; /** alignment link (called Vid for compatibility with the remaining Corpus/Sentence implementation.) */
@@ -133,6 +136,7 @@ struct Domain {
   //static constexpr offset_t kInvalidOffset = static_cast<offset_t>(-1);
   static constexpr Vid kInvalidVid = static_cast<Vid>(-1);
   static constexpr Vid kEosVid = kInvalidVid; /** unused here */
+  static constexpr Vid kUnkVid = kInvalidVid; /** unused here */
   static constexpr Vid kReservedVids = 1; /** number of reserved vids starting from 0 */
   static constexpr CorpusIndexAccounting::acc_t kIndexType = CorpusIndexAccounting::IDX_CNT_ENTRIES;
 
@@ -171,6 +175,7 @@ struct SentInfo {
   typedef DummyVocab<SentInfo> Vocabulary;
   typedef sent_info_t Vid; /** vocabulary ID type */
   static constexpr Vid kEosVid = {static_cast<domid_t>(-1), static_cast<seq_t>(-1)}; /** unused here */
+  static constexpr Vid kUnkVid = {static_cast<domid_t>(-1), static_cast<seq_t>(-1)}; /** unused here */
   Vid vid; /** domain ID (called Vid for compatibility with the remaining Corpus/Sentence implementation.) */
   static constexpr CorpusIndexAccounting::acc_t kIndexType = CorpusIndexAccounting::IDX_CNT_ENTRIES;
 

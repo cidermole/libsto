@@ -24,20 +24,20 @@ Vocab<Token>::Vocab(std::shared_ptr<DB<Token>> db) : size_(Token::kReservedVids)
       // store </s> sentinel if necessary
       if(Token::kEosVid != Token::kInvalidVid)
         db_->PutVocabPair(kEosVid, kEosSurface);
+      if(Token::kUnkVid != Token::kInvalidVid)
+        db_->PutVocabPair(kUnkVid, kUnkSurface);
 
       db_->PutSeqNum(seqNum_);
     }
     seqNum_ = db_->GetSeqNum();
   }
-  // put </s> sentinel if necessary
-  if(Token::kEosVid != Token::kInvalidVid)
-    put_eos();
+  put_sentinels();
 }
 
 template<class Token>
 Vocab<Token>::Vocab(const std::string &filename) : size_(0) /* set later */ {
   ugsapt_load(filename);
-  put_eos();
+  put_sentinels();
   seqNum_ = 1; // for legacy data, to make tests happy
 }
 
@@ -75,6 +75,9 @@ std::string Vocab<Token>::at_vid(Vid vid) const {
 
 template<class Token>
 Token Vocab<Token>::at(const std::string &surface) const {
+  auto it = surface2id_.find(surface);
+  if(it == surface2id_.end())
+    return Token{kUnkVid};
   return Token{surface2id_.at(surface)};
 }
 
@@ -183,23 +186,29 @@ bool Vocab<Token>::db_load() {
 }
 
 template<class Token>
-void Vocab<Token>::put_eos() {
-  surface2id_[kEosSurface] = kEosVid;
-  id2surface_[kEosVid] = kEosSurface;
+void Vocab<Token>::put_sentinels() {
+  if(Token::kEosVid != Token::kInvalidVid) {
+    surface2id_[kEosSurface] = kEosVid;
+    id2surface_[kEosVid] = kEosSurface;
 
-  // vid == kEOS must not be used by any word because we use it in TokenIndex as a sentinel.
-  // </s> must also have the lowest vid for correctness of comparing shorter sequences as less in TokenIndex.
-  assert(at(kEosSurface).vid == kEosVid);
+    // vid == kEOS must not be used by any word because we use it in TokenIndex as a sentinel.
+    // </s> must also have the lowest vid for correctness of comparing shorter sequences as less in TokenIndex.
+    assert(at(kEosSurface).vid == kEosVid);
+  }
+
+  if(Token::kUnkVid != Token::kInvalidVid) {
+    surface2id_[kUnkSurface] = kUnkVid;
+    id2surface_[kUnkVid] = kUnkSurface;
+  }
 }
 
-template<class Token>
-constexpr typename DummyVocab<Token>::Vid DummyVocab<Token>::kEosVid;
+template<class Token> constexpr typename DummyVocab<Token>::Vid DummyVocab<Token>::kEosVid;
 
-template<class Token>
-constexpr typename Vocab<Token>::Vid Vocab<Token>::kEosVid;
+template<class Token> constexpr typename Vocab<Token>::Vid Vocab<Token>::kEosVid;
+template<class Token> constexpr char Vocab<Token>::kEosSurface[];
 
-template<class Token>
-constexpr char Vocab<Token>::kEosSurface[];
+template<class Token> constexpr typename Vocab<Token>::Vid Vocab<Token>::kUnkVid;
+template<class Token> constexpr char Vocab<Token>::kUnkSurface[];
 
 // explicit template instantiation
 template class Vocab<SrcToken>;

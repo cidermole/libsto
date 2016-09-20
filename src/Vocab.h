@@ -27,7 +27,9 @@ class Vocab {
 public:
   typedef typename Token::Vid Vid;
   static constexpr Vid kEosVid = Token::kEosVid; /** vocabulary ID for </s>, the end-of-sentence sentinel token */
+  static constexpr Vid kUnkVid = Token::kUnkVid; /** vocabulary ID for <unk>, the unknown word sentinel token */
   static constexpr char kEosSurface[] = "</s>"; /** end of sentence sentinel marker */
+  static constexpr char kUnkSurface[] = "<UNK>"; /** end of sentence sentinel marker */
 
   /** Load vocabulary from db, or create in-memory empty vocabulary */
   Vocab(std::shared_ptr<DB<Token>> db = nullptr);
@@ -47,7 +49,7 @@ public:
   // for debug
   std::string at_vid(const Vid vid) const;
 
-  /** Returns the Token for the given `surface` form. */
+  /** Returns the Token for the given `surface` form. If not found, returns kUnkVid. */
   Token at(const std::string &surface) const;
 
   /** number of word types, excluding special reserved symbols (currently 2: the unmapped vid 0, and vid = kEOS.) */
@@ -112,7 +114,7 @@ private:
   bool db_load();
 
   /** put the </s> EOS sentinel at the correct vid. */
-  void put_eos();
+  void put_sentinels();
 };
 
 /** Empty vocabulary interface without implementations, to provide as a template argument. */
