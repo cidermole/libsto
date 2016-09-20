@@ -40,8 +40,8 @@ struct SrcToken {
   typedef Vocab<SrcToken> Vocabulary;
   typedef vid_t Vid; /** vocabulary ID type */
   static constexpr Vid kInvalidVid = 0;
-  static constexpr Vid kEosVid = 1; /** vocabulary ID for </s>, the end-of-sentence sentinel token */
-  static constexpr Vid kUnkVid = 2; /** vocabulary ID for <unk>, the unknown word sentinel token */
+  static constexpr Vid kEosVid = 2; /** vocabulary ID for </s>, the end-of-sentence sentinel token */
+  static constexpr Vid kUnkVid = 3; /** vocabulary ID for <unk>, the unknown word sentinel token */
   static constexpr CorpusIndexAccounting::acc_t kIndexType = CorpusIndexAccounting::IDX_CNT_ENTRIES;
 
   Vid vid; /** vocabulary ID */
@@ -64,8 +64,8 @@ struct TrgToken {
   typedef Vocab<TrgToken> Vocabulary;
   typedef vid_t Vid; /** vocabulary ID type */
   static constexpr Vid kInvalidVid = 0;
-  static constexpr Vid kEosVid = 1; /** vocabulary ID for </s>, the end-of-sentence sentinel token */
-  static constexpr Vid kUnkVid = 2; /** vocabulary ID for <unk>, the unknown word sentinel token */
+  static constexpr Vid kEosVid = 2; /** vocabulary ID for </s>, the end-of-sentence sentinel token */
+  static constexpr Vid kUnkVid = 3; /** vocabulary ID for <unk>, the unknown word sentinel token */
   static constexpr CorpusIndexAccounting::acc_t kIndexType = CorpusIndexAccounting::IDX_CNT_ENTRIES;
 
   Vid vid; /** vocabulary ID */
