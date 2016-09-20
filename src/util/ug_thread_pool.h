@@ -10,7 +10,7 @@
 #include <vector>
 #include <string>
 
-namespace ug {
+namespace ug2 {
 class ThreadPool 
 {
   typedef boost::asio::io_service service_t;

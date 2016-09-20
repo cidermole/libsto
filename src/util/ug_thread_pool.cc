@@ -1,5 +1,5 @@
 #include "ug_thread_pool.h"
-namespace ug {
+namespace ug2 {
 
 ThreadPool::
 ThreadPool(size_t const num_workers)

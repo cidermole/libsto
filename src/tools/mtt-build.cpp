@@ -214,8 +214,8 @@ int main(int argc, char **argv) {
   if(!args.quiet) util::PrintUsage(cerr);
 
 
-  boost::scoped_ptr<ug::ThreadPool> tpool;
-  tpool.reset(new ug::ThreadPool(boost::thread::hardware_concurrency()));
+  boost::scoped_ptr<ug2::ThreadPool> tpool;
+  tpool.reset(new ug2::ThreadPool(boost::thread::hardware_concurrency()));
 
   const auto top_span = side.index->span();
   for(auto vid : top_span) {
