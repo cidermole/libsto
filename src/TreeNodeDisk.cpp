@@ -214,14 +214,6 @@ template<class Token>
 void TreeNodeDisk<Token>::AddLeaf(Vid vid) {
   //assert(!this->children_.Find(vid)); // appending to children assumes that this vid is new
   this->children_[vid] = new TreeNodeDisk<Token>(this->index_, this->kMaxArraySize, child_path(vid), this->db_, this, vid, /* create_new_leaf = */ true);
-
-  if(sync_) {
-    // (in reality, we could just append to the existing blob of vids [in RAM]... child order does not matter)
-
-    // note: for persistence to be crash-safe, we must tolerate it if some child vids have already
-    // been persisted (from a previously crashed run)
-    WriteChildren();
-  }
 }
 
 template<class Token>

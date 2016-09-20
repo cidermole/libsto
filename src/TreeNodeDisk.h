@@ -84,6 +84,9 @@ public:
   /** Current persistence sequence number. Only valid conceptually at the root node. */
   virtual seq_t seqNum() const;
 
+  /** Write vids of children to persistent storage */
+  virtual void WriteChildren() override;
+
 private:
   std::string path_; /** path to the directory backing this DiskTreeNode */
   std::shared_ptr<DB<Token>> db_;
@@ -106,9 +109,6 @@ private:
 
   /** factory function for TreeNode::SplitNode() */
   TreeNodeDisk<Token> *make_child_(Vid vid, typename SuffixArray::iterator first, typename SuffixArray::iterator last, const Corpus<Token> &corpus);
-
-  /** Write vids of children to persistent storage */
-  void WriteChildren();
 };
 
 } // namespace sto

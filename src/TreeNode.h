@@ -132,6 +132,9 @@ public:
   virtual ITreeNode<Token> *parent() const { return parent_; }
   virtual const ITokenIndex<Token> &index() const { return index_; }
 
+  /** Write vids of children to persistent storage. Only implemented for TreeNodeDisk. */
+  virtual void WriteChildren() {}
+
   /** check whether all Positions have our vid at depth. */
   virtual void DebugCheckVidConsistency() const override;
 

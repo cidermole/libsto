@@ -116,13 +116,15 @@ void TreeNode<Token, SuffixArray>::Merge(IndexSpan<Token> &spanSource, IndexSpan
     size_t spanSize = spant.narrow(Token{vid});
     if(spanSize == 0) {
       // (1) create tree entry (leaf)
-      spant.node()->AddLeaf(vid);
+      assert(spant.node() == this);
+      this->AddLeaf(vid);
       spant.narrow(Token{vid}); // step IndexSpan into the node just created (which contains an empty SA)
       assert(spant.in_array());
     }
     dynamic_cast<TreeNode<Token, SuffixArray> *>(spant.node())->Merge(spans, spant, merger); // TODO: reinterpret_cast? (faster? correct?)
     this->AddSize(vid, num_new);
   }
+  this->WriteChildren(); // flush internal node's children -- from AddLeaf()
 }
 
 template<class Token, class SuffixArray>
