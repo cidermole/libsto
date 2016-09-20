@@ -102,12 +102,12 @@ bool Vocab<Token>::contains(const std::string &surface) const {
 
 template<class Token>
 void Vocab<Token>::Write(std::shared_ptr<DB<Token>> db) const {
-  Vocab<Token> target(db); // persistent Vocab with DB backing
+  Vocab<Token> target(db); // Vocab with DB backing
   assert(target.size() == 0); // make sure that DB is empty (should not contain a Vocab, so we start from scratch)
 
-  for(auto vid : (*this)) {
-    target[this->at(vid)];
-  }
+  typename std::unordered_map<Vid, std::string>::const_iterator it = id2surface_.begin();
+  for(; it != id2surface_.end(); ++it)
+    db_->PutVocabPair(it->first, it->second);
 }
 
 template<class Token>
