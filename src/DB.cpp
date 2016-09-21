@@ -98,6 +98,7 @@ size_t DB<Token>::LoadVocab(std::unordered_map<Vid, std::string> &id2surface) {
     size++;
   }
 
+  //std::cerr << "DB::LoadVocab(): prefix scan of key=" << prefix << " found " << size << " keys" << std::endl;
   return size;
 }
 

@@ -108,11 +108,15 @@ bool Vocab<Token>::contains(const std::string &surface) const {
 
 template<class Token>
 void Vocab<Token>::Write(std::shared_ptr<DB<Token>> db) const {
+/*
+ * should be true, except for DocumentMap, which is currently written from both corpus sides (2x call to mtt-build, second finds existing dmp)
+ *
   // ensure that DB does not have a vocabulary here
   std::unordered_map<Vid, std::string> tmp;
   db->LoadVocab(tmp);
   if(tmp.size())
     throw std::runtime_error("Vocab::Write() does not yet support overwrite."); // is it valid to issue Delete() to RocksDB while iterating?
+*/
 
   // write entries
   typename std::unordered_map<Vid, std::string>::const_iterator it = id2surface_.begin();

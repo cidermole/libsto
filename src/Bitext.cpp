@@ -128,7 +128,7 @@ void BitextSide<Token>::AddToDomainIndex(Sid sid, tpt::docid_type docid, seq_t s
 
 template<typename Token>
 void BitextSide<Token>::Write(std::shared_ptr<DB<Token>> db, const std::string &base) {
-  std::cerr << "BitextSide<Token>::Write()..." << std::endl;
+  std::cerr << "BitextSide<Token>::Write() of lang=" << lang << "..." << std::endl;
 
   benchmark_time([&](){ vocab->Write(db->template PrefixedDB<Token>("V" + lang)); }, "vocab->Write()");
 
