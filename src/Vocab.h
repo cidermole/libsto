@@ -28,8 +28,8 @@ public:
   typedef typename Token::Vid Vid;
   static constexpr Vid kEosVid = Token::kEosVid; /** vocabulary ID for </s>, the end-of-sentence sentinel token */
   static constexpr Vid kUnkVid = Token::kUnkVid; /** vocabulary ID for <unk>, the unknown word sentinel token */
-  static constexpr char kEosSurface[] = "1"; /** end of sentence sentinel marker */
-  static constexpr char kUnkSurface[] = "2"; /** end of sentence sentinel marker */
+  static constexpr char kEosSurface[] = "2"; /** end of sentence sentinel marker */
+  static constexpr char kUnkSurface[] = "3"; /** end of sentence sentinel marker */
 
   /** Load vocabulary from db, or create in-memory empty vocabulary */
   Vocab(std::shared_ptr<DB<Token>> db = nullptr);
