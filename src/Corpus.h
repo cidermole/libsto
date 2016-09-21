@@ -94,6 +94,9 @@ private:
 
   /** set sentIndexEntrySize_ according to the index type */
   void init_index_type();
+
+  /** implementation for begin(sid) and end(sid), use is_end=1 for end(sid) */
+  const Vid *track_pos_(Sid sid, Sid is_end) const;
 };
 
 template<class Token> class Position;

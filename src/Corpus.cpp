@@ -87,32 +87,27 @@ Corpus<Token>::~Corpus() {
 
 template<class Token>
 const typename Corpus<Token>::Vid* Corpus<Token>::begin(Sid sid) const {
-  // static track
-  if(sid < sentIndexHeader_.idxSize) {
-    // we never provide the trailing sentinel here (note that idxSize excludes it)
-    return trackTokens_ + sentIndexEntries_[sid] / sentIndexEntrySize_;
-  }
-
-  // dynamic track
-  sid -= sentIndexHeader_.idxSize;
-  assert(sid < dyn_sentIndex_.size() - 1);
-  // we never provide the trailing sentinel here (note that dyn_sentIndex_.size() includes it)
-  return dyn_track_.data() + dyn_sentIndex_[sid];
+  return track_pos_(sid, 0);
 }
 
 template<class Token>
 const typename Corpus<Token>::Vid* Corpus<Token>::end(Sid sid) const {
+  return track_pos_(sid, 1);
+}
+
+template<class Token>
+const typename Corpus<Token>::Vid* Corpus<Token>::track_pos_(Sid sid, Sid is_end) const {
   // static track
   if(sid < sentIndexHeader_.idxSize) {
     // provide the trailing sentinel here (note that idxSize excludes it)
-    return trackTokens_ + sentIndexEntries_[sid + 1] / sentIndexEntrySize_;
+    return trackTokens_ + sentIndexEntries_[sid + is_end] / sentIndexEntrySize_;
   }
 
   // dynamic track
   sid -= sentIndexHeader_.idxSize;
   assert(sid < dyn_sentIndex_.size() - 1);
   // provide the trailing sentinel here (note that dyn_sentIndex_.size() includes it)
-  return dyn_track_.data() + dyn_sentIndex_[sid + 1];
+  return dyn_track_.data() + dyn_sentIndex_[sid + is_end];
 }
 
 template<class Token>
