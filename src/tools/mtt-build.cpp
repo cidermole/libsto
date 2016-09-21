@@ -165,7 +165,7 @@ void read_input_lines(BitextSide<Token> &side, DocumentMap &docMap, Args &args) 
     while(buf >> w)
       sent.push_back(w);
 
-    sid = side.AddToCorpus(sent);
+    sid = side.AddToCorpus(sent, updateid_t{static_cast<stream_t>(-1), sid + 1});
     side.index->AddSentence(side.corpus->sentence(sid));
 
     if(!args.quiet) log_progress(sid);
@@ -286,7 +286,7 @@ int main(int argc, char **argv) {
   cerr << "global index size=" << side.index->span().size() << endl;
   for(auto domain : docMap) {
     // manually notify the domain indexes about seqNum -- AddPosition() is quite low-level
-    side.domain_indexes[domain]->SetSeqNum(side.index->seqNum());
+    side.domain_indexes[domain]->Flush(side.index->streamVersions());
 
     cerr << "domain " << docMap[domain] << " index size=" << side.domain_indexes[domain]->span().size() << endl;
   }

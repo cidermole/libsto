@@ -242,7 +242,7 @@ public:
    * Thread safety: one writer, multiple reader threads.
    * Readers always see a valid state, but no guarantees on when writes become visible.
    */
-  virtual void AddSentence(const Sentence<Token> &sent, seq_t seqNum = static_cast<seq_t>(-1));
+  virtual void AddSentence(const Sentence<Token> &sent, updateid_t version = updateid_t{static_cast<stream_t>(-1), static_cast<seqid_t>(-1)});
 
   /**
    * Merge all Positions from 'add' into this TokenIndex.
@@ -259,9 +259,10 @@ public:
   virtual void Write(std::shared_ptr<DB<Token>> db) const;
 
   /** current persistence sequence number */
-  virtual seq_t seqNum() const { return seqNum_; }
+  virtual StreamVersions streamVersions() const override { return streamVersions_; }
 
-  virtual void SetSeqNum(seq_t seqNum) override;
+  /** call this after external low-level addition of Positions */
+  virtual void Flush(StreamVersions streamVersions) override;
 
   virtual void DebugPrint(std::ostream &os);
 
@@ -273,13 +274,14 @@ private:
 
   Corpus<Token> *corpus_;
   TreeNodeT *root_; /** root of the index tree */
-  seq_t seqNum_ = 0; /** persistence sequence number */
+  StreamVersions streamVersions_; /** persistence sequence number */
 
   /**
    * Finalize an update with seqNum. Called internally after the update has been applied,
    * to flush writes to DB and apply a new persistence sequence number.
    */
-  void Ack(seq_t seqNum);
+  //void Ack(seq_t seqNum);
+  void Flush();
 };
 
 } // namespace sto

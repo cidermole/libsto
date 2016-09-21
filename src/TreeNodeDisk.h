@@ -80,9 +80,7 @@ public:
    * Finalize an update with seqNum. Flush writes to DB and apply a new persistence sequence number.
    * Only valid conceptually at the root node.
    */
-  virtual void Ack(seq_t seqNum);
-  /** Current persistence sequence number. Only valid conceptually at the root node. */
-  virtual seq_t seqNum() const;
+  virtual void Flush(StreamVersions streamVersions) override;
 
   /** Write vids of children to persistent storage */
   virtual void WriteChildren() override;
@@ -91,7 +89,6 @@ private:
   std::string path_; /** path to the directory backing this DiskTreeNode */
   std::shared_ptr<DB<Token>> db_;
   bool sync_; /** whether to sync writes immediately to the database (causes immense write amplification!) */
-  seq_t seqNum_ = 0; /** persistence sequence number */
 
   /** load child nodes below 'path' as indicated by the passed sequence of child vids. */
   void LoadSubtree(const Vid *children, size_t num_children);

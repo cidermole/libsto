@@ -95,7 +95,7 @@ TEST(DocumentMapTests, save_load_append) {
 
   for(size_t i = 0; i < domain_names.size(); i++) {
     for(size_t j = 0; j < line_counts[i]; j++) {
-      docmap_build.AddSentence(nlines, docmap_build.FindOrInsert(domain_names[i]), nlines + 1);
+      docmap_build.AddSentence(nlines, docmap_build.FindOrInsert(domain_names[i], updateid_t{static_cast<stream_t>(-1), nlines + 1}), nlines + 1);
       nlines++;
     }
   }
@@ -110,7 +110,7 @@ TEST(DocumentMapTests, save_load_append) {
   DocumentMap docmap{db, corpusfile};
 
   // append
-  docmap.AddSentence(nlines, docmap.FindOrInsert("domAdd"), nlines + 1);
+  docmap.AddSentence(nlines, docmap.FindOrInsert("domAdd", updateid_t{static_cast<stream_t>(-1), nlines + 1}), nlines + 1);
   nlines++;
   line_counts.push_back(1);
   domain_names.push_back("domAdd");

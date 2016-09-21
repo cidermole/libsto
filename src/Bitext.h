@@ -75,10 +75,10 @@ struct BitextSide : public sto::Loggable {
   void CreateDomainIndexes();
 
   /** Add sentence to Vocab and Corpus. */
-  Sid AddToCorpus(const std::vector<std::string> &sent);
+  Sid AddToCorpus(const std::vector<std::string> &sent, updateid_t version);
 
   /** Add a sentence to the domain index docid. Sentence should already be added via AddToCorpus(). */
-  void AddToDomainIndex(Sid sid, tpt::docid_type docid, seq_t seqNum);
+  void AddToDomainIndex(Sid sid, tpt::docid_type docid, updateid_t version);
 
   /**
    * Write to (empty) DB and disk.
@@ -87,10 +87,8 @@ struct BitextSide : public sto::Loggable {
    */
   void Write(std::shared_ptr<DB<Token>> db, const std::string &base);
 
-  /** Finalize an update with seqNum. Flush writes to DB and apply a new persistence sequence number. */
-  void Ack(seq_t seqNum);
   /** Current persistence sequence number. */
-  seq_t seqNum() const;
+  StreamVersions streamVersions() const;
 };
 
 /**

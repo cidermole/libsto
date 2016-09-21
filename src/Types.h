@@ -10,6 +10,8 @@
 #include <utility>
 #include <cstdint>
 
+#include "mmt/IncrementalModel.h"
+
 namespace sto {
 
 template<class Token> class Vocab;
@@ -24,6 +26,10 @@ typedef uint8_t offset_t; /** type of token offset within sentence */
 typedef uint32_t domid_t; /** domain ID type */
 
 typedef uint32_t seq_t; /** sequence number to synchronize persistent storage */
+
+using updateid_t = mmt::updateid_t;
+using stream_t = mmt::stream_t;
+using seqid_t = mmt::seqid_t;
 
 /**
  * Accounting type in sentence index of corpus.
@@ -156,30 +162,36 @@ struct Domain {
   Vid &operator*() { return vid; }
 };
 
-/** Auxiliary sentence information (domain ID, seqNum) for internal use. The external interface is SentInfo. */
-struct sent_info_t {
+/**
+ * For internal use: auxiliary sentence information (domain ID, updateid_t version).
+ * The external interface is SentInfo.
+ */
+struct __attribute__((packed)) sent_info_t {
   domid_t domid; /** domain ID */
-  seq_t seqNum;  /** persistent sequence number */
 
-  constexpr sent_info_t(domid_t domain_id, seq_t seq_num) : domid(domain_id), seqNum(seq_num) {}
+  /** byte packed fields from mmt::updateid_t */
+  seqid_t sentence_id;
+  stream_t stream_id;
+
+  constexpr sent_info_t(domid_t domain_id, updateid_t version) : domid(domain_id), sentence_id(version.sentence_id), stream_id(version.stream_id) {}
 };
 
 /**
- * Auxiliary sentence information (domain ID, seqNum) compatible with Corpus,
+ * Auxiliary sentence information (domain ID, updateid_t version) compatible with Corpus,
  * so we can persist this information for the Bitext.
  */
 struct SentInfo {
   typedef DummyVocab<SentInfo> Vocabulary;
   typedef sent_info_t Vid; /** vocabulary ID type */
-  static constexpr Vid kEosVid = {static_cast<domid_t>(-1), static_cast<seq_t>(-1)}; /** unused here */
-  static constexpr Vid kUnkVid = {static_cast<domid_t>(-1), static_cast<seq_t>(-1)}; /** unused here */
+  static constexpr Vid kEosVid = {static_cast<domid_t>(-1), updateid_t{static_cast<stream_t>(-1), static_cast<seqid_t>(-1)}}; /** unused here */
+  static constexpr Vid kUnkVid = {static_cast<domid_t>(-1), updateid_t{static_cast<stream_t>(-1), static_cast<seqid_t>(-1)}}; /** unused here */
   Vid vid; /** domain ID (called Vid for compatibility with the remaining Corpus/Sentence implementation.) */
   static constexpr CorpusIndexAccounting::acc_t kIndexType = CorpusIndexAccounting::IDX_CNT_ENTRIES;
 
   /** construct invalid SentInfo */
-  SentInfo(): vid(static_cast<domid_t>(-1), static_cast<seq_t>(-1)) {}
+  SentInfo(): vid(static_cast<domid_t>(-1), updateid_t{static_cast<stream_t>(-1), static_cast<seqid_t>(-1)}) {}
 
-  SentInfo(domid_t domid, seq_t seqNum): vid(domid, seqNum) {}
+  SentInfo(domid_t domid, updateid_t version): vid(domid, version) {}
 };
 
 

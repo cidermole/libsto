@@ -13,6 +13,7 @@
 #include <unordered_map>
 
 #include "Types.h"
+#include "StreamVersions.h"
 
 namespace rocksdb {
 class DB;
@@ -147,9 +148,9 @@ public:
   NodeType IsNodeLeaf(const std::string &path);
 
   /** Get persistence sequence number */
-  seq_t GetSeqNum();
+  StreamVersions GetStreamVersions();
   /** Put persistence sequence number */
-  void PutSeqNum(seq_t seqNum);
+  void PutStreamVersions(StreamVersions streamVersions);
 
 private:
   double putLeafTime_ = 0.0;
@@ -162,7 +163,8 @@ private:
   std::string vid_key_(Vid vid);
   std::string surface_key_(const std::string &surface);
   std::string leaf_key_(const std::string &k);
-  std::string seqnum_key_();
+  std::string stream_key_prefix_();
+  std::string stream_key_(stream_t stream);
 };
 
 } // namespace sto

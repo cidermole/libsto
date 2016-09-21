@@ -162,8 +162,16 @@ std::string DB<Token>::leaf_key_(const std::string &k) {
 }
 
 template<class Token>
-std::string DB<Token>::seqnum_key_() {
+std::string DB<Token>::stream_key_prefix_() {
   return key_("seqn");
+}
+
+template<class Token>
+std::string DB<Token>::stream_key_(stream_t stream) {
+  char key_str[4 + sizeof(stream_t)] = "seqn";
+  memcpy(&key_str[4], &stream, sizeof(stream_t));
+  std::string key(key_str, 4 + sizeof(stream_t));
+  return key_(key);
 }
 
 template<class Token>
@@ -223,21 +231,41 @@ NodeType DB<Token>::IsNodeLeaf(const std::string &path) {
 }
 
 template<class Token>
-seq_t DB<Token>::GetSeqNum() {
-  std::string key = seqnum_key_();
-  std::string value;
-  rocksdb::Status status = this->db_->Get(rocksdb::ReadOptions(), key, &value);
-  assert(status.ok() || status.IsNotFound());
-  if(!status.ok())
-    return 0;
-  return *reinterpret_cast<const seq_t *>(value.data());
+StreamVersions DB<Token>::GetStreamVersions() {
+  using namespace rocksdb;
+
+  StreamVersions versions;
+
+  // prefix scan to get all streams
+
+  auto iter = this->db_->NewIterator(ReadOptions());
+  std::string prefix = stream_key_prefix_();
+  for(iter->Seek(prefix); iter->Valid() && iter->key().starts_with(prefix); iter->Next()) {
+    std::string value;
+    this->db_->Get(ReadOptions(), iter->key(), &value);
+    stream_t stream;
+    memcpy(&stream, iter->key().data() + prefix.size(), sizeof(stream));
+    seqid_t seqid = *reinterpret_cast<const seqid_t *>(value.data());
+    versions[stream] = seqid;
+  }
+
+  return versions;
 }
 
 template<class Token>
-void DB<Token>::PutSeqNum(seq_t seqNum) {
-  std::string key = seqnum_key_();
-  rocksdb::Slice val(reinterpret_cast<const char *>(&seqNum), sizeof(seqNum));
-  rocksdb::Status status = this->db_->Put(rocksdb::WriteOptions(), key, val);
+void DB<Token>::PutStreamVersions(StreamVersions streamVersions) {
+  rocksdb::WriteBatch batch;
+
+  for(auto entry : streamVersions) {
+    stream_t stream = entry.first;
+    seqid_t seqid = entry.second;
+
+    std::string key = stream_key_(stream);
+    rocksdb::Slice val(reinterpret_cast<const char *>(&seqid), sizeof(seqid));
+    batch.Put(key, val);
+  }
+
+  rocksdb::Status status = this->db_->Write(rocksdb::WriteOptions(), &batch);
   assert(status.ok());
 }
 

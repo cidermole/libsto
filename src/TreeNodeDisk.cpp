@@ -32,7 +32,7 @@ TreeNodeDisk<Token>::TreeNodeDisk(ITokenIndex<Token> &index, size_t maxArraySize
   assert(db != nullptr);
 
   if(is_root())
-    seqNum_ = db_->GetSeqNum();
+    this->streamVersions_ = db->GetStreamVersions();
 
   // TODO: no need for SuffixArrayDisk. We keep everything in memory anyway.
   // (we could unify SuffixArrayDisk and SuffixArrayMemory)
@@ -89,21 +89,10 @@ bool TreeNodeDisk<Token>::find_child_(Vid vid, TreeNodeDisk<Token> **child) {
 }
 
 template<class Token>
-void TreeNodeDisk<Token>::Ack(seq_t seqNum) {
-  //assert(is_root()); // only valid conceptually at the root node.
-  assert(seqNum > seqNum_);
-  if(seqNum <= seqNum_)
-    return;
-
-  seqNum_ = seqNum;
-  db_->PutSeqNum(seqNum_);
+void TreeNodeDisk<Token>::Flush(StreamVersions streamVersions) {
+  this->streamVersions_.Update(streamVersions);
+  db_->PutStreamVersions(this->streamVersions_);
   db_->Flush();
-}
-
-template<class Token>
-seq_t TreeNodeDisk<Token>::seqNum() const {
-  //assert(is_root()); // only valid at the root node.
-  return seqNum_;
 }
 
 template<class Token>

@@ -10,6 +10,7 @@
 #include <memory>
 
 #include "Corpus.h"
+#include "StreamVersions.h"
 
 namespace sto {
 
@@ -88,9 +89,9 @@ public:
   virtual void AddLeaf(Vid vid) = 0;
 
   /** Finalize an update with seqNum. Flush writes to DB and apply a new persistence sequence number. */
-  virtual void Ack(seq_t seqNum) = 0;
+  virtual void Flush(StreamVersions streamVersions) = 0;
   /** current persistence sequence number */
-  virtual seq_t seqNum() const = 0;
+  virtual StreamVersions streamVersions() const = 0;
 
   /** iterator over vids of children of internal nodes */
   virtual IVidIterator<Token> begin() const = 0;

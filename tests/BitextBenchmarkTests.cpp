@@ -160,7 +160,7 @@ void read_input_lines(std::istream &is, BitextSide<Token> &side, DocumentMap &do
       sent.push_back(w);
 
     double t_AddToCorpus = benchmark_time([&](){
-      sid = side.AddToCorpus(sent);
+      sid = side.AddToCorpus(sent, updateid_t{static_cast<stream_t>(-1), sid + 1});
     });
 
     double t_AddSentence = benchmark_time([&](){

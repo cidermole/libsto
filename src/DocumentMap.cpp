@@ -24,8 +24,11 @@ DocumentMap::DocumentMap(std::shared_ptr<BaseDB> db, const std::string &corpus_f
     docname2id_(db->template PrefixedDB<Domain>("dmp")), // add another prefix, so we do not collide with normal Vocab DB entries
     sent_info_(new Corpus<SentInfo>(corpus_file))
 {
+  StreamVersions corpusVersions = sent_info_stream_versions_();
+  StreamVersions vocabVersions = docname2id_.streamVersions();
+
   // any component with a higher seqNum will have to ignore the repeated updates
-  seqNum_ = std::min(docname2id_.seqNum(), sentInfoSeqNum_());
+  streamVersions_ = StreamVersions::Min(corpusVersions, vocabVersions);
 }
 
 sapt::IBias *DocumentMap::SetupDocumentBias(std::map<std::string,float> context_weights,
@@ -67,20 +70,20 @@ void DocumentMap::Load(std::string const& fname, size_t num_sents) {
     line >> b;
     //VERBOSE(3, "DOCUMENT MAP " << docname << " " << a << "-" << b+a << std::endl);
     for (b += a; a < b; ++a) {
-      AddSentence(/* sid = */ a, docid, /* seqNum = */ a + 1); // seqNum is fake here
+      AddSentence(/* sid = */ a, docid, updateid_t{kLegacyDiskStream, a + 1}); // fake stream -1, fake seqNum
     }
   }
   assert(b == sent_info_->size());
   if(b != num_sents && num_sents != static_cast<size_t>(-1))
     throw std::runtime_error(std::string("Document map doesn't match corpus! b=") + std::to_string(b) + ", num_sents=" + std::to_string(num_sents));
 
-  seqNum_ = 1; // for legacy data, to make tests happy
-
   XVERBOSE(1, "DocumentMap::Load() loaded " << numDomains() << " domains, " << (sent_info_->size()) << " sentences.\n");
 }
 
-tpt::docid_type DocumentMap::FindOrInsert(const std::string &docname) {
-  return docname2id_[docname];
+tpt::docid_type DocumentMap::FindOrInsert(const std::string &docname, updateid_t version) {
+  tpt::docid_type id = docname2id_[docname];
+  streamVersions_.Update(version);
+  return id;
 }
 
 
@@ -99,8 +102,9 @@ std::string DocumentMap::operator[](tpt::docid_type docid) const {
   return docname2id_.at(docid);
 }
 
-seq_t DocumentMap::seqNum(Corpus<SentInfo>::Sid sid) const {
-  return sent_info_->begin(sid)->seqNum;
+updateid_t DocumentMap::version(Corpus<SentInfo>::Sid sid) const {
+  const sent_info_t *info = sent_info_->begin(sid);
+  return updateid_t{info->stream_id, info->sentence_id};
 }
 
 typename DocumentMap::iterator DocumentMap::begin() const {
@@ -111,40 +115,42 @@ typename DocumentMap::iterator DocumentMap::end() const {
   return docname2id_.end();
 }
 
-void DocumentMap::AddSentence(sid_t sid, tpt::docid_type docid, seq_t seqNum) {
+void DocumentMap::AddSentence(sid_t sid, tpt::docid_type docid, updateid_t version) {
   size_t next_sid = sent_info_->size();
   if(sid > next_sid)
     throw std::runtime_error("DocumentMap::AddSentence() currently only supports sequential addition of sentence IDs.");
 
-  seq_t sentInfoSeqNum = sentInfoSeqNum_();
-  assert(seqNum > sentInfoSeqNum);
-  if(seqNum <= sentInfoSeqNum)
+  seqid_t sentInfoSeqId = streamVersions_.at(version.stream_id);
+  assert(version.sentence_id > sentInfoSeqId);
+  if(version.sentence_id <= sentInfoSeqId)
     return;
 
-  sent_info_->AddSentence(std::vector<SentInfo>{SentInfo{docid, seqNum}});
+  // Corpus::AddSentence() flushes by default
+  sent_info_->AddSentence(std::vector<SentInfo>{SentInfo{docid, version}});
+  streamVersions_[version.stream_id] = version.sentence_id;
+  docname2id_.Flush(streamVersions_);
 }
 
 /** Write to (empty) DB and disk. */
 void DocumentMap::Write(std::shared_ptr<BaseDB> db, const std::string &corpus_file) {
   docname2id_.Write(db->template PrefixedDB<Domain>("dmp"));
   sent_info_->Write(corpus_file);
+  docname2id_.Flush(streamVersions_);
 }
 
-void DocumentMap::Ack(seq_t seqNum) {
-  assert(seqNum > seqNum_);
-  if(seqNum <= seqNum_)
-    return;
-
-  seqNum_ = seqNum;
-  //sent_info_->Ack(seqNum_);
-  docname2id_.Ack(seqNum_);
-}
-
-seq_t DocumentMap::sentInfoSeqNum_() const {
-  if(sent_info_->size())
-    return sent_info_->begin(sent_info_->size()-1)->seqNum;
-  else
-    return 0;
+StreamVersions DocumentMap::sent_info_stream_versions_() {
+  typedef typename Corpus<SentInfo>::Sid Sid;
+  StreamVersions versions;
+  Sid info_size = sent_info_->size();
+  for(Sid i = 0; i < info_size; i++) {
+    updateid_t upd = version(i);
+    if(upd.sentence_id < versions.at(upd.stream_id)) {
+      assert(0 && "update IDs should be sequential");
+      continue;
+    }
+    versions[upd.stream_id] = upd.sentence_id;
+  }
+  return versions;
 }
 
 // ----------------------------------------------------------------------------

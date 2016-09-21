@@ -44,6 +44,8 @@ set(SOURCES
         ObjIterator.h
         util/ug_thread_pool.h
         util/ug_thread_pool.cc
+        StreamVersions.h
+        StreamVersions.cpp
         )
 
 add_library(sto OBJECT ${SOURCES})  # no real lib, just collection of objs

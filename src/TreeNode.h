@@ -138,6 +138,9 @@ public:
   /** check whether all Positions have our vid at depth. */
   virtual void DebugCheckVidConsistency() const override;
 
+  virtual void Flush(StreamVersions streamVersions) {}
+  virtual StreamVersions streamVersions() const { /* stub! streamVersions_ is never updated. */ return streamVersions_; }
+
 protected:
   ITokenIndex<Token> &index_;           /** TokenIndex that this TreeNode belongs to */
   std::atomic<bool> is_leaf_;           /** whether this is a suffix array (leaf node) */
@@ -146,6 +149,7 @@ protected:
   ITreeNode<Token> *parent_;            /** parent of this node, nullptr for root */
   size_t depth_;                        /** distance from the root */
   Vid vid_;                             /** word type common to all Positions at depth-1; invalid for root */
+  StreamVersions streamVersions_;       /** persistence sequence numbers */
 
   /**
    * maximum size of suffix array leaf, larger sizes are split up into TreeNodes.

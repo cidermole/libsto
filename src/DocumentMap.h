@@ -17,6 +17,7 @@
 #include "Vocab.h"
 #include "Corpus.h"
 #include "Loggable.h"
+#include "StreamVersions.h"
 #include "ug_bias.h"
 
 namespace sto {
@@ -45,7 +46,7 @@ public:
 
   size_t numDomains() const { return docname2id_.size(); }
 
-  tpt::docid_type FindOrInsert(const std::string &docname);
+  tpt::docid_type FindOrInsert(const std::string &docname, updateid_t version);
 
   /** @return true if this doc name is mapped */
   bool contains(const std::string &docname) const;
@@ -57,7 +58,7 @@ public:
   std::string operator[](tpt::docid_type docid) const;
 
   /** add to sentence ID -> document ID mapping */
-  void AddSentence(sid_t sid, tpt::docid_type docid, seq_t seqNum);
+  void AddSentence(sid_t sid, tpt::docid_type docid, updateid_t version);
 
   /**
    * Load document map from a v1 sapt .dmp file.
@@ -77,23 +78,26 @@ public:
   void Write(std::shared_ptr<BaseDB> db, const std::string &corpus_file);
 
   /** Finalize an update with seqNum. Flush writes to DB and apply a new persistence sequence number. */
-  void Ack(seq_t seqNum);
-  /** Current persistence sequence number. */
-  seq_t seqNum() const { return seqNum_; }
+  //void Flush();
   /** Persistence sequence number of Sentence with 'sid'. */
-  seq_t seqNum(Corpus<SentInfo>::Sid sid) const;
+  updateid_t version(Corpus<SentInfo>::Sid sid) const;
+
+  /** Current persistence sequence number. */
+  StreamVersions streamVersions() const { return streamVersions_; }
 
   // note: unordered iteration
   iterator begin() const;
   iterator end() const;
 
 private:
+  static constexpr stream_t kLegacyDiskStream = (stream_t) -1;
+
   Vocab<Domain> docname2id_;                    /** document name to document id mapping */
   std::shared_ptr<Corpus<SentInfo>> sent_info_; /** sentence id to document id mapping */
-  seq_t seqNum_ = 0;                            /** persistence sequence number */
+  StreamVersions streamVersions_; /** most recent version for each stream */
 
-  /** persistence sequence number of sent_info_ component */
-  seq_t sentInfoSeqNum_() const;
+  /** collect most recent stream versions from sent_info_ */
+  StreamVersions sent_info_stream_versions_();
 };
 
 /** Domain bias for BitextSampler, backed by libsto DocumentMap. */

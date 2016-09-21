@@ -72,7 +72,7 @@ void BitextSide<Token>::CreateGlobalIndex() {
   XVERBOSE(2, " BitextSide<Token>::CreateGlobalIndex()...\n");
   index.reset(new sto::TokenIndex<Token, IndexTypeMemory>(*corpus));
   for(size_t i = 0; i < corpus->size(); i++)
-    index->AddSentence(corpus->sentence(i), docMap.seqNum(i));
+    index->AddSentence(corpus->sentence(i), docMap.version(i));
 }
 
 template<typename Token>
@@ -101,20 +101,28 @@ void BitextSide<Token>::CreateDomainIndexes() {
 
   // put each sentence into the correct domain index
   for(size_t i = 0; i < nsents; i++)
-    domain_indexes[docMap.sid2did(i)]->AddSentence(corpus->sentence(i), docMap.seqNum(i));
+    domain_indexes[docMap.sid2did(i)]->AddSentence(corpus->sentence(i), docMap.version(i));
 }
 
 template<typename Token>
-typename BitextSide<Token>::Sid BitextSide<Token>::AddToCorpus(const std::vector<std::string> &sent) {
+typename BitextSide<Token>::Sid BitextSide<Token>::AddToCorpus(const std::vector<std::string> &sent, updateid_t version) {
+  // TODO: this currently does not ignore lower version updates, as it should!!
+  // TODO: check DocumentMap for sentence count, check if sentence is already included there.
+
   std::vector<Token> toks;
   for(auto t : sent)
     toks.push_back((*vocab)[t]); // vocabulary insert/lookup
   corpus->AddSentence(toks);
+
+  StreamVersions ver = vocab->streamVersions();
+  ver.Update(version);
+  vocab->Flush(ver);
+
   return corpus->size() - 1;
 }
 
 template<typename Token>
-void BitextSide<Token>::AddToDomainIndex(Sid sid, tpt::docid_type docid, seq_t seqNum) {
+void BitextSide<Token>::AddToDomainIndex(Sid sid, tpt::docid_type docid, updateid_t version) {
   if(domain_indexes.find(docid) == domain_indexes.end()) {
     if(db)
       // persisted in DB
@@ -123,7 +131,7 @@ void BitextSide<Token>::AddToDomainIndex(Sid sid, tpt::docid_type docid, seq_t s
       // memory only
       domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token, IndexTypeMemBuf>>(*corpus, -1);
   }
-  domain_indexes[docid]->AddSentence(corpus->sentence(sid), seqNum);
+  domain_indexes[docid]->AddSentence(corpus->sentence(sid), version);
 }
 
 template<typename Token>
@@ -145,27 +153,17 @@ void BitextSide<Token>::Write(std::shared_ptr<DB<Token>> db, const std::string &
 }
 
 template<typename Token>
-void BitextSide<Token>::Ack(seq_t seqNum) {
-  vocab->Ack(seqNum);
-  // Corpus seqNum is now maintained in DocumentMap
-  // TokenIndex calls its own Ack()
-}
-
-template<typename Token>
-seq_t BitextSide<Token>::seqNum() const {
+StreamVersions BitextSide<Token>::streamVersions() const {
   // Our seqNum = min({c.seqNum | c in components})
 
-  seq_t seqNum = std::numeric_limits<seq_t>::max();
-
-  seqNum = std::min(seqNum, vocab->seqNum());
-  seqNum = std::min(seqNum, docMap.seqNum());
-  seqNum = std::min(seqNum, index->seqNum());
+  StreamVersions versions = StreamVersions::Min(vocab->streamVersions(), docMap.streamVersions());
+  versions = StreamVersions::Min(versions, index->streamVersions());
 
   for(auto& d : domain_indexes)
-    seqNum = std::min(seqNum, d.second->seqNum());
+    versions = StreamVersions::Min(versions, d.second->streamVersions());
 
   // any component with a higher seqNum will have to ignore the repeated updates
-  return seqNum;
+  return versions;
 }
 
 // explicit template instantiation
@@ -237,34 +235,32 @@ void Bitext::AddSentencePair(const std::vector<std::string> &srcSent, const std:
   // (1) add to corpus first:
 
   // order of these three does not matter
-  auto isrc = src_->AddToCorpus(srcSent);
-  auto itrg = trg_->AddToCorpus(trgSent);
-  seq_t fakeSeqNum = isrc + 1; // TODO add real var from API
+  auto ifake = src_->corpus->size();
+  auto isrc = src_->AddToCorpus(srcSent, ifake);
+  auto itrg = trg_->AddToCorpus(trgSent, ifake);
+  updateid_t fakeVersion{static_cast<stream_t>(-1), ifake + 1}; // TODO add real API
   // note: TODO: seq_t currently assumes that the first update starts with seq_t seqNum = 1; (seqNum=0 would be ignored, since we init everything there)
-  seq_t seqNum = fakeSeqNum;
+  updateid_t version = fakeVersion;
   assert(isrc == itrg);
   align_->AddSentence(std::vector<AlignmentLink>{alignment.begin(), alignment.end()});
 
   // (2) indexes: also store seqNum of Corpus
 
-  auto docid = doc_map_->FindOrInsert(domain);
-  doc_map_->AddSentence(isrc, docid, seqNum);
-  doc_map_->Ack(seqNum);
+  auto docid = doc_map_->FindOrInsert(domain, version);
+  doc_map_->AddSentence(isrc, docid, version);
+  //doc_map_->Flush(seqNum);
 
   // (3) domain-specific first: ensures that domain-specific indexes can provide, since we query the global index for the presence of source phrases first.
 
   // currently, order of these two does not matter here (we query global index first)
-  trg_->AddToDomainIndex(itrg, docid, seqNum);
-  src_->AddToDomainIndex(isrc, docid, seqNum);
+  trg_->AddToDomainIndex(itrg, docid, version);
+  src_->AddToDomainIndex(isrc, docid, version);
 
   // (4) global index last - everything should be stored by the time readers see a new global source index entry
 
   // target side first: ensures extraction will work
-  trg_->index->AddSentence(trg_->corpus->sentence(itrg), seqNum);
-  src_->index->AddSentence(src_->corpus->sentence(isrc), seqNum);
-
-  src_->Ack(seqNum);
-  trg_->Ack(seqNum);
+  trg_->index->AddSentence(trg_->corpus->sentence(itrg), version);
+  src_->index->AddSentence(src_->corpus->sentence(isrc), version);
 }
 
 /** Write to (empty) DB and disk. */

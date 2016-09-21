@@ -15,6 +15,7 @@
 #include "Corpus.h"
 #include "ITreeNode.h"
 #include "ObjIterator.h"
+#include "StreamVersions.h"
 
 namespace sto {
 
@@ -297,7 +298,7 @@ public:
    * Thread safety: writes concurrent to multiple reading threads
    * do not result in invalid state being read.
    */
-  virtual void AddSentence(const Sentence<Token> &sent, seq_t seqNum = static_cast<seq_t>(-1)) = 0;
+  virtual void AddSentence(const Sentence<Token> &sent, updateid_t version = updateid_t{static_cast<stream_t>(-1), static_cast<seqid_t>(-1)}) = 0;
 
   /** Merge all Positions from 'add' into this TokenIndex. */
   virtual void Merge(const ITokenIndex<Token> &add) = 0;
@@ -309,9 +310,10 @@ public:
   virtual void Write(std::shared_ptr<DB<Token>> db) const = 0;
 
   /** current persistence sequence number */
-  virtual seq_t seqNum() const = 0;
+  virtual StreamVersions streamVersions() const = 0;
 
-  virtual void SetSeqNum(seq_t seqNum) = 0;
+  //virtual void SetSeqNum(seq_t seqNum) = 0;
+  virtual void Flush(StreamVersions streamVersions) = 0;
 
   virtual void DebugPrint(std::ostream &os) = 0;
 

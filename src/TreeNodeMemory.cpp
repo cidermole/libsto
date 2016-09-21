@@ -278,7 +278,7 @@ void TreeNodeMemory<Token>::LoadArray(const std::string &filename) {
   typedef tpt::offset_type Offset_t;
   typedef tpt::TsaHeader TokenIndexHeader;
 
-  seqNum_ = 1; // for legacy data, to make tests happy
+  this->streamVersions_[-1] = 1; // for legacy data, to make tests happy
 
   MappedFile file(filename);
   TokenIndexHeader &header = *reinterpret_cast<TokenIndexHeader *>(file.ptr);

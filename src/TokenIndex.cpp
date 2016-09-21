@@ -19,7 +19,7 @@ template<class Token, typename TypeTag>
 TokenIndex<Token, TypeTag>::TokenIndex(const std::string &filename, Corpus<Token> &corpus, std::shared_ptr<DB<Token>> db, size_t maxLeafSize) :
     corpus_(&corpus),
     root_(new TreeNodeT(*this, maxLeafSize, filename, db, nullptr, Token::kInvalidVid)),
-    seqNum_(root_->seqNum())
+    streamVersions_(root_->streamVersions())
 {}
 
 template<class Token, typename TypeTag>
@@ -44,16 +44,16 @@ IndexSpan<Token> TokenIndex<Token, TypeTag>::span(ITreeNode<Token> &node) const 
 }
 
 template<class Token, typename TypeTag>
-void TokenIndex<Token, TypeTag>::AddSentence(const Sentence<Token> &sent, seq_t seqNum) {
+void TokenIndex<Token, TypeTag>::AddSentence(const Sentence<Token> &sent, updateid_t version) {
   typedef typename Corpus<Token>::Offset Offset;
 
   // workaround for testing
-  if(seqNum == static_cast<seq_t>(-1))
-    seqNum = sent.sid() + 1;
+  if(version.sentence_id == static_cast<seqid_t>(-1))
+    version.sentence_id = sent.sid() + 1;
 
-  // no update necessary
-  if(seqNum <= this->seqNum()) {
-    std::cerr << "TokenIndex<Token, TypeTag>::AddSentence() no update necessary, seqNum " << seqNum << " <= this->seqNum() " << this->seqNum() << std::endl;
+  if(!streamVersions_.Update(version)) {
+    // no update necessary
+    std::cerr << "TokenIndex<Token, TypeTag>::AddSentence() no update necessary" << std::endl;
     return;
   }
 
@@ -63,13 +63,13 @@ void TokenIndex<Token, TypeTag>::AddSentence(const Sentence<Token> &sent, seq_t 
     for(Offset i = 0; i < sent.size(); i++)
       AddSubsequence_(sent, i);
 
-    Ack(seqNum);
+    Flush();
   } else {
     // Workaround for testing. Should not be called in production, because it's slow! Use an IndexBuffer instead.
 
     // merge every sentence
     TokenIndex<Token, IndexTypeMemory> add(*corpus());
-    add.AddSentence(sent, seqNum);
+    add.AddSentence(sent, version);
     Merge(add);
   }
 }
@@ -81,9 +81,9 @@ void TokenIndex<Token, TypeTag>::Merge(const ITokenIndex<Token> &add) {
 
 template<class Token, typename TypeTag>
 void TokenIndex<Token, TypeTag>::Merge(const ITokenIndex<Token> &add, LeafMerger<Token, SuffixArray> &merger) {
-  // no update necessary
-  if(add.seqNum() <= seqNum()) {
-    std::cerr << "TokenIndex::Merge() skipped, seqNum of add " << add.seqNum() << " <= our seqNum " << seqNum() << std::endl;
+  if(!streamVersions_.Update(add.streamVersions())) {
+    // no update necessary
+    std::cerr << "TokenIndex::Merge() skipped" << std::endl;
     return;
   }
 
@@ -94,7 +94,7 @@ void TokenIndex<Token, TypeTag>::Merge(const ITokenIndex<Token> &add, LeafMerger
     root_->Merge(adds, us, merger);
   //}, "TokenIndex::Merge()");
 
-  Ack(add.seqNum());
+  Flush();
 }
 
 template<class Token, typename TypeTag>
@@ -181,20 +181,14 @@ void TokenIndex<Token, TypeTag>::AddSubsequence_(const Sentence<Token> &sent, Of
 }
 
 template<class Token, typename TypeTag>
-void TokenIndex<Token, TypeTag>::Ack(seq_t seqNum) {
-  assert(seqNum > seqNum_);
-  if(seqNum <= seqNum_)
-    return;
-
-  seqNum_ = seqNum;
-  root_->Ack(seqNum_);
+void TokenIndex<Token, TypeTag>::Flush() {
+  root_->Flush(streamVersions_);
 }
 
 template<class Token, typename TypeTag>
-void TokenIndex<Token, TypeTag>::SetSeqNum(seq_t seqNum) {
-  if(seqNum <= seqNum_)
-    return;
-  Ack(seqNum);
+void TokenIndex<Token, TypeTag>::Flush(StreamVersions streamVersions) {
+  streamVersions_.Update(streamVersions);
+  root_->Flush(streamVersions_);
 }
 
 // --------------------------------------------------------

@@ -13,6 +13,7 @@
 #include <unordered_map>
 
 #include "Types.h"
+#include "StreamVersions.h"
 
 namespace sto {
 
@@ -64,9 +65,10 @@ public:
   void Write(std::shared_ptr<DB<Token>> db) const;
 
   /** Finalize an update with seqNum. Flush writes to DB and apply a new persistence sequence number. */
-  void Ack(seq_t seqNum);
+  void Flush(StreamVersions streamVersions);
+
   /** Current persistence sequence number. */
-  seq_t seqNum() const { return seqNum_; }
+  StreamVersions streamVersions() const { return streamVersions_; }
 
   class VocabIterator {
   public:
@@ -111,7 +113,7 @@ private:
   std::unordered_map<std::string, Vid> surface2id_;
   Vid size_; /** size including special reserved symbols */
   std::shared_ptr<DB<Token>> db_;
-  seq_t seqNum_ = 0; /** persistence sequence number */
+  StreamVersions streamVersions_; /** persistence sequence number */
 
   /** Load vocabulary from mtt-build .tdx format */
   void ugsapt_load(const std::string &filename);

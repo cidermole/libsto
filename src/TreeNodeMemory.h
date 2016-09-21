@@ -72,11 +72,6 @@ public:
    */
   virtual void SplitNode(const Corpus<Token> &corpus) override;
 
-  /** Finalize an update with seqNum. Flush writes to DB and apply a new persistence sequence number. */
-  virtual void Ack(seq_t seqNum) {}
-  /** current persistence sequence number */
-  virtual seq_t seqNum() const { return seqNum_; }
-
 private:
   /**
    * Load this leaf node (SuffixArray) from mtt-build *.sfa file on disk.
@@ -85,8 +80,6 @@ private:
 
   /** factory function for TreeNode::SplitNode() */
   TreeNodeMemory<Token> *make_child_(Vid vid, typename SuffixArray::iterator first, typename SuffixArray::iterator last, const Corpus<Token> &corpus);
-
-  seq_t seqNum_ = 0;
 };
 
 /** Unsorted position array for quicker collection of positions before sorting them in one go. */

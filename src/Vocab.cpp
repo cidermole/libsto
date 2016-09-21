@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <iostream>
 #include <sys/stat.h>
 #include <memory>
 
@@ -27,9 +28,9 @@ Vocab<Token>::Vocab(std::shared_ptr<DB<Token>> db) : size_(0), db_(db) {
       if(Token::kUnkVid != Token::kInvalidVid)
         db_->PutVocabPair(kUnkVid, kUnkSurface);
 
-      db_->PutSeqNum(seqNum_);
+      db_->PutStreamVersions(streamVersions_);
     }
-    seqNum_ = db_->GetSeqNum();
+    streamVersions_ = db_->GetStreamVersions();
   }
   put_sentinels();
 }
@@ -38,7 +39,9 @@ template<class Token>
 Vocab<Token>::Vocab(const std::string &filename) : size_(0) /* set later */ {
   ugsapt_load(filename);
   put_sentinels();
-  seqNum_ = 1; // for legacy data, to make tests happy
+
+  // for legacy data, to make tests happy
+  streamVersions_[-1] = 1;
 }
 
 template<class Token>
@@ -134,19 +137,14 @@ void Vocab<Token>::Write(std::shared_ptr<DB<Token>> db) const {
 }
 
 template<class Token>
-void Vocab<Token>::Ack(seq_t seqNum) {
-  assert(seqNum > seqNum_);
-  if(seqNum <= seqNum_)
-    return;
-
-  seqNum_ = seqNum;
+void Vocab<Token>::Flush(StreamVersions streamVersions) {
+  streamVersions_.Update(streamVersions);
 
   if(db_) {
-    db_->PutSeqNum(seqNum_);
+    db_->PutStreamVersions(streamVersions_);
     db_->Flush();
   }
 }
-
 
 struct UGVocabHeader {
   uint32_t size; /** size of vocabulary (and index) */
@@ -218,6 +216,8 @@ void Vocab<Token>::put_sentinels() {
 
     // vid == kEOS must not be used by any word because we use it in TokenIndex as a sentinel.
     // </s> must also have the lowest vid for correctness of comparing shorter sequences as less in TokenIndex.
+    if(!(at(kEosSurface).vid == kEosVid))
+      std::cerr << "assert(at(kEosSurface).vid=" << at(kEosSurface).vid << " == kEosVid=" << kEosVid << std::endl;
     assert(at(kEosSurface).vid == kEosVid);
   }
 
