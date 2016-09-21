@@ -110,14 +110,14 @@ template<class Token>
 void Vocab<Token>::Write(std::shared_ptr<DB<Token>> db) const {
   // ensure that DB does not have a vocabulary here
   std::unordered_map<Vid, std::string> tmp;
-  db_->LoadVocab(tmp);
+  db->LoadVocab(tmp);
   if(tmp.size())
     throw std::runtime_error("Vocab::Write() does not yet support overwrite."); // is it valid to issue Delete() to RocksDB while iterating?
 
   // write entries
   typename std::unordered_map<Vid, std::string>::const_iterator it = id2surface_.begin();
   for(; it != id2surface_.end(); ++it)
-    db_->PutVocabPair(it->first, it->second);
+    db->PutVocabPair(it->first, it->second);
 }
 
 template<class Token>
