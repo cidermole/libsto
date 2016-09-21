@@ -58,26 +58,10 @@ public:
       if(is_leaf_) {
         size_t step_size = span_.StepSize(this->operator*()); // number of Positions to skip to get to the next vid at the current depth
         if(step_size == 0) {
-          std::cerr << "StepSize(" << ((unsigned int) this->operator*()) << ")==0 at VidIterator::operator++() in seq len=" << span_.sequence().size() << " is" << std::endl;
-          auto seq = span_.sequence();
-          for(auto s : seq)
-              std::cerr << " " << ((unsigned int) s.vid);
-          std::cerr << std::endl;
-          std::cerr << "span size=" << span_.size() << std::endl;
+          DebugDiagnoseEosBug();
 
-          auto test_span = span_.index()->span();
-          std::cerr << "Stepping in a new span. Full index size=" << test_span.size() << std::endl;
-          for(auto s : seq)
-            std::cerr << "narrow(" << ((unsigned int) s.vid) << ")=" << test_span.narrow(s) << std::endl;
-          std::cerr << "after narrow sequence, span size=" << test_span.size() << std::endl;
-
-          std::cerr << "verifying node consistency..." << std::endl;
-          span_.node()->DebugCheckVidConsistency();
-
-          std::cerr << "verifying full index consistency..." << std::endl;
-          span_.index()->span().node()->DebugCheckVidConsistency();
-
-          throw std::runtime_error("StepSize()==0. This should never happen.");
+          // see TreeNode<Token, SuffixArray>::Merge() in TreeNode.cpp:89 for the </s> bug.
+          throw std::runtime_error("StepSize()==0. This should never happen. (did you try to split </s> again?)");
         }
         index_ += step_size;
       } else {
@@ -85,6 +69,30 @@ public:
       }
       return *this;
     }
+    
+    void DebugDiagnoseEosBug() {
+      std::cerr << "StepSize(" << ((unsigned int) this->operator*()) << ")==0 at VidIterator::operator++() in seq len=" << span_.sequence().size() << " is" << std::endl;
+      auto seq = span_.sequence();
+      for(auto s : seq)
+        std::cerr << " " << ((unsigned int) s.vid);
+      std::cerr << std::endl;
+      std::cerr << "span size=" << span_.size() << std::endl;
+
+      auto test_span = span_.index()->span();
+      std::cerr << "Stepping in a new span. Full index size=" << test_span.size() << std::endl;
+      for(auto s : seq)
+        std::cerr << "narrow(" << ((unsigned int) s.vid) << ")=" << test_span.narrow(s) << std::endl;
+      std::cerr << "after narrow sequence, span size=" << test_span.size() << std::endl;
+
+      std::cerr << "verifying node consistency..." << std::endl;
+      span_.node()->DebugCheckVidConsistency();
+
+      std::cerr << "verifying full index consistency..." << std::endl;
+      span_.index()->span().node()->DebugCheckVidConsistency();
+
+      std::cerr << "full index consistency verified." << std::endl;
+    }
+
     bool operator!=(const VidIterator &other) {
       if(is_leaf_)
         return index_ != other.index_;
