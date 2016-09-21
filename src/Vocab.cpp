@@ -55,13 +55,22 @@ Token Vocab<Token>::operator[](const std::string &surface) {
   } else {
     // insert
     size_++;
-    Vid id = std::stoi(surface);
+    Vid id = str2vid(surface);
     surface2id_[surface] = id;
     id2surface_[id] = surface;
     if(db_)
       db_->PutVocabPair(id, surface);
     return Token{id};
   }
+}
+
+template<class Token>
+typename Vocab<Token>::Vid Vocab<Token>::str2vid(const std::string &s) {
+  unsigned long n = std::stoul(s);
+  static constexpr unsigned long kVidMax = (unsigned long)((Vid)(-1));
+  if(n > kVidMax)
+    throw std::runtime_error("str2vid Vocab ID out of range");
+  return (Vid) n;
 }
 
 template<class Token>
@@ -78,7 +87,7 @@ std::string Vocab<Token>::at_vid(Vid vid) const {
 
 template<class Token>
 Token Vocab<Token>::at(const std::string &surface) const {
-  return Token{static_cast<Vid>(std::stoi(surface))};
+  return Token{str2vid(surface)};
 /*
   auto it = surface2id_.find(surface);
   if(it == surface2id_.end())

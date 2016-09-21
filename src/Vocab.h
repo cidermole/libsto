@@ -103,6 +103,9 @@ public:
   VocabIterator begin() const;
   VocabIterator end() const;
 
+  /** calls stoul() with sanity checks */
+  static Vid str2vid(const std::string &s);
+
 private:
   std::unordered_map<Vid, std::string> id2surface_;
   std::unordered_map<std::string, Vid> surface2id_;
