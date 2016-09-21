@@ -198,11 +198,11 @@ void TreeNode<Token, SuffixArray>::DebugCheckVidConsistency() const {
     Sentence<Token> sent = corpus.sentence(pos.sid);
     if(pos.offset + this->depth_ > sent.size())
       throw std::runtime_error("DebugCheckVidConsistency(): offset+depth > sent.size()");
-    if(this->depth_ > 0 && pos.add(this->depth_, corpus).vid(corpus) != this->vid_)
-      throw std::runtime_error("DebugCheckVidConsistency(): vid at depth != node vid");
+    if(this->depth_ > 0 && pos.add(this->depth_ - 1, corpus).vid(corpus) != this->vid_)
+      throw std::runtime_error("DebugCheckVidConsistency(): vid " + std::to_string(pos.add(this->depth_ - 1, corpus).vid(corpus)) + " at depth=" + std::to_string(this->depth_) + " != node vid " + std::to_string(this->vid_));
     if(i > 0) {
       if(prev_pos.add(this->depth_, corpus).vid(corpus) > pos.add(this->depth_, corpus).vid(corpus))
-        throw std::runtime_error("DebugCheckVidConsistency(): sort order violation");
+        throw std::runtime_error("DebugCheckVidConsistency(): sort order violation at i=" + std::to_string(i));
     }
     prev_pos = pos;
   }

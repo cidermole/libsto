@@ -230,6 +230,11 @@ int main(int argc, char **argv) {
 
   if(!args.quiet) cerr << now() << "after sorting" << endl;
 
+
+  // TODO: debug only
+  side.index->span().node()->DebugCheckVidConsistency();
+
+
   // create domain indexes, create leaves for domain indexes
   //auto top_span = side.index->span();
   for(auto domain : docMap) {
