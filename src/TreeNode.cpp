@@ -93,7 +93,16 @@ void TreeNode<Token, SuffixArray>::Merge(IndexSpan<Token> &spanSource, IndexSpan
   assert(spanTarget.node() == this);
 
   if(spanTarget.node()->is_leaf()) {
-    if(spanSource.size() + spanTarget.size() > this->kMaxArraySize && this->vid_ != 1) { // and not </s> which we cannot split
+
+    // bug counter: 2
+    //
+    // game: next time you find a bug related to a SpanSize()==0 crash in VidIterator::operator++() ITokenIndex.h, increment this.
+    // somehow, the bug only materializes on large data (benchmark-1.1). or maybe short-enough sentences? europarl with 700k lines is not enough.
+    // examples/data/train is also not enough to reproduce.
+    //
+    // Reason for the bug is that we try to split the </s> node (kEosVid).
+    
+    if(spanSource.size() + spanTarget.size() > this->kMaxArraySize && this->vid_ != Token::kEosVid) { // and not </s> which we cannot split
       // we already know it's not going to fit, create another internal level
       //std::cerr << "TreeNodeDisk::Merge() -> SplitNode() targeting size=" << (spanSource.size() + spanTarget.size()) << " so splitting early at depth=" << spanTarget.depth() << std::endl;
       SplitNode(*spanTarget.corpus());
