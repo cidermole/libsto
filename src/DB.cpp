@@ -213,7 +213,7 @@ NodeType DB<Token>::IsNodeLeaf(const std::string &path) {
   // true if this path does not contain an internal node
 
   std::string key = key_(path);
-  std::string array_key_str = key_(path + "/array");
+  std::string array_key_str = leaf_key_(path);
   std::string value_discarded;
 
   //std::cerr << "DB::IsNodeLeaf(key=" << key << ", array_key=" << array_key_str << ")" << std::endl;
