@@ -15,6 +15,7 @@
 #include "TokenIndex.h"
 #include "DocumentMap.h"
 #include "IncrementalBitext.h"
+#include "mmt/IncrementalModel.h"
 #include "Loggable.h"
 
 namespace sto {
@@ -87,7 +88,7 @@ struct BitextSide : public sto::Loggable {
  * This is a base class implementing the persistence interface IncrementalBitext.
  * For queries, use class SBitext (in moses).
  */
-class Bitext : /*public virtual sto::IncrementalBitext, */public sto::Loggable {
+class Bitext : /*public virtual sto::IncrementalBitext, */ public mmt::IncrementalModel, public sto::Loggable {
 public:
   typedef typename sto::Corpus<sto::SrcToken>::Vid Vid;
 
@@ -127,10 +128,15 @@ public:
 
   /**
    * Add a word-aligned sentence pair to a specific domain.
-   *
-   * If a new, incremental Bitext was opened, then this method will persist the writes to disk.
+   * See mmt::IncrementalModel for detailed interface description.
    */
-  virtual void AddSentencePair(const std::vector<Vid> &srcSent, const std::vector<Vid> &trgSent, const std::vector<std::pair<size_t, size_t>> &alignment, domid_t domain);
+  virtual void
+  Add(const mmt::updateid_t &id, const mmt::domain_t domain,
+      const std::vector<mmt::wid_t> &source, const std::vector<mmt::wid_t> &target,
+      const mmt::alignment_t &alignment) override;
+
+  /** Get the "update version numbers" of this model. See mmt::IncrementalModel for detailed interface description. */
+  virtual std::vector<mmt::updateid_t> GetLatestUpdatesIdentifier() override;
 
   /**
    * Write to (empty) DB and disk.

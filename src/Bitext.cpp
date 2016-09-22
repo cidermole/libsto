@@ -139,13 +139,24 @@ void Bitext::Open(const std::string &base) {
   }
 }
 
-void Bitext::AddSentencePair(const std::vector<Vid> &srcSent, const std::vector<Vid> &trgSent, const std::vector<std::pair<size_t, size_t>> &alignment, domid_t domain) {
-  // (1) add to corpus first:
+std::vector<mmt::updateid_t> Bitext::GetLatestUpdatesIdentifier() {
+  // convert StreamVersions -> vector<mmt::updateid_t>
+  StreamVersions versions = streamVersions();
+  std::vector<mmt::updateid_t> updateids;
+  for(auto stream : versions)
+    updateids.push_back(mmt::updateid_t{stream.first, stream.second});
+  return updateids;
+}
 
-  // note: TODO: seq_t currently assumes that the first update starts with seq_t seqNum = 1; (seqNum=0 would be ignored, since we init everything there)
-  auto ifake = src_->corpus->size();
-  updateid_t fakeVersion{static_cast<stream_t>(-1), ifake + 1}; // TODO add real API
-  updateid_t version = fakeVersion;
+void
+Bitext::Add(const mmt::updateid_t &version, const mmt::domain_t domain,
+            const std::vector<mmt::wid_t> &srcSent, const std::vector<mmt::wid_t> &trgSent,
+            const mmt::alignment_t &alignment)
+{
+  // we assume that the first update starts with sentence_id = 1
+  // (sentence_id=0 would be ignored, since we init everything there)
+
+  // (1) add to corpus first:
 
   // order of these three does not matter
   auto isrc = src_->AddToCorpus(srcSent, domain, version);
