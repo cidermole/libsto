@@ -72,7 +72,6 @@ public:
   sto::Corpus<sto::AlignmentLink>& Align() { return *this->align_; }
   sto::BitextSide<sto::SrcToken>& Src() { return *this->src_; }
   sto::BitextSide<sto::TrgToken>& Trg() { return *this->trg_; }
-  sto::DocumentMap& DocMap() { return *this->doc_map_; }
 };
 
 std::shared_ptr<TestBitext> bitext;
@@ -361,8 +360,8 @@ main(int argc, char* argv[])
   if (c != '/' && c != '.') args.bname += '.';
 
   bitext.reset(new TestBitext(args.bname, args.L1, args.L2));
-  V1_ksize = bitext->Src().index->span().size();
-  V2_ksize = bitext->Trg().index->span().size();
+  V1_ksize = bitext->Src().index()->span().size();
+  V2_ksize = bitext->Trg().index()->span().size();
   T1_size = bitext->Src().corpus->size();
   std::cerr << "mmlex-build: src index size " << V1_ksize << " trg index size " << V2_ksize << " corpus lines " << T1_size << std::endl;
 

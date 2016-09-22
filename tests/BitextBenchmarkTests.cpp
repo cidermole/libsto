@@ -146,7 +146,7 @@ void log_progress(size_t ctr) {
  */
 void read_input_lines(std::istream &is, BitextSide<Token> &side, DocumentMap &docMap, TokenIndex<Token, IndexTypeMemory> &verifyIndex, Args &args) {
   string line, w;
-  vector<string> sent;
+  vector<Token> sent;
   typename Corpus<Token>::Sid sid = 0;
 
   bool domains = (docMap.numDomains() > 0);
@@ -157,14 +157,14 @@ void read_input_lines(std::istream &is, BitextSide<Token> &side, DocumentMap &do
     istringstream buf(line);
     sent.clear();
     while(buf >> w)
-      sent.push_back(w);
+      sent.push_back(std::stoul(w));
 
     double t_AddToCorpus = benchmark_time([&](){
-      sid = side.AddToCorpus(sent, updateid_t{static_cast<stream_t>(-1), sid + 1});
+      sid = side.corpus->AddSentence(sent, SentInfo{docMap.sid2did(sid), updateid_t{static_cast<stream_t>(-1), 0}});
     });
 
     double t_AddSentence = benchmark_time([&](){
-      side.index->AddSentence(side.corpus->sentence(sid));
+      side.index()->AddSentence(side.corpus->sentence(sid));
     });
     verifyIndex.AddSentence(side.corpus->sentence(sid));
 
@@ -214,7 +214,7 @@ TEST(BitextBenchmarkTests, benchmark_build) {
   {
     shared_ptr<BaseDB> db = open_db(args.base + "db");
 
-    BitextSide<Token> side(args.lang, docMap); // in-memory type BitextSide
+    BitextSide<Token> side(args.lang); // in-memory type BitextSide
     verifyIndex.reset(new TokenIndex<Token, IndexTypeMemory>(*side.corpus));
 
     std::ifstream ifs("/tmp/model.en.50k");
@@ -233,11 +233,11 @@ TEST(BitextBenchmarkTests, benchmark_build) {
 
   // read back and check
   shared_ptr<BaseDB> db2 = open_db(args.base + "db");
-  BitextSide<Token> sideDisk(std::make_shared<DB<Token>>(*db2), args.base, args.lang, docMap); // on-disk BitextSide
+  BitextSide<Token> sideDisk(std::make_shared<DB<Token>>(*db2), args.base, args.lang); // on-disk BitextSide
 
 
   auto vspan = verifyIndex->span();
-  auto ispan = sideDisk.index->span();
+  auto ispan = sideDisk.index()->span();
 
   std::cerr << "verifying " << vspan.size() << " Positions in index..." << std::endl;
   EXPECT_EQ(vspan.size(), ispan.size());
