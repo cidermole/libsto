@@ -33,6 +33,8 @@ Corpus<Token>::Corpus(const std::string &filename, const Corpus<Token>::Vocabula
   CorpusTrackHeader &header = *reinterpret_cast<CorpusTrackHeader *>(track_->ptr);
   trackHeader_ = header;
 
+  static_assert(sizeof(SentInfo) % sizeof(Vid) == 0, "data structure alignment of SentInfo header for corpus track does not match Vid alignment");
+
   // read and interpret file header(s), find sentence index
   if (header.versionMagic == tpt::INDEX_V2_MAGIC) {
     // legacy v2 corpus, with concatenated track and sentence index
@@ -100,13 +102,15 @@ const typename Corpus<Token>::Vid* Corpus<Token>::track_pos_(Sid sid, Sid is_end
   // static track
   if(sid < sentIndexHeader_.idxSize) {
     // provide the trailing sentinel here (note that idxSize excludes it)
-    return trackTokens_ + sentIndexEntries_[sid + is_end] / sentIndexEntrySize_;
+    return trackTokens_
+           + (sid + 1) * kSentInfoSizeToks // add an offset for SentInfo
+           + sentIndexEntries_[sid + is_end] / sentIndexEntrySize_; // number of Vid tokens
   }
 
   // dynamic track
   sid -= sentIndexHeader_.idxSize;
   assert(sid < dyn_sentIndex_.size() - 1);
-  // provide the trailing sentinel here (note that dyn_sentIndex_.size() includes it)
+  // end() provides the trailing sentinel here (note that dyn_sentIndex_.size() includes it)
   return dyn_track_.data() + dyn_sentIndex_[sid + is_end];
 }
 
@@ -116,11 +120,29 @@ Sentence<Token> Corpus<Token>::sentence(Sid sid) const {
 }
 
 template<class Token>
-void Corpus<Token>::AddSentence(const std::vector<Token> &sent) {
+SentInfo Corpus<Token>::info(Sid sid) const {
+  const SentInfo *sentInfo = nullptr;
+
+  if(sid < sentIndexHeader_.idxSize) {
+    // static track: SentInfo is stored in the corpus track before the first token
+    sentInfo = reinterpret_cast<const SentInfo *>(begin(sid) - kSentInfoSizeToks);
+  } else {
+    // dynamic track
+    sid -= sentIndexHeader_.idxSize;
+    assert(sid < dyn_sentIndex_.size() - 1);
+    sentInfo = &dyn_track_info_[sid];
+  }
+
+  return *sentInfo;
+}
+
+template<class Token>
+void Corpus<Token>::AddSentence(const std::vector<Token> &sent, SentInfo info) {
   for(auto token : sent) {
     if(vocab_)
       vocab_->at(token); // access the Token to ensure it is contained in vocabulary (throws exception otherwise)
     dyn_track_.push_back(token.vid);
+    dyn_track_info_.push_back(info);
   }
   dyn_sentIndex_.push_back(static_cast<SentIndexEntry>(dyn_track_.size()));
 
@@ -154,8 +176,14 @@ void Corpus<Token>::Write(const std::string &filename) {
     if(fwrite(begin(0), sizeof(Vid), idx_size, track) != idx_size)
       throw std::runtime_error("Corpus: fwrite() failed");
   }
-  if(fwrite(dyn_track_.data(), sizeof(Vid), dyn_track_.size(), track) != dyn_track_.size())
-    throw std::runtime_error("Corpus: fwrite() failed");
+  for(size_t i = 0; i < dyn_sentIndex_.size()-1; i++) {
+    if(fwrite(dyn_track_info_.data() + i, sizeof(SentInfo), 1, track) != 1)
+      throw std::runtime_error("Corpus: fwrite() failed");
+
+    size_t tokens = dyn_sentIndex_[i+1] - dyn_sentIndex_[i];
+    if(fwrite(dyn_track_.data() + dyn_sentIndex_[i], sizeof(Vid), tokens, track) != tokens)
+      throw std::runtime_error("Corpus: fwrite() failed");
+  }
 
   fclose(track);
 
@@ -203,11 +231,18 @@ void Corpus<Token>::WriteSentence() {
    */
 
   // append to track
-  size_t static_ntoks = sentIndexEntries_[sentIndexHeader_.idxSize] / sentIndexEntrySize_; // end at the time of first Corpus construction, in tokens
-  size_t dyn_ntoks_before = dyn_sentIndex_[dyn_sentIndex_.size()-2]; // size (in tokens) of dynamically added tokens, already written
-  size_t dyn_ntoks_after = dyn_sentIndex_[dyn_sentIndex_.size()-1];
-  if(fseek(ftrack_, sizeof(CorpusTrackHeader) + (static_ntoks + dyn_ntoks_before) * sizeof(Vid), SEEK_SET))
+
+  // end at the time of first Corpus construction, in tokens
+  size_t static_ntoks = sentIndexEntries_[sentIndexHeader_.idxSize] / sentIndexEntrySize_;
+  size_t dyn_nsents = dyn_sentIndex_.size()-2;
+  size_t dyn_ntoks_before = dyn_sentIndex_[dyn_nsents]; // size (in tokens) of dynamically added tokens, already written
+  size_t dyn_ntoks_after = dyn_sentIndex_[dyn_nsents+1];
+  if(fseek(ftrack_, sizeof(CorpusTrackHeader) + (static_ntoks + sentIndexHeader_.idxSize * kSentInfoSizeToks + dyn_ntoks_before) * sizeof(Vid), SEEK_SET))
     throw std::runtime_error("Corpus: fseek() failed on track");
+
+  if(fwrite(&dyn_track_info_[dyn_nsents], sizeof(SentInfo), 1, ftrack_) != 1)
+    throw std::runtime_error("Corpus: fwrite() failed on track");
+
   size_t ntoks = dyn_ntoks_after - dyn_ntoks_before;
   if(fwrite(&dyn_track_[dyn_ntoks_before], sizeof(Vid), ntoks, ftrack_) != ntoks)
     throw std::runtime_error("Corpus: fwrite() failed on track");
@@ -254,6 +289,14 @@ size_t Corpus<Token>::numTokens() const {
 
   // static + dynamic
   return sentIndexEntries_[size()] / sentIndexEntrySize_ + dyn_sentIndex_.back();
+}
+
+template<class Token>
+StreamVersions Corpus<Token>::streamVersions() const {
+  StreamVersions versions;
+  for(Sid i = 0; i < size(); i++)
+    versions.Update(info(i).vid);
+  return versions;
 }
 
 // explicit template instantiation

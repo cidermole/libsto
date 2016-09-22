@@ -166,7 +166,7 @@ struct Domain {
  * For internal use: auxiliary sentence information (domain ID, updateid_t version).
  * The external interface is SentInfo.
  */
-struct __attribute__((packed)) sent_info_t {
+struct sent_info_t {
   domid_t domid; /** domain ID */
 
   /** byte packed fields from mmt::updateid_t */
@@ -174,6 +174,8 @@ struct __attribute__((packed)) sent_info_t {
   stream_t stream_id;
 
   constexpr sent_info_t(domid_t domain_id, updateid_t version) : domid(domain_id), sentence_id(version.sentence_id), stream_id(version.stream_id) {}
+
+  operator updateid_t() const { return updateid_t{stream_id, sentence_id}; }
 };
 
 /**

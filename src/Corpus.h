@@ -17,6 +17,7 @@
 #include "MappedFile.h"
 #include "Types.h"
 #include "CorpusTypes.h"
+#include "StreamVersions.h"
 
 namespace sto {
 
@@ -52,11 +53,14 @@ public:
   /** retrieve Sentence, a lightweight reference to a sentence's location. */
   Sentence<Token> sentence(Sid sid) const;
 
+  /** retrieve SentInfo associated with sentence ID. */
+  SentInfo info(Sid sid) const;
+
   /**
    * Add a sentence to the dynamic part.
    * If writable (v3), this method will actually append to the corpus on disk.
    */
-  void AddSentence(const std::vector<Token> &sent);
+  void AddSentence(const std::vector<Token> &sent, SentInfo info = SentInfo());
 
   const Vocabulary &vocab() const;
 
@@ -69,7 +73,12 @@ public:
   /** write out the entire corpus in v3 format. */
   void Write(const std::string &filename);
 
+  /** Compute current persistence sequence number. This actually walks the whole Corpus. */
+  StreamVersions streamVersions() const;
+
 private:
+  static constexpr size_t kSentInfoSizeToks = sizeof(SentInfo) / sizeof(Vid); /** SentInfo size in number of Vid tokens */
+
   const Vocabulary *vocab_;
   std::unique_ptr<MappedFile> track_;     /** mapping starts from beginning of file, includes header */
   std::unique_ptr<MappedFile> sentIndex_; /** mapping starts from index start, *excludes* header */
@@ -84,6 +93,7 @@ private:
   SentIndexHeader sentIndexHeader_;
 
   std::vector<Vid> dyn_track_; /** dynamic corpus track, located after the last static sentence ID. */
+  std::vector<SentInfo> dyn_track_info_; /** dynamic corpus track sentence info */
   std::vector<SentIndexEntry> dyn_sentIndex_; /** indexes sentence start positions in dyn_track_, includes trailing sentinel */
 
   /**
