@@ -51,13 +51,13 @@ void TokenIndex<Token, TypeTag>::AddSentence(const Sentence<Token> &sent, update
   if(version.sentence_id == static_cast<seqid_t>(-1))
     version.sentence_id = sent.sid() + 1;
 
-  if(!streamVersions_.Update(version)) {
-    // no update necessary
-    std::cerr << "TokenIndex<Token, TypeTag>::AddSentence() no update necessary" << std::endl;
-    return;
-  }
-
   if(TypeTag::HasAddSentence) {
+    if(!streamVersions_.Update(version)) {
+      // no update necessary
+      std::cerr << "TokenIndex<Token, TypeTag>::AddSentence() no update necessary" << std::endl;
+      return;
+    }
+
     // start a subsequence at each sentence position
     // each subsequence only goes as deep as necessary to hit a SA
     for(Offset i = 0; i < sent.size(); i++)
@@ -70,6 +70,8 @@ void TokenIndex<Token, TypeTag>::AddSentence(const Sentence<Token> &sent, update
     // merge every sentence
     TokenIndex<Token, IndexTypeMemory> add(*corpus());
     add.AddSentence(sent, version);
+
+    // Merge() has its own streamVersions check
     Merge(add);
   }
 }
