@@ -16,7 +16,7 @@ seqid_t StreamVersions::at(stream_t stream) const {
   if(it != versions_.end())
     return it->second;
   else
-    return 0;
+    return is_max_ ? static_cast<seqid_t>(-1) : 0;
 }
 
 bool StreamVersions::Update(updateid_t addition) {

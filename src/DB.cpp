@@ -153,16 +153,18 @@ template<class Token>
 std::string DB<Token>::vid_key_(Vid vid) {
   throw std::runtime_error("vid_key_ unused");
 
+  char is_root_dummy = 0;
   char key_str[4 + sizeof(Vid)] = "vid_";
   memcpy(&key_str[4], &vid, sizeof(Vid));
   std::string key(key_str, 4 + sizeof(Vid));
-  return key_(info_.lang + to_bytes(info_.domain) + key);
+  return key_(info_.lang + is_root_dummy + to_bytes(info_.domain) + key);
 }
 
 template<class Token>
 std::string DB<Token>::surface_key_(const std::string &surface) {
   throw std::runtime_error("surface_key_ unused");
-  return key_(info_.lang + to_bytes(info_.domain) + "srf_" + surface);
+  char is_root_dummy = 0;
+  return key_(info_.lang + is_root_dummy + to_bytes(info_.domain) + "srf_" + surface);
 }
 
 
@@ -174,21 +176,29 @@ std::string DB<Token>::leaf_key_(const std::string &path) {
 
 template<class Token>
 std::string DB<Token>::stream_key_prefix_() {
-  return key_(info_.lang + to_bytes(info_.domain) + "seqn");
+  char is_root_dummy = 0;
+  return key_(info_.lang + is_root_dummy + to_bytes(info_.domain) + "seqn");
 }
 
 template<class Token>
 std::string DB<Token>::stream_key_(stream_t stream) {
+  char is_root_dummy = 0;
   char key_str[4 + sizeof(stream_t)] = "seqn";
   memcpy(&key_str[4], &stream, sizeof(stream_t));
   std::string key(key_str, 4 + sizeof(stream_t));
-  return key_(info_.lang + to_bytes(info_.domain) + key);
+  return key_(info_.lang + is_root_dummy + to_bytes(info_.domain) + key);
 }
 
 template<class Token>
 std::string DB<Token>::internal_key_(const std::string &path) {
   char is_root = (path == "");
   return key_(info_.lang + is_root + to_bytes(info_.domain) + "int_" + path);
+}
+
+template<class Token>
+std::string DB<Token>::domain_prefix_(const std::string &lang) {
+  char is_root = 1;
+  return key_(lang + is_root);
 }
 
 template<class Token>
@@ -267,6 +277,25 @@ StreamVersions DB<Token>::GetStreamVersions() {
   }
 
   return versions;
+}
+
+template<class Token>
+std::set<domid_t> DB<Token>::GetIndexedDomains(const std::string &lang) {
+  using namespace rocksdb;
+
+  std::set<domid_t> domains;
+
+  // prefix scan to get all domains
+
+  auto iter = this->db_->NewIterator(ReadOptions());
+  std::string prefix = domain_prefix_(lang);
+  for(iter->Seek(prefix); iter->Valid() && iter->key().starts_with(prefix); iter->Next()) {
+    domid_t domain;
+    memcpy(&domain, iter->key().data() + prefix.size(), sizeof(domain));
+    domains.insert(domain);
+  }
+
+  return domains;
 }
 
 template<class Token>

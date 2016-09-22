@@ -27,13 +27,11 @@ class BaseDB;
 template<typename Token>
 struct BitextSide : public sto::Loggable {
   typedef typename Corpus<Token>::Sid Sid;
+  typedef typename Corpus<Token>::Vid Vid;
 
   static constexpr domid_t kGlobalDomain = static_cast<domid_t>(-1);
 
-  std::shared_ptr<sto::Vocab<Token>> vocab;
   std::shared_ptr<sto::Corpus<Token>> corpus;
-  std::shared_ptr<sto::ITokenIndex<Token>> index;
-  const DocumentMap &docMap;
 
   std::unordered_map<Domain::Vid, std::shared_ptr<sto::ITokenIndex<Token>>> domain_indexes;
   std::string base_and_lang; /** e.g. "phrase_tables/model.en" */
@@ -46,41 +44,25 @@ struct BitextSide : public sto::Loggable {
    * This is intended for bootstrapping a Bitext from scratch,
    * hence it uses IndexTypeMemBuf for speed and so its indexes are never split, and lazy-sorted in span().
    */
-  BitextSide(const std::string &lang, const DocumentMap &documentMap);
+  BitextSide(const std::string &lang);
 
   /**
    * Load existing BitextSide from DB and disk.
    *
    * @param base  base pathname prefix, e.g. "phrase_tables/bitext." -- we'll store into base+lang
    */
-  BitextSide(std::shared_ptr<DB<Token>> db, const std::string &base, const std::string &lang, const DocumentMap &documentMap);
+  BitextSide(std::shared_ptr<DB<Token>> db, const std::string &base, const std::string &lang);
 
   ~BitextSide();
 
-  /** Load v1/v2 vocabulary and corpus track. Does not index or load indexes. */
-  void Open(const std::string &base, const std::string &lang);
-
-  void CreateIndexes() { CreateGlobalIndex(); CreateDomainIndexes(); }
-
-  /**
-   * Create the global index.
-   * * if present, load it from disk (old v1/v2 format)
-   * * otherwise, index the entire corpus
-   */
-  void CreateGlobalIndex();
-
-  /**
-   * Create the domain-specific indexes.
-   * * if present, load them from disk (old v1/v2 format)
-   * * otherwise, index the entire corpus, putting each sentence into the correct index
-   */
-  void CreateDomainIndexes();
-
   /** Add sentence to Vocab and Corpus. */
-  Sid AddToCorpus(const std::vector<std::string> &sent, updateid_t version);
+  Sid AddToCorpus(const std::vector<Vid> &sent, domid_t domain, updateid_t version);
 
   /** Add a sentence to the domain index docid. Sentence should already be added via AddToCorpus(). */
   void AddToDomainIndex(Sid sid, tpt::docid_type docid, updateid_t version);
+
+  /** global index */
+  std::shared_ptr<sto::ITokenIndex<Token>> index() { return domain_indexes[kGlobalDomain]; }
 
   /**
    * Write to (empty) DB and disk.
@@ -105,8 +87,12 @@ struct BitextSide : public sto::Loggable {
  * This is a base class implementing the persistence interface IncrementalBitext.
  * For queries, use class SBitext (in moses).
  */
-class Bitext : public virtual sto::IncrementalBitext, public sto::Loggable {
+class Bitext : /*public virtual sto::IncrementalBitext, */public sto::Loggable {
 public:
+  typedef uint32_t Vid; // TODO
+
+  static constexpr domid_t kGlobalDomain = BitextSide<sto::SrcToken>::kGlobalDomain;
+
   /**
    * Create an empty Bitext in-memory.
    *
@@ -126,8 +112,6 @@ public:
 
   virtual ~Bitext();
 
-  /** Opens legacy Bitext in read-only mode. */
-  void OpenLegacy(const std::string &base);
   /** Opens incremental Bitext in read/append mode. */
   void OpenIncremental(const std::string &base);
 
@@ -139,14 +123,14 @@ public:
    *
    * @param base  base pathname prefix, e.g. "phrase_tables/model." for legacy Bitext. Suggest "phrase_tables/bitext." for incremental Bitext
    */
-  virtual void Open(const std::string &base) override;
+  virtual void Open(const std::string &base);
 
   /**
    * Add a word-aligned sentence pair to a specific domain.
    *
    * If a new, incremental Bitext was opened, then this method will persist the writes to disk.
    */
-  virtual void AddSentencePair(const std::vector<std::string> &srcSent, const std::vector<std::string> &trgSent, const std::vector<std::pair<size_t, size_t>> &alignment, const std::string &domain) override;
+  virtual void AddSentencePair(const std::vector<Vid> &srcSent, const std::vector<Vid> &trgSent, const std::vector<std::pair<size_t, size_t>> &alignment, domid_t domain);
 
   /**
    * Write to (empty) DB and disk.
@@ -155,7 +139,7 @@ public:
    *
    * @param base  base pathname prefix, e.g. "phrase_tables/bitext."
    */
-  virtual void Write(const std::string &base) override;
+  virtual void Write(const std::string &base);
 
   virtual void SetupLogging(std::shared_ptr<Logger> logger) override;
 
@@ -163,7 +147,6 @@ protected:
   std::string l1_; /** source language 2-letter code */
   std::string l2_; /** targetlanguage 2-letter code */
   std::shared_ptr<BaseDB> db_;
-  std::shared_ptr<DocumentMap> doc_map_; /** housekeeping for individual domain names, IDs */
   std::shared_ptr<BitextSide<sto::SrcToken>> src_;
   std::shared_ptr<BitextSide<sto::TrgToken>> trg_;
   std::shared_ptr<sto::Corpus<sto::AlignmentLink>> align_;

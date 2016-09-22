@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <set>
 
 #include "Types.h"
 #include "StreamVersions.h"
@@ -153,6 +154,9 @@ public:
    */
   NodeType IsNodeLeaf(const std::string &path);
 
+  /** Gets the domains indexed. */
+  std::set<domid_t> GetIndexedDomains(const std::string &lang);
+
   /** Get persistence sequence number */
   StreamVersions GetStreamVersions();
   /** Put persistence sequence number */
@@ -173,6 +177,7 @@ private:
   std::string stream_key_prefix_();
   std::string stream_key_(stream_t stream);
   std::string internal_key_(const std::string &path);
+  std::string domain_prefix_(const std::string &lang);
 };
 
 } // namespace sto

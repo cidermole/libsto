@@ -33,8 +33,15 @@ public:
   iterator begin() const { return versions_.begin(); }
   iterator end() const { return versions_.end(); }
 
+  StreamVersions() : is_max_(false) {}
+
+  static StreamVersions Max() { return StreamVersions(true); }
+
 private:
   std::unordered_map<stream_t, seqid_t> versions_;
+  bool is_max_;
+
+  StreamVersions(bool max) : is_max_(max) {}
 };
 
 } // namespace sto

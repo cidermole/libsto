@@ -148,7 +148,7 @@ void log_progress(size_t ctr) {
  */
 void read_input_lines(BitextSide<Token> &side, DocumentMap &docMap, Args &args) {
   string line, w;
-  vector<string> sent;
+  vector<typename Corpus<Token>::Vid> sent;
   typename Corpus<Token>::Sid sid = 0;
 
   shared_ptr<istream> in(&cin, [](istream *p){});
@@ -163,10 +163,10 @@ void read_input_lines(BitextSide<Token> &side, DocumentMap &docMap, Args &args) 
     istringstream buf(line);
     sent.clear();
     while(buf >> w)
-      sent.push_back(w);
+      sent.push_back(std::stoul(w));
 
-    sid = side.AddToCorpus(sent, updateid_t{static_cast<stream_t>(-1), sid + 1});
-    side.index->AddSentence(side.corpus->sentence(sid));
+    sid = side.AddToCorpus(sent, docMap.sid2did(sid), updateid_t{static_cast<stream_t>(-1), sid + 1});
+    side.index()->AddSentence(side.corpus->sentence(sid));
 
     if(!args.quiet) log_progress(sid);
   }
@@ -200,15 +200,15 @@ int main(int argc, char **argv) {
   DocumentMap docMap;
   docMap.Load(args.base + "dmp");
 
-  BitextSide<Token> side(args.lang, docMap); // in-memory type BitextSide
+  BitextSide<Token> side(args.lang); // in-memory type BitextSide
 
-  side.index->Split(); // build the index in parts (so we can sort them in parallel)
+  side.index()->Split(); // build the index in parts (so we can sort them in parallel)
 
   if(!args.quiet) cerr << now() << "before read_input_lines()" << endl;
   if(!args.quiet) util::PrintUsage(cerr);
 
   read_input_lines(side, docMap, args);
-  cerr << "global index size=" << side.index->span().size() << endl;
+  cerr << "global index size=" << side.index()->span().size() << endl;
 
   if(!args.quiet) cerr << now() << "after read_input_lines()" << endl;
   if(!args.quiet) util::PrintUsage(cerr);
@@ -217,7 +217,7 @@ int main(int argc, char **argv) {
   boost::scoped_ptr<ug2::ThreadPool> tpool;
   tpool.reset(new ug2::ThreadPool(boost::thread::hardware_concurrency()));
 
-  const auto top_span = side.index->span();
+  const auto top_span = side.index()->span();
   for(auto vid : top_span) {
     auto spans = top_span;
     spans.narrow(vid);
@@ -232,11 +232,11 @@ int main(int argc, char **argv) {
 
 
   // TODO: debug only
-  side.index->span().node()->DebugCheckVidConsistency();
+  side.index()->span().node()->DebugCheckVidConsistency();
 
 
   // create domain indexes, create leaves for domain indexes
-  //auto top_span = side.index->span();
+  //auto top_span = side.index()->span();
   for(auto domain : docMap) {
     auto domain_index = std::make_shared<sto::TokenIndex<Token, IndexTypeMemBuf>>(*side.corpus, -1);
     side.domain_indexes[domain] = domain_index;
@@ -259,7 +259,7 @@ int main(int argc, char **argv) {
   if(!args.quiet) cerr << now() << "after creating leaves for domain indexes" << endl;
 
   // again could be parallelized
-  //auto top_span = side.index->span();
+  //auto top_span = side.index()->span();
   unordered_map<domid_t, TreeNodeMemBuf<Token> *> dom_nodes;
   for(auto vid : top_span) {
     // sweep through each suffix array, add positions to the correct domain index
@@ -283,10 +283,10 @@ int main(int argc, char **argv) {
     }
   }
 
-  cerr << "global index size=" << side.index->span().size() << endl;
+  cerr << "global index size=" << side.index()->span().size() << endl;
   for(auto domain : docMap) {
     // manually notify the domain indexes about seqNum -- AddPosition() is quite low-level
-    side.domain_indexes[domain]->Flush(side.index->streamVersions());
+    side.domain_indexes[domain]->Flush(side.index()->streamVersions());
 
     cerr << "domain " << docMap[domain] << " index size=" << side.domain_indexes[domain]->span().size() << endl;
   }
