@@ -44,15 +44,10 @@ BitextSide<Token>::~BitextSide()
 
 template<typename Token>
 typename BitextSide<Token>::Sid BitextSide<Token>::AddToCorpus(const std::vector<BitextSide<Token>::Vid> &sent, domid_t domain, updateid_t version) {
-  // TODO: this currently does not ignore lower version updates, as it should!!
-  // TODO: check DocumentMap for sentence count, check if sentence is already included there.
-
   std::vector<Token> toks;
   for(auto t : sent)
     toks.push_back(t);
-  corpus->AddSentence(toks, SentInfo{domain, version});
-
-  return corpus->size() - 1;
+  return corpus->AddSentenceIncremental(toks, SentInfo{domain, version});
 }
 
 template<typename Token>
@@ -147,15 +142,16 @@ void Bitext::Open(const std::string &base) {
 void Bitext::AddSentencePair(const std::vector<Vid> &srcSent, const std::vector<Vid> &trgSent, const std::vector<std::pair<size_t, size_t>> &alignment, domid_t domain) {
   // (1) add to corpus first:
 
-  // order of these three does not matter
-  auto ifake = src_->corpus->size();
-  auto isrc = src_->AddToCorpus(srcSent, domain, ifake);
-  auto itrg = trg_->AddToCorpus(trgSent, domain, ifake);
-  updateid_t fakeVersion{static_cast<stream_t>(-1), ifake + 1}; // TODO add real API
   // note: TODO: seq_t currently assumes that the first update starts with seq_t seqNum = 1; (seqNum=0 would be ignored, since we init everything there)
+  auto ifake = src_->corpus->size();
+  updateid_t fakeVersion{static_cast<stream_t>(-1), ifake + 1}; // TODO add real API
   updateid_t version = fakeVersion;
+
+  // order of these three does not matter
+  auto isrc = src_->AddToCorpus(srcSent, domain, version);
+  auto itrg = trg_->AddToCorpus(trgSent, domain, version);
   assert(isrc == itrg);
-  align_->AddSentence(std::vector<AlignmentLink>{alignment.begin(), alignment.end()});
+  align_->AddSentence(std::vector<AlignmentLink>{alignment.begin(), alignment.end()}, SentInfo{domain, version});
 
   // (3) domain-specific first: ensures that domain-specific indexes can provide, since we query the global index for the presence of source phrases first.
 
@@ -199,6 +195,19 @@ void Bitext::SetupLogging(std::shared_ptr<Logger> logger) {
   trg_->SetupLogging(logger);
   Loggable::SetupLogging(logger);
 }
+
+StreamVersions Bitext::streamVersions() const {
+  // Our seqNum = min({c.seqNum | c in components})
+  // any component with a higher seqNum will have to ignore the repeated updates
+  StreamVersions versions = StreamVersions::Max();
+
+  versions = StreamVersions::Min(versions, src_->streamVersions());
+  versions = StreamVersions::Min(versions, trg_->streamVersions());
+  versions = StreamVersions::Min(versions, align_->streamVersions());
+
+  return versions;
+}
+
 
 template<class Token> constexpr domid_t BitextSide<Token>::kGlobalDomain;
 

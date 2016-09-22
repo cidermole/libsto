@@ -62,6 +62,8 @@ Corpus<Token>::Corpus(const std::string &filename, const Corpus<Token>::Vocabula
   dyn_sentIndex_.push_back(0);
 
   init_index_type();
+
+  streamVersions_ = ComputeStreamVersions();
 }
 
 template<class Token>
@@ -137,7 +139,7 @@ SentInfo Corpus<Token>::info(Sid sid) const {
 }
 
 template<class Token>
-void Corpus<Token>::AddSentence(const std::vector<Token> &sent, SentInfo info) {
+typename Corpus<Token>::Sid Corpus<Token>::AddSentence(const std::vector<Token> &sent, SentInfo info) {
   for(auto token : sent) {
     if(vocab_)
       vocab_->at(token); // access the Token to ensure it is contained in vocabulary (throws exception otherwise)
@@ -149,6 +151,24 @@ void Corpus<Token>::AddSentence(const std::vector<Token> &sent, SentInfo info) {
   if(writable_) {
     WriteSentence();
   }
+  return size()-1;
+}
+
+template<class Token>
+typename Corpus<Token>::Sid Corpus<Token>::AddSentenceIncremental(const std::vector<Token> &sent, SentInfo sentInfo) {
+  if(!streamVersions_.Update(sentInfo.vid)) {
+    // ignore update if too old
+
+    // find old Sid: search backwards to the sentence added in an update before
+    for(Sid i = size()-1; i != static_cast<Sid>(-1); i--)
+      if(info(i).vid.stream_id == sentInfo.vid.stream_id && info(i).vid.sentence_id == sentInfo.vid.sentence_id)
+        return i;
+
+    // since this code only runs on startup, it is probably not unreasonable to crash there if we are inconsistent
+    throw std::runtime_error("Corpus inconsistent: updateid_t has been applied, but cannot find it");
+  }
+
+  return AddSentence(sent, sentInfo);
 }
 
 /** write out the entire corpus in v3 format */
@@ -292,7 +312,7 @@ size_t Corpus<Token>::numTokens() const {
 }
 
 template<class Token>
-StreamVersions Corpus<Token>::streamVersions() const {
+StreamVersions Corpus<Token>::ComputeStreamVersions() const {
   StreamVersions versions;
   for(Sid i = 0; i < size(); i++)
     versions.Update(info(i).vid);

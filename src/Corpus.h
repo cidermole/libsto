@@ -57,10 +57,16 @@ public:
   SentInfo info(Sid sid) const;
 
   /**
-   * Add a sentence to the dynamic part.
+   * Raw implementation of AddSentence() - does not check SentInfo.
    * If writable (v3), this method will actually append to the corpus on disk.
    */
-  void AddSentence(const std::vector<Token> &sent, SentInfo info = SentInfo());
+  Sid AddSentence(const std::vector<Token> &sent, SentInfo info = SentInfo());
+
+  /**
+   * Higher-level implementation that checks SentInfo updateid_t and ignores updates.
+   * @return most recent sentence ID, or if update ignored, the sentence ID that was added in an update before
+   */
+  Sid AddSentenceIncremental(const std::vector<Token> &sent, SentInfo info = SentInfo());
 
   const Vocabulary &vocab() const;
 
@@ -73,8 +79,8 @@ public:
   /** write out the entire corpus in v3 format. */
   void Write(const std::string &filename);
 
-  /** Compute current persistence sequence number. This actually walks the whole Corpus. */
-  StreamVersions streamVersions() const;
+  /** current persistence sequence number */
+  StreamVersions streamVersions() const { return streamVersions_; }
 
 private:
   static constexpr size_t kSentInfoSizeToks = sizeof(SentInfo) / sizeof(Vid); /** SentInfo size in number of Vid tokens */
@@ -95,6 +101,11 @@ private:
   std::vector<Vid> dyn_track_; /** dynamic corpus track, located after the last static sentence ID. */
   std::vector<SentInfo> dyn_track_info_; /** dynamic corpus track sentence info */
   std::vector<SentIndexEntry> dyn_sentIndex_; /** indexes sentence start positions in dyn_track_, includes trailing sentinel */
+
+  StreamVersions streamVersions_;
+
+  /** Compute current persistence sequence number. This actually walks the whole Corpus. */
+  StreamVersions ComputeStreamVersions() const;
 
   /**
    * Append the most recently added dynamic sentence to the v3 corpus on disk.

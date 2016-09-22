@@ -148,7 +148,7 @@ void log_progress(size_t ctr) {
  */
 void read_input_lines(BitextSide<Token> &side, DocumentMap &docMap, Args &args) {
   string line, w;
-  vector<typename Corpus<Token>::Vid> sent;
+  vector<Token> sent;
   typename Corpus<Token>::Sid sid = 0;
 
   shared_ptr<istream> in(&cin, [](istream *p){});
@@ -165,7 +165,7 @@ void read_input_lines(BitextSide<Token> &side, DocumentMap &docMap, Args &args) 
     while(buf >> w)
       sent.push_back(std::stoul(w));
 
-    sid = side.AddToCorpus(sent, docMap.sid2did(sid), updateid_t{static_cast<stream_t>(-1), sid + 1});
+    sid = side.corpus->AddSentence(sent, SentInfo{docMap.sid2did(sid), updateid_t{static_cast<stream_t>(-1), 0}});
     side.index()->AddSentence(side.corpus->sentence(sid));
 
     if(!args.quiet) log_progress(sid);

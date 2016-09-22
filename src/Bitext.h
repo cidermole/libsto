@@ -89,7 +89,7 @@ struct BitextSide : public sto::Loggable {
  */
 class Bitext : /*public virtual sto::IncrementalBitext, */public sto::Loggable {
 public:
-  typedef uint32_t Vid; // TODO
+  typedef typename sto::Corpus<sto::SrcToken>::Vid Vid;
 
   static constexpr domid_t kGlobalDomain = BitextSide<sto::SrcToken>::kGlobalDomain;
 
@@ -150,6 +150,9 @@ protected:
   std::shared_ptr<BitextSide<sto::SrcToken>> src_;
   std::shared_ptr<BitextSide<sto::TrgToken>> trg_;
   std::shared_ptr<sto::Corpus<sto::AlignmentLink>> align_;
+
+  /** Current persistence sequence number. */
+  StreamVersions streamVersions() const;
 };
 
 } // namespace sto
