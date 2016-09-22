@@ -34,11 +34,8 @@ DocumentMap::DocumentMap(std::shared_ptr<BaseDB> db, const std::string &corpus_f
 sapt::IBias *DocumentMap::SetupDocumentBias(std::map<std::string,float> context_weights,
                                      std::ostream* log) const
 {
-  if (docname2id_.size() == 1)
-    // a document bias make no sense if this corpus is single-doc
-    return nullptr;
-
-  return new StoBias(context_weights, *this);
+  throw std::runtime_error("not implemented - construct a StoBias() directly");
+  return nullptr;
 }
 
 tpt::docid_type DocumentMap::sid2did(sto::sid_t sid) const {
@@ -155,15 +152,13 @@ StreamVersions DocumentMap::sent_info_stream_versions_() {
 
 // ----------------------------------------------------------------------------
 
-StoBias::StoBias(std::map<std::string, float> &context_weights, const DocumentMap &map) : map_(map)
+StoBias::StoBias(std::map<std::string, float> &context_weights, const Corpus<sto::SrcToken> &corpus) : corpus_(corpus)
 {
   // lookup domain IDs
   float total = 0;
   for(auto cw : context_weights) {
-    if(map_.contains(cw.first)) {
-      bias_[map_[cw.first]] = cw.second;
-      total += cw.second;
-    }
+    bias_[std::stoul(cw.first)] = cw.second;
+    total += cw.second;
   }
 
   // normalize weights
@@ -186,7 +181,7 @@ void StoBias::getRankedBias(std::vector<std::pair<float, tpt::docid_type>>& bias
 
 /** sentence bias for sentence ID sid. */
 float StoBias::operator[](const tpt::sid_type sid) const {
-  auto entry = bias_.find(map_.sid2did(sid));
+  auto entry = bias_.find(corpus_.info(sid).vid.domid);
   return (entry != bias_.end()) ? entry->second : 0;
 }
 

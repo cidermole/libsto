@@ -103,7 +103,7 @@ private:
 /** Domain bias for BitextSampler, backed by libsto DocumentMap. */
 class StoBias : public sapt::IBias {
 public:
-  StoBias(std::map<std::string, float> &context_weights, const DocumentMap &map);
+  StoBias(std::map<std::string, float> &context_weights, const Corpus<sto::SrcToken> &corpus);
   virtual ~StoBias() = default;
 
   /**
@@ -117,7 +117,7 @@ public:
 
 private:
   std::unordered_map<tpt::docid_type, float> bias_;
-  const DocumentMap &map_;
+  const Corpus<sto::SrcToken> &corpus_;
 };
 
 } // namespace sto
