@@ -143,28 +143,38 @@ void DB<Token>::GetNodeInternal(const std::string &path, std::vector<Vid> &child
     children.push_back(*vid);
 }
 
+
+template<typename T>
+static std::string to_bytes(T n) {
+  return std::string(reinterpret_cast<const char *>(&n), sizeof(n));
+}
+
 template<class Token>
 std::string DB<Token>::vid_key_(Vid vid) {
+  throw std::runtime_error("vid_key_ unused");
+
   char key_str[4 + sizeof(Vid)] = "vid_";
   memcpy(&key_str[4], &vid, sizeof(Vid));
   std::string key(key_str, 4 + sizeof(Vid));
-  return key_(key);
+  return key_(info_.lang + to_bytes(info_.domain) + key);
 }
 
 template<class Token>
 std::string DB<Token>::surface_key_(const std::string &surface) {
-  return key_("srf_" + surface);
+  throw std::runtime_error("surface_key_ unused");
+  return key_(info_.lang + to_bytes(info_.domain) + "srf_" + surface);
 }
+
 
 template<class Token>
 std::string DB<Token>::leaf_key_(const std::string &path) {
   char is_root = (path == "");
-  return key_(is_root + "arr_" + path);
+  return key_(info_.lang + is_root + to_bytes(info_.domain) + "arr_" + path);
 }
 
 template<class Token>
 std::string DB<Token>::stream_key_prefix_() {
-  return key_("seqn");
+  return key_(info_.lang + to_bytes(info_.domain) + "seqn");
 }
 
 template<class Token>
@@ -172,13 +182,13 @@ std::string DB<Token>::stream_key_(stream_t stream) {
   char key_str[4 + sizeof(stream_t)] = "seqn";
   memcpy(&key_str[4], &stream, sizeof(stream_t));
   std::string key(key_str, 4 + sizeof(stream_t));
-  return key_(key);
+  return key_(info_.lang + to_bytes(info_.domain) + key);
 }
 
 template<class Token>
 std::string DB<Token>::internal_key_(const std::string &path) {
   char is_root = (path == "");
-  return key_(is_root + path);
+  return key_(info_.lang + is_root + to_bytes(info_.domain) + "int_" + path);
 }
 
 template<class Token>
@@ -278,6 +288,10 @@ void DB<Token>::PutStreamVersions(StreamVersions streamVersions) {
 
 template<class Token>
 DB<Token>::DB(const BaseDB &other, std::string key_prefix) : BaseDB(other, key_prefix)
+{}
+
+template<class Token>
+DB<Token>::DB(const BaseDB &other, DBKeyInfo info) : BaseDB(other, ""), info_(info)
 {}
 
 template<class Token>

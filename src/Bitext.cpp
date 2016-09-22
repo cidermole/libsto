@@ -32,7 +32,7 @@ template<typename Token>
 BitextSide<Token>::BitextSide(std::shared_ptr<DB<Token>> db, const std::string &base, const std::string &lang, const DocumentMap &map) :
     vocab(new sto::Vocab<Token>(db->template PrefixedDB<Token>("V" + lang))),
     corpus(new sto::Corpus<Token>(base + lang + ".trk", vocab.get())),
-    index(new sto::TokenIndex<Token, IndexTypeDisk>("", *corpus, db->template PrefixedDB<Token>("I" + lang))),  // note: filename is only ever used as DB prefix now (in TreeNodeDisk)
+    index(new sto::TokenIndex<Token, IndexTypeDisk>("", *corpus, db->template PrefixedDB<Token>(lang, kGlobalDomain))),  // note: filename is only ever used as DB prefix now (in TreeNodeDisk)
     docMap(map),
     lang(lang),
     db(db)
@@ -142,7 +142,7 @@ void BitextSide<Token>::Write(std::shared_ptr<DB<Token>> db, const std::string &
 
   benchmark_time([&](){ corpus->Write(base + lang + ".trk"); }, "corpus->Write()");
 
-  benchmark_time([&](){ index->Write(db->template PrefixedDB<Token>("I" + lang)); }, "index->Write()");
+  benchmark_time([&](){ index->Write(db->template PrefixedDB<Token>(lang, kGlobalDomain)); }, "index->Write()");
 
   benchmark_time([&](){
     for(auto& d : domain_indexes)

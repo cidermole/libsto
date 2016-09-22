@@ -28,6 +28,8 @@ template<typename Token>
 struct BitextSide : public sto::Loggable {
   typedef typename Corpus<Token>::Sid Sid;
 
+  static constexpr domid_t kGlobalDomain = static_cast<domid_t>(-1);
+
   std::shared_ptr<sto::Vocab<Token>> vocab;
   std::shared_ptr<sto::Corpus<Token>> corpus;
   std::shared_ptr<sto::ITokenIndex<Token>> index;

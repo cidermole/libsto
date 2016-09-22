@@ -33,6 +33,11 @@ enum NodeType {
 
 template<class Token> class DB;
 
+struct DBKeyInfo {
+  std::string lang;
+  domid_t domain;
+};
+
 /**
  * Base class for DB, without any particular template argument.
  */
@@ -54,11 +59,10 @@ public:
     return std::shared_ptr<DB<Token>>(new DB<Token>(*this, key_prefix_ + key_prefix));
   }
 
-  /** Make a shallow copy with (key,id) as prefix, like PrefixedDB() above. */
+  /** This is not actually a prefix, to do: change to better name */
   template<typename Token>
-  std::shared_ptr<DB<Token>> PrefixedDB(std::string key, size_t id) {
-    std::string id_prefix(reinterpret_cast<const char *>(&id), sizeof(id));
-    return std::shared_ptr<DB<Token>>(new DB<Token>(*this, key_prefix_ + key + id_prefix));
+  std::shared_ptr<DB<Token>> PrefixedDB(std::string lang, domid_t domain) {
+    return std::shared_ptr<DB<Token>>(new DB<Token>(*this, DBKeyInfo{lang, domain}));
   }
 
   /** Flush the writes buffered so far, atomically applying them all together. */
@@ -95,6 +99,8 @@ public:
 
   /** Convert from BaseDB and add a key prefix. */
   DB(const BaseDB &other, std::string key_prefix);
+
+  DB(const BaseDB &other, DBKeyInfo info);
 
   DB(const DB &other) = delete;
   virtual ~DB();
@@ -153,6 +159,7 @@ public:
   void PutStreamVersions(StreamVersions streamVersions);
 
 private:
+  DBKeyInfo info_;
   double putLeafTime_ = 0.0;
   size_t nleaves_ = 0;
   //friend class BaseDB; // was for private: DB(const BaseDB &other, std::string key_prefix);
