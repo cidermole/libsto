@@ -144,8 +144,8 @@ typename Corpus<Token>::Sid Corpus<Token>::AddSentence(const std::vector<Token> 
     if(vocab_)
       vocab_->at(token); // access the Token to ensure it is contained in vocabulary (throws exception otherwise)
     dyn_track_.push_back(token.vid);
-    dyn_track_info_.push_back(info);
   }
+  dyn_track_info_.push_back(info);
   dyn_sentIndex_.push_back(static_cast<SentIndexEntry>(dyn_track_.size()));
 
   if(writable_) {
@@ -426,7 +426,7 @@ std::string Position<Token>::DebugStr(const Corpus<Token> &corpus) const {
   // print a few words
   size_t nwords_max = 4;
   for(size_t i = 0; i < nwords_max && i + offset <= sent.size(); i++)
-    ss << " " << add(i, corpus).surface(corpus) << "(" << static_cast<int>(add(i, corpus).vid(corpus)) << ")";
+    ss << " " << static_cast<int>(add(i, corpus).vid(corpus));
   return ss.str();
 }
 

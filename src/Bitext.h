@@ -14,7 +14,6 @@
 
 #include "TokenIndex.h"
 #include "DocumentMap.h"
-#include "IncrementalBitext.h"
 #include "mmt/IncrementalModel.h"
 #include "Loggable.h"
 
@@ -29,12 +28,13 @@ template<typename Token>
 struct BitextSide : public sto::Loggable {
   typedef typename Corpus<Token>::Sid Sid;
   typedef typename Corpus<Token>::Vid Vid;
+  typedef std::unordered_map<Domain::Vid, std::shared_ptr<sto::ITokenIndex<Token>>> DomainIndexMap;
 
   static constexpr domid_t kGlobalDomain = static_cast<domid_t>(-1);
 
   std::shared_ptr<sto::Corpus<Token>> corpus;
 
-  std::unordered_map<Domain::Vid, std::shared_ptr<sto::ITokenIndex<Token>>> domain_indexes;
+  DomainIndexMap domain_indexes;
   std::string base_and_lang; /** e.g. "phrase_tables/model.en" */
   std::string lang; /** 2-letter language code */
   std::shared_ptr<DB<Token>> db;
@@ -74,6 +74,26 @@ struct BitextSide : public sto::Loggable {
 
   /** Current persistence sequence number. */
   StreamVersions streamVersions() const;
+
+  size_t numDomains() const { return domain_indexes.size()-1; /* -1 to exclude kGlobalDomain */ }
+
+  class DomainIterator {
+  public:
+    typedef typename DomainIndexMap::const_iterator citer;
+
+    DomainIterator(const citer domain_indexes_it, const citer domain_indexes_end_it);
+    /** skips kGlobalDomain */
+    DomainIterator &operator++();
+    size_t operator*() const { return it_->first; }
+    bool operator!=(const DomainIterator &other) const { return it_ != other.it_; }
+  private:
+    citer it_;
+    citer end_;
+  };
+
+  DomainIterator begin() const { return DomainIterator(domain_indexes.begin(), domain_indexes.end()); }
+  DomainIterator end() const { return DomainIterator(domain_indexes.end(), domain_indexes.end()); }
+
 };
 
 /**
@@ -85,10 +105,10 @@ struct BitextSide : public sto::Loggable {
  * Allows updating (appending sentence pairs), which is disk-persistent if the incremental variant was opened.
  *
  *
- * This is a base class implementing the persistence interface IncrementalBitext.
+ * This is a base class implementing the persistence interface.
  * For queries, use class SBitext (in moses).
  */
-class Bitext : /*public virtual sto::IncrementalBitext, */ public mmt::IncrementalModel, public sto::Loggable {
+class Bitext : public virtual mmt::IncrementalModel, public sto::Loggable {
 public:
   typedef typename sto::Corpus<sto::SrcToken>::Vid Vid;
 

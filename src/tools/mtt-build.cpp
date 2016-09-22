@@ -149,7 +149,7 @@ void log_progress(size_t ctr) {
 void read_input_lines(BitextSide<Token> &side, DocumentMap &docMap, Args &args) {
   string line, w;
   vector<Token> sent;
-  typename Corpus<Token>::Sid sid = 0;
+  typename Corpus<Token>::Sid sid = -1;
 
   shared_ptr<istream> in(&cin, [](istream *p){});
 
@@ -165,7 +165,8 @@ void read_input_lines(BitextSide<Token> &side, DocumentMap &docMap, Args &args) 
     while(buf >> w)
       sent.push_back(std::stoul(w));
 
-    sid = side.corpus->AddSentence(sent, SentInfo{docMap.sid2did(sid), updateid_t{static_cast<stream_t>(-1), 0}});
+    //std::cerr << "writing sid=" << (sid+1) << " to domain " << docMap.sid2did(sid+1) << std::endl;
+    sid = side.corpus->AddSentence(sent, SentInfo{docMap.sid2did(sid+1), updateid_t{static_cast<stream_t>(-1), 0}});
     side.index()->AddSentence(side.corpus->sentence(sid));
 
     if(!args.quiet) log_progress(sid);
@@ -233,11 +234,11 @@ int main(int argc, char **argv) {
 
   // TODO: debug only
   side.index()->span().node()->DebugCheckVidConsistency();
-
+  cerr << now() << "DebugCheckVidConsistency() is ok" << endl;
 
   // create domain indexes, create leaves for domain indexes
   //auto top_span = side.index()->span();
-  for(auto domain : docMap) {
+  for(auto domain : docMap) { // this cannot be over BitextSide yet, since it is not yet aware of the domains
     auto domain_index = std::make_shared<sto::TokenIndex<Token, IndexTypeMemBuf>>(*side.corpus, -1);
     side.domain_indexes[domain] = domain_index;
     domain_index->Split(); // build individual indexes in parts, too.
@@ -258,6 +259,8 @@ int main(int argc, char **argv) {
 
   if(!args.quiet) cerr << now() << "after creating leaves for domain indexes" << endl;
 
+  if(!args.quiet) cerr << "numDomains() = " << side.numDomains() << endl;
+
   // again could be parallelized
   //auto top_span = side.index()->span();
   unordered_map<domid_t, TreeNodeMemBuf<Token> *> dom_nodes;
@@ -267,7 +270,7 @@ int main(int argc, char **argv) {
     spans.narrow(vid);
 
     // step each domain into the current 'vid' leaf
-    for(auto domain : docMap) {
+    for(auto domain : side) {
       auto spand = side.domain_indexes[domain]->span();
       spand.narrow(vid);
       assert(spand.depth() == 1);
@@ -277,18 +280,19 @@ int main(int argc, char **argv) {
     size_t spans_size = spans.size();
     for(size_t i = 0; i < spans_size; i++) {
       Position<Token> pos = spans[i];
-      auto domain = docMap.sid2did(pos.sid);
+      auto domain = side.corpus->info(pos.sid).vid.domid;
+      //std::cerr << "index[" << i << "] Position " << pos.DebugStr(*side.corpus) << " sid=" << pos.sid << " belongs to domain " << domain << std::endl;
       // "side.domain_indexes[domain].add(pos);"
       dom_nodes[domain]->AddPosition(side.corpus->sentence(pos.sid), pos.offset);
     }
   }
 
   cerr << "global index size=" << side.index()->span().size() << endl;
-  for(auto domain : docMap) {
+  for(auto domain : side) {
     // manually notify the domain indexes about seqNum -- AddPosition() is quite low-level
     side.domain_indexes[domain]->Flush(side.index()->streamVersions());
 
-    cerr << "domain " << docMap[domain] << " index size=" << side.domain_indexes[domain]->span().size() << endl;
+    cerr << "domain " << domain << " index size=" << side.domain_indexes[domain]->span().size() << endl;
   }
 
   if(!args.quiet) cerr << now() << "after splitting into domain indexes" << endl;
@@ -300,8 +304,6 @@ int main(int argc, char **argv) {
 
   if(!args.quiet) cerr << now() << "done." << endl;
   util::PrintUsage(std::cerr);
-
-  docMap.Write(db, args.base + "docmap.trk");
 
   return 0;
 }

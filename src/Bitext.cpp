@@ -92,6 +92,23 @@ StreamVersions BitextSide<Token>::streamVersions() const {
   return versions;
 }
 
+template<typename Token>
+BitextSide<Token>::DomainIterator::DomainIterator(const citer domain_indexes_it, const citer domain_indexes_end_it)
+    : it_(domain_indexes_it), end_(domain_indexes_end_it)
+{
+  if(it_ != end_ && it_->first == kGlobalDomain)
+    ++it_;
+}
+
+template<typename Token>
+typename BitextSide<Token>::DomainIterator &BitextSide<Token>::DomainIterator::operator++() {
+  ++it_;
+  // skip kGlobalDomain
+  if(it_ != end_ && it_->first == kGlobalDomain)
+    ++it_;
+  return *this;
+}
+
 // explicit template instantiation
 template class BitextSide<SrcToken>;
 template class BitextSide<TrgToken>;
