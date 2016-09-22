@@ -18,7 +18,11 @@ namespace tpt
   // magic = '0x%sULL' % ''.join(reversed(['%02x' % ord(c) for c in 'SaptIDX2']))
   const uint64_t INDEX_V2_MAGIC = 0x3258444974706153ULL; // magic number for encoding index file version. ASCII 'SaptIDX2'
 
-  const uint64_t INDEX_V3_MAGIC = 0x3358444974706153ULL; // magic number for encoding index file version. ASCII 'SaptIDX3'
+  // used in MMT in the period from Trento Codev (March 2016) - Rome Codev (September 2016)
+  //const uint64_t INDEX_V3_MAGIC = 0x3358444974706153ULL; // magic number for encoding index file version. ASCII 'SaptIDX3'
+
+  // v3, but additionally stores SentInfo in the corpus track, before the word tokens
+  const uint64_t CORPUS_V31_MAGIC = 0x3358444972636e49ULL; // magic number for encoding index file version. ASCII 'IncrIDX3'
 
   /**
    * Header for corpus track.

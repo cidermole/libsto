@@ -42,7 +42,7 @@ Corpus<Token>::Corpus(const std::string &filename, const Corpus<Token>::Vocabula
                                     header.legacy_startIdx)); // this maps some memory twice, because we leave the index as mapped in track_, but it's shared mem anyway.
     sentIndexHeader_.versionMagic = header.versionMagic;
     sentIndexHeader_.idxSize = header.legacy_idxSize;
-  } else if (header.versionMagic == tpt::INDEX_V3_MAGIC) {
+  } else if (header.versionMagic == tpt::CORPUS_V31_MAGIC) {
     // there is a separate sentence index file
     std::string prefix = filename.substr(0, filename.find_last_of('.'));
     sentIndex_.reset(new MappedFile(prefix + ".six", /* offset = */ 0, O_RDWR));
