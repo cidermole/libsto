@@ -162,9 +162,10 @@ private:
 
   std::string vid_key_(Vid vid);
   std::string surface_key_(const std::string &surface);
-  std::string leaf_key_(const std::string &k);
+  std::string leaf_key_(const std::string &path);
   std::string stream_key_prefix_();
   std::string stream_key_(stream_t stream);
+  std::string internal_key_(const std::string &path);
 };
 
 } // namespace sto

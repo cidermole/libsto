@@ -121,7 +121,7 @@ void DB<Token>::PutVocabPair(Vid vid, const std::string &surface) {
 template<class Token>
 void DB<Token>::PutNodeInternal(const std::string &path, const std::vector<Vid> &children) {
   rocksdb::Slice val(reinterpret_cast<const char *>(children.data()), children.size() * sizeof(Vid));
-  std::string key = key_(path);
+  std::string key = internal_key_(path);
   //std::cerr << "DB::PutNodeInternal(key=" << key << ", children.size()=" << children.size() << ")" << std::endl;
   rocksdb::Status status = this->db_->Put(rocksdb::WriteOptions(), key, val);
   assert(status.ok());
@@ -130,7 +130,7 @@ void DB<Token>::PutNodeInternal(const std::string &path, const std::vector<Vid> 
 template<class Token>
 void DB<Token>::GetNodeInternal(const std::string &path, std::vector<Vid> &children) {
   std::string value;
-  std::string key = key_(path);
+  std::string key = internal_key_(path);
   rocksdb::Status status = this->db_->Get(rocksdb::ReadOptions(), key, &value);
   assert(status.ok());
 
@@ -157,8 +157,9 @@ std::string DB<Token>::surface_key_(const std::string &surface) {
 }
 
 template<class Token>
-std::string DB<Token>::leaf_key_(const std::string &k) {
-  return key_("arr_" + k);
+std::string DB<Token>::leaf_key_(const std::string &path) {
+  char is_root = (path == "");
+  return key_(is_root + "arr_" + path);
 }
 
 template<class Token>
@@ -172,6 +173,12 @@ std::string DB<Token>::stream_key_(stream_t stream) {
   memcpy(&key_str[4], &stream, sizeof(stream_t));
   std::string key(key_str, 4 + sizeof(stream_t));
   return key_(key);
+}
+
+template<class Token>
+std::string DB<Token>::internal_key_(const std::string &path) {
+  char is_root = (path == "");
+  return key_(is_root + path);
 }
 
 template<class Token>
@@ -212,7 +219,7 @@ NodeType DB<Token>::IsNodeLeaf(const std::string &path) {
 
   // true if this path does not contain an internal node
 
-  std::string key = key_(path);
+  std::string key = internal_key_(path);
   std::string array_key_str = leaf_key_(path);
   std::string value_discarded;
 
