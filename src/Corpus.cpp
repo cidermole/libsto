@@ -330,7 +330,7 @@ void Corpus<Token>::WriteSentence() {
 
   size_t real_size_bytes = boost::filesystem::file_size(track_filename_);
   if(size_bytes != real_size_bytes) {
-    size_t origin = sizeof(CorpusTrackHeader) + (static_ntoks + sentIndexHeader_.idxSize * kSentInfoSizeToks + dyn_ntoks_before) * sizeof(Vid);
+    size_t origin = sizeof(CorpusTrackHeader) + (static_ntoks + sentIndexHeader_.idxSize * kSentInfoSizeToks + dyn_ntoks_before + dyn_isent * kSentInfoSizeToks) * sizeof(Vid);
 
     std::cerr << "Corpus<Token>::WriteSentence() at sid=" << (sentIndexHeader_.idxSize + dyn_isent) << " should have appended " << (ntoks * sizeof(Vid) + sizeof(SentInfo)) << " bytes" << std::endl;
     std::cerr << "Corpus<Token>::WriteSentence() but in fact, " << (size_bytes - real_size_bytes) << " bytes are missing." << std::endl;
