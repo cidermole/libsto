@@ -45,5 +45,5 @@ set(TOOL_SOURCES
 foreach(toolSrc ${TOOL_SOURCES})
     get_filename_component(toolName ${toolSrc} NAME_WE)
     add_executable(${toolName} ${toolSrc} $<TARGET_OBJECTS:sto>)
-    target_link_libraries(${toolName}  ${Boost_LIBRARIES}  tcmalloc profiler  ${ROCKSDB_LIBRARIES})
+    target_link_libraries(${toolName}  ${Boost_LIBRARIES}  tcmalloc profiler  ${ROCKSDB_LIBRARIES}  pthread)
 endforeach(toolSrc)

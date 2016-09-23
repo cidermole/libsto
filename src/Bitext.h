@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <thread>
 #include <unordered_map>
 
 #include "TokenIndex.h"
@@ -181,9 +182,16 @@ protected:
   std::shared_ptr<BitextSide<sto::TrgToken>> trg_;
   std::shared_ptr<sto::Corpus<sto::AlignmentLink>> align_;
 
+  std::thread stress_thread_;
+
   /** Current persistence sequence number. */
   StreamVersions streamVersions() const;
+
+  /** testing thread providing a stream of fake updates */
+  void RunBitextStressThread();
+  void StartBitextStressThread();
 };
+
 
 } // namespace sto
 

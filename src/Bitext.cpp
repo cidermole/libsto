@@ -7,6 +7,9 @@
 #include <unistd.h>
 
 #include <limits>
+#include <thread>
+#include <chrono>
+#include <random>
 
 #include "Bitext.h"
 #include "DB.h"
@@ -152,7 +155,10 @@ Bitext::Bitext(const std::string &base, const std::string &l1, const std::string
 }
 
 Bitext::~Bitext()
-{}
+{
+  if(stress_thread_.joinable())
+    stress_thread_.join();
+}
 
 void Bitext::OpenIncremental(const std::string &base) {
   if(l1_ == l2_)
@@ -169,6 +175,9 @@ void Bitext::OpenIncremental(const std::string &base) {
 
   XVERBOSE(2, "Bitext: src global index size=" << src_->domain_indexes[kGlobalDomain]->span().size() << "\n");
   XVERBOSE(2, "Bitext: trg global index size=" << trg_->domain_indexes[kGlobalDomain]->span().size() << "\n");
+
+  // TODO debug only
+  StartBitextStressThread();
 }
 
 void Bitext::Open(const std::string &base) {
@@ -317,9 +326,55 @@ StreamVersions Bitext::streamVersions() const {
   return versions;
 }
 
+void Bitext::RunBitextStressThread() {
+  std::chrono::seconds initial_delay(5);
+  std::this_thread::sleep_for(initial_delay);
+
+  // where to add to
+  domid_t domain = 1;
+  stream_t stream = 0;
+
+  std::random_device rd;
+  std::mt19937 gen(rd());
+
+  // pick up updates from where we left off...
+  StreamVersions versions = streamVersions();
+
+  // choose random sentences to re-add to the corpus
+  for(size_t i = 0; i < 10000; i++) {
+    std::uniform_int_distribution<> dis(0, src_->corpus->size()-1);
+    size_t isent = dis(gen);
+
+    std::vector<mmt::wid_t> src, trg;
+    mmt::alignment_t align;
+
+    Sentence<SrcToken> srcSent = src_->corpus->sentence(isent);
+    for(size_t j = 0; j < srcSent.size(); j++)
+      src.push_back(srcSent[j].vid);
+
+    Sentence<TrgToken> trgSent = trg_->corpus->sentence(isent);
+    for(size_t j = 0; j < trgSent.size(); j++)
+      trg.push_back(trgSent[j].vid);
+
+    Sentence<AlignmentLink> aln = align_->sentence(isent);
+    for(size_t j = 0; j < aln.size(); j++)
+      align.push_back(std::make_pair<mmt::length_t, mmt::length_t>(aln[j].vid.src, aln[j].vid.trg));
+
+    // increment versions
+    versions.Update(sto_updateid_t{stream, versions[0] + 1});
+
+    auto mmt_update = mmt::updateid_t{stream, versions[0] - 1};
+    Add(mmt_update, domain, src, trg, align);
+  }
+}
+
+void Bitext::StartBitextStressThread() {
+  stress_thread_ = std::thread(&Bitext::RunBitextStressThread, this);
+}
 
 template<class Token> constexpr domid_t BitextSide<Token>::kGlobalDomain;
 
 constexpr domid_t Bitext::kGlobalDomain;
+
 
 } // namespace sto
