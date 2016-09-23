@@ -7,6 +7,7 @@
 #ifndef STO_STREAMVERSIONS_H
 #define STO_STREAMVERSIONS_H
 
+#include <string>
 #include <unordered_map>
 
 #include "Types.h"
@@ -36,6 +37,8 @@ public:
   StreamVersions() : is_max_(false) {}
 
   static StreamVersions Max() { return StreamVersions(true); }
+
+  std::string DebugStr() const;
 
 private:
   std::unordered_map<stream_t, seqid_t> versions_;

@@ -6,6 +6,7 @@
 
 #include <unordered_set>
 #include <algorithm>
+#include <sstream>
 
 #include "StreamVersions.h"
 
@@ -47,6 +48,15 @@ StreamVersions StreamVersions::Min(StreamVersions a, StreamVersions b) {
     min.Update(sto_updateid_t{key, std::min(a.at(key), b.at(key))});
 
   return min;
+}
+
+std::string StreamVersions::DebugStr() const {
+  std::stringstream ss;
+  ss << "StreamVersions(";
+  for(auto e : (*this))
+    ss << " " << static_cast<uint32_t>(e.first) << "=" << static_cast<uint64_t>(e.second);
+  ss << ")";
+  return ss.str();
 }
 
 } // namespace sto

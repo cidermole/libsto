@@ -149,7 +149,10 @@ typename Corpus<Token>::Sid Corpus<Token>::AddSentence(const std::vector<Token> 
   dyn_sentIndex_.push_back(static_cast<SentIndexEntry>(dyn_track_.size()));
 
   if(writable_) {
+    XVERBOSE(2, "Corpus::AddSentence() -> WriteSentence()\n");
     WriteSentence();
+  } else {
+    XVERBOSE(2, "Corpus::AddSentence(), but Corpus is not writable\n");
   }
   return size()-1;
 }

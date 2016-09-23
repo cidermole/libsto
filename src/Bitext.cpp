@@ -84,10 +84,16 @@ StreamVersions BitextSide<Token>::streamVersions() const {
 
   StreamVersions versions = StreamVersions::Max();
 
+  XVERBOSE(2, "BitextSide(" << lang << ")::streamVersions()...\n");
   versions = StreamVersions::Min(versions, corpus->streamVersions());
+  XVERBOSE(2, "corpus: " << corpus->streamVersions().DebugStr() << "\n");
 
-  for(auto& d : domain_indexes)
+  for(auto& d : domain_indexes) {
+    XVERBOSE(2, "domain " << static_cast<uint32_t>(d.first) << ": " << d.second->streamVersions().DebugStr() << "\n");
     versions = StreamVersions::Min(versions, d.second->streamVersions());
+  }
+
+  XVERBOSE(2, "BitextSide(" << lang << ")::streamVersions() = " << versions.DebugStr() << "\n");
 
   // any component with a higher seqNum will have to ignore the repeated updates
   return versions;
@@ -148,6 +154,10 @@ void Bitext::OpenIncremental(const std::string &base) {
   src_.reset(new BitextSide<sto::SrcToken>(std::make_shared<DB<SrcToken>>(*db_), base, l1_));
   trg_.reset(new BitextSide<sto::TrgToken>(std::make_shared<DB<TrgToken>>(*db_), base, l2_));
   align_.reset(new sto::Corpus<sto::AlignmentLink>(base + l1_ + "-" + l2_ + ".mam"));
+
+  src_->SetupLogging(logger_);
+  trg_->SetupLogging(logger_);
+  align_->SetupLogging(logger_);
 
   XVERBOSE(2, "Bitext: src global index size=" << src_->domain_indexes[kGlobalDomain]->span().size() << "\n");
   XVERBOSE(2, "Bitext: trg global index size=" << trg_->domain_indexes[kGlobalDomain]->span().size() << "\n");
@@ -255,6 +265,7 @@ void Bitext::Write(const std::string &base) {
 void Bitext::SetupLogging(std::shared_ptr<Logger> logger) {
   src_->SetupLogging(logger);
   trg_->SetupLogging(logger);
+  align_->SetupLogging(logger);
   Loggable::SetupLogging(logger);
 }
 
