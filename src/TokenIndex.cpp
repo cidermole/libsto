@@ -44,7 +44,7 @@ IndexSpan<Token> TokenIndex<Token, TypeTag>::span(ITreeNode<Token> &node) const 
 }
 
 template<class Token, typename TypeTag>
-void TokenIndex<Token, TypeTag>::AddSentence(const Sentence<Token> &sent, updateid_t version) {
+void TokenIndex<Token, TypeTag>::AddSentence(const Sentence<Token> &sent, sto_updateid_t version) {
   typedef typename Corpus<Token>::Offset Offset;
 
   // workaround for testing

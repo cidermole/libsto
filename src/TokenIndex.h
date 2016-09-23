@@ -242,7 +242,7 @@ public:
    * Thread safety: one writer, multiple reader threads.
    * Readers always see a valid state, but no guarantees on when writes become visible.
    */
-  virtual void AddSentence(const Sentence<Token> &sent, updateid_t version = updateid_t{static_cast<stream_t>(-1), static_cast<seqid_t>(-1)});
+  virtual void AddSentence(const Sentence<Token> &sent, sto_updateid_t version = sto_updateid_t{static_cast<stream_t>(-1), static_cast<seqid_t>(-1)});
 
   /**
    * Merge all Positions from 'add' into this TokenIndex.

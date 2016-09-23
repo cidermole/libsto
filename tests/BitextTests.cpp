@@ -67,7 +67,7 @@ TEST(BitextTests, add_memory) {
 
   // test add to memory-only Bitext
   bitext.Add(
-      updateid_t{static_cast<stream_t>(-1), 1},
+      mmt::updateid_t{static_cast<stream_t>(-1), 1},
       1, // domain
       std::vector<mmt::wid_t>{14, 15}, // source words
       std::vector<mmt::wid_t>{24, 25, 26}, // target sentence words
@@ -92,7 +92,7 @@ TEST(BitextTests, create_add_write_read) {
 
     // add to already existing, empty, persisted Bitext
     writable.Add(
-        updateid_t{static_cast<stream_t>(-1), 1},
+        mmt::updateid_t{static_cast<stream_t>(-1), 1},
         1, // domain
         std::vector<mmt::wid_t>{14, 15}, // source words
         std::vector<mmt::wid_t>{24, 25, 26}, // target sentence words
@@ -109,7 +109,7 @@ TEST(BitextTests, create_add_write_read) {
   // try adding another sent pair
 
   updated.Add(
-      updateid_t{static_cast<stream_t>(-1), 1},
+      mmt::updateid_t{static_cast<stream_t>(-1), 1},
       1, // domain
       std::vector<mmt::wid_t>{14, 17}, // source words
       std::vector<mmt::wid_t>{24, 25, 26, 28}, // target sentence words
@@ -223,7 +223,7 @@ TEST(BitextTests, convert_append_eim_small) {
       std::cerr << "Bitext::Add()..." << std::endl;
 
       bitxt.Add(
-          updateid_t{static_cast<stream_t>(-1), 1},
+          mmt::updateid_t{static_cast<stream_t>(-1), 1},
           europarl, // to existing domain (europarl)
           src_sent,
           std::vector<mmt::wid_t>{20, 21, 22, 23},

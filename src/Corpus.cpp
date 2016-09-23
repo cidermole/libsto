@@ -159,7 +159,7 @@ typename Corpus<Token>::Sid Corpus<Token>::AddSentenceIncremental(const std::vec
   if(!streamVersions_.Update(sentInfo.vid)) {
     // ignore update if too old
 
-    XVERBOSE(1, "Corpus::AddSentenceIncremental() ignoring updateid_t{"
+    XVERBOSE(1, "Corpus::AddSentenceIncremental() ignoring sto_updateid_t{"
         << static_cast<uint32_t>(sentInfo.vid.stream_id) << ","
         << static_cast<uint64_t>(sentInfo.vid.sentence_id)
         << "} because in that stream we are already at " << streamVersions_[sentInfo.vid.stream_id] << "\n");
@@ -170,7 +170,7 @@ typename Corpus<Token>::Sid Corpus<Token>::AddSentenceIncremental(const std::vec
         return i;
 
     // since this code only runs on startup, it is probably not unreasonable to crash there if we are inconsistent
-    throw std::runtime_error("Corpus inconsistent: updateid_t has been applied, but cannot find it");
+    throw std::runtime_error("Corpus inconsistent: sto_updateid_t has been applied, but cannot find it");
   }
 
   return AddSentence(sent, sentInfo);

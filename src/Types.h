@@ -27,9 +27,20 @@ typedef uint32_t domid_t; /** domain ID type */
 
 typedef uint32_t seq_t; /** sequence number to synchronize persistent storage */
 
-using updateid_t = mmt::updateid_t;
+//using sto_updateid_t = mmt::sto_updateid_t;
 using stream_t = mmt::stream_t;
 using seqid_t = mmt::seqid_t;
+
+static constexpr stream_t kInvalidStream = static_cast<stream_t>(-1); /** the stream that initial trained models store to. BEWARE: not yet used everywhere. */
+
+/** similar to mmt::updateid_t but with larger sentence_id. */
+struct sto_updateid_t {
+  stream_t stream_id;
+  seqid_t sentence_id;
+
+  constexpr sto_updateid_t(stream_t stream_id = 0, seqid_t sentence_id = 0) : stream_id(stream_id), sentence_id(sentence_id) {};
+};
+
 
 /**
  * Accounting type in sentence index of corpus.
@@ -163,37 +174,37 @@ struct Domain {
 };
 
 /**
- * For internal use: auxiliary sentence information (domain ID, updateid_t version).
+ * For internal use: auxiliary sentence information (domain ID, sto_updateid_t version).
  * The external interface is SentInfo.
  */
 struct sent_info_t {
   domid_t domid; /** domain ID */
 
-  /** byte packed fields from mmt::updateid_t */
+  /** byte packed fields from sto_updateid_t */
   seqid_t sentence_id;
   stream_t stream_id;
 
-  constexpr sent_info_t(domid_t domain_id, updateid_t version) : domid(domain_id), sentence_id(version.sentence_id), stream_id(version.stream_id) {}
+  constexpr sent_info_t(domid_t domain_id, sto_updateid_t version) : domid(domain_id), sentence_id(version.sentence_id), stream_id(version.stream_id) {}
 
-  operator updateid_t() const { return updateid_t{stream_id, sentence_id}; }
+  operator sto_updateid_t() const { return sto_updateid_t{stream_id, sentence_id}; }
 };
 
 /**
- * Auxiliary sentence information (domain ID, updateid_t version) compatible with Corpus,
+ * Auxiliary sentence information (domain ID, sto_updateid_t version) compatible with Corpus,
  * so we can persist this information for the Bitext.
  */
 struct SentInfo {
   typedef DummyVocab<SentInfo> Vocabulary;
   typedef sent_info_t Vid; /** vocabulary ID type */
-  static constexpr Vid kEosVid = {static_cast<domid_t>(-1), updateid_t{static_cast<stream_t>(-1), static_cast<seqid_t>(-1)}}; /** unused here */
-  static constexpr Vid kUnkVid = {static_cast<domid_t>(-1), updateid_t{static_cast<stream_t>(-1), static_cast<seqid_t>(-1)}}; /** unused here */
+  static constexpr Vid kEosVid = {static_cast<domid_t>(-1), sto_updateid_t{static_cast<stream_t>(-1), static_cast<seqid_t>(-1)}}; /** unused here */
+  static constexpr Vid kUnkVid = {static_cast<domid_t>(-1), sto_updateid_t{static_cast<stream_t>(-1), static_cast<seqid_t>(-1)}}; /** unused here */
   Vid vid; /** domain ID (called Vid for compatibility with the remaining Corpus/Sentence implementation.) */
   static constexpr CorpusIndexAccounting::acc_t kIndexType = CorpusIndexAccounting::IDX_CNT_ENTRIES;
 
   /** construct invalid SentInfo */
-  SentInfo(): vid(static_cast<domid_t>(-1), updateid_t{static_cast<stream_t>(-1), static_cast<seqid_t>(-1)}) {}
+  SentInfo(): vid(static_cast<domid_t>(-1), sto_updateid_t{static_cast<stream_t>(-1), static_cast<seqid_t>(-1)}) {}
 
-  SentInfo(domid_t domid, updateid_t version): vid(domid, version) {}
+  SentInfo(domid_t domid, sto_updateid_t version): vid(domid, version) {}
 };
 
 

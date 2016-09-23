@@ -67,7 +67,7 @@ void DocumentMap::Load(std::string const& fname, size_t num_sents) {
     line >> b;
     //VERBOSE(3, "DOCUMENT MAP " << docname << " " << a << "-" << b+a << std::endl);
     for (b += a; a < b; ++a) {
-      AddSentence(/* sid = */ a, docid, updateid_t{kLegacyDiskStream, a + 1}); // fake stream -1, fake seqNum
+      AddSentence(/* sid = */ a, docid, sto_updateid_t{kLegacyDiskStream, a + 1}); // fake stream -1, fake seqNum
     }
   }
   assert(b == sent_info_->size());
@@ -77,7 +77,7 @@ void DocumentMap::Load(std::string const& fname, size_t num_sents) {
   XVERBOSE(1, "DocumentMap::Load() loaded " << numDomains() << " domains, " << (sent_info_->size()) << " sentences.\n");
 }
 
-tpt::docid_type DocumentMap::FindOrInsert(const std::string &docname, updateid_t version) {
+tpt::docid_type DocumentMap::FindOrInsert(const std::string &docname, sto_updateid_t version) {
   tpt::docid_type id = docname2id_[docname];
   streamVersions_.Update(version);
   return id;
@@ -99,9 +99,9 @@ std::string DocumentMap::operator[](tpt::docid_type docid) const {
   return docname2id_.at(docid);
 }
 
-updateid_t DocumentMap::version(Corpus<SentInfo>::Sid sid) const {
+sto_updateid_t DocumentMap::version(Corpus<SentInfo>::Sid sid) const {
   const sent_info_t *info = sent_info_->begin(sid);
-  return updateid_t{info->stream_id, info->sentence_id};
+  return sto_updateid_t{info->stream_id, info->sentence_id};
 }
 
 typename DocumentMap::iterator DocumentMap::begin() const {
@@ -112,7 +112,7 @@ typename DocumentMap::iterator DocumentMap::end() const {
   return docname2id_.end();
 }
 
-void DocumentMap::AddSentence(sid_t sid, tpt::docid_type docid, updateid_t version) {
+void DocumentMap::AddSentence(sid_t sid, tpt::docid_type docid, sto_updateid_t version) {
   size_t next_sid = sent_info_->size();
   if(sid > next_sid)
     throw std::runtime_error("DocumentMap::AddSentence() currently only supports sequential addition of sentence IDs.");
@@ -140,7 +140,7 @@ StreamVersions DocumentMap::sent_info_stream_versions_() {
   StreamVersions versions;
   Sid info_size = sent_info_->size();
   for(Sid i = 0; i < info_size; i++) {
-    updateid_t upd = version(i);
+    sto_updateid_t upd = version(i);
     if(upd.sentence_id < versions.at(upd.stream_id)) {
       assert(0 && "update IDs should be sequential");
       continue;

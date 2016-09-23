@@ -28,7 +28,7 @@ public:
   bool Update(StreamVersions additions);
 
   /** returns true if addition was new */
-  bool Update(updateid_t addition);
+  bool Update(sto_updateid_t addition);
 
   iterator begin() const { return versions_.begin(); }
   iterator end() const { return versions_.end(); }

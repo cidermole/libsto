@@ -299,7 +299,7 @@ public:
    * Thread safety: writes concurrent to multiple reading threads
    * do not result in invalid state being read.
    */
-  virtual void AddSentence(const Sentence<Token> &sent, updateid_t version = updateid_t{static_cast<stream_t>(-1), static_cast<seqid_t>(-1)}) = 0;
+  virtual void AddSentence(const Sentence<Token> &sent, sto_updateid_t version = sto_updateid_t{static_cast<stream_t>(-1), static_cast<seqid_t>(-1)}) = 0;
 
   /** Merge all Positions from 'add' into this TokenIndex. */
   virtual void Merge(const ITokenIndex<Token> &add) = 0;
