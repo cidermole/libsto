@@ -152,11 +152,14 @@ TEST(CorpusTests, word_alignment_load) {
 // like write_read_append for word alignment
 TEST(CorpusTests, alignment_write_read_append) {
   Corpus<AlignmentLink> sc;
+  domid_t domain = 1;
 
   std::vector<AlignmentLink> links = {{0,0}, {0,1}, {3,4}};
 
   EXPECT_EQ(0, sc.size()) << "empty Corpus must have size() == 0";
-  sc.AddSentence(links);
+  sto_updateid_t expected_uid_0 = sto_updateid_t{kInvalidStream, 0};
+  sto_updateid_t expected_uid_1 = sto_updateid_t{0, 1};
+  sc.AddSentence(links, SentInfo{domain, expected_uid_0});
   EXPECT_EQ(1, sc.size()) << "after adding single Sentence, Corpus must have size() == 1";
 
   // retrieve Sentence from Corpus
@@ -188,7 +191,7 @@ TEST(CorpusTests, alignment_write_read_append) {
 
 
     // this corpus now supports appending
-    loaded.AddSentence(links2);
+    loaded.AddSentence(links2, SentInfo{domain, expected_uid_1});
 
     // for binary comparison, write in a different way as well:
     //loaded.Write("res/CorpusTests/ref.trk"); // note: will not currently diff correctly, because of uninitialized trailing bytes in structs
@@ -202,6 +205,8 @@ TEST(CorpusTests, alignment_write_read_append) {
     for(size_t i = 0; i < links2.size(); i++)
       EXPECT_EQ(links2[i], sent3x[i]) << "correct entry in v3 word alignment append, offset " << i;
 
+    auto id = sto_updateid_t{loaded.info(1).vid};
+    EXPECT_EQ(expected_uid_1, id);
 
 
   } // Corpus loaded; goes out of scope here -> file closed
@@ -216,6 +221,9 @@ TEST(CorpusTests, alignment_write_read_append) {
   EXPECT_EQ(links2.size(), sent3.size()) << "should have the same number of alignment links";
   for(size_t i = 0; i < links2.size(); i++)
     EXPECT_EQ(links2[i], sent3[i]) << "correct entry in v3 word alignment loaded from disk, offset " << i;
+
+  auto id2 = sto_updateid_t{loaded2.info(1).vid};
+  EXPECT_EQ(expected_uid_1, id2);
 
   //remove_all("res/CorpusTests"); // clean up
 }
@@ -343,3 +351,4 @@ TEST(CorpusTests, sentence_info) {
   EXPECT_EQ(expected_uid, disk_uid) << "sentence info from disk";
   EXPECT_EQ(expected_ver, disk_corpus.streamVersions()) << "StreamVersions from disk";
 }
+
