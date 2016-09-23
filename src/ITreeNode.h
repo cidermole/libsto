@@ -105,6 +105,9 @@ public:
 
   /** check whether all Positions have our vid at depth. */
   virtual void DebugCheckVidConsistency() const = 0;
+
+  /** for collecting profiling information */
+  virtual std::shared_ptr<DB<Token>> GetDB() = 0;
 };
 
 } // namespace sto

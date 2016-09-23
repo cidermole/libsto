@@ -266,6 +266,9 @@ public:
 
   virtual void DebugPrint(std::ostream &os);
 
+  /** for collecting profiling information */
+  virtual std::shared_ptr<DB<Token>> GetDB() override;
+
   /** Insert the subsequence from start into this index. Potentially splits. */
   void AddSubsequence_(const Sentence<Token> &sent, Offset start);
 

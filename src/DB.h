@@ -39,6 +39,26 @@ struct DBKeyInfo {
   domid_t domain;
 };
 
+struct PerformanceCounters {
+  double leafTime_ = 0.0;
+  double internalTime_ = 0.0;
+  size_t leafCount_ = 0;
+  size_t internalCount_ = 0;
+  size_t leafBytes_ = 0;
+  size_t internalBytes_ = 0;
+
+  void ResetCounters() {
+    leafTime_ = 0.0;
+    internalTime_ = 0.0;
+    leafCount_ = 0;
+    internalCount_ = 0;
+    leafBytes_ = 0;
+    internalBytes_ = 0;
+  }
+
+  std::string DebugPerformanceSummary() const;
+};
+
 /**
  * Base class for DB, without any particular template argument.
  */
@@ -66,10 +86,13 @@ public:
     return std::shared_ptr<DB<Token>>(new DB<Token>(*this, DBKeyInfo{lang, domain}));
   }
 
+  PerformanceCounters &GetPerformanceCounters() { return *counters_; }
+
   /** Flush the writes buffered so far, atomically applying them all together. */
   void Flush() {}
 
 protected:
+  std::shared_ptr<PerformanceCounters> counters_;
   std::shared_ptr<rocksdb::DB> db_;
   std::string key_prefix_; /** prefix prepended to all keys, essentially like a namespace/schema in the database */
   bool bulk_;
@@ -164,9 +187,6 @@ public:
 
 private:
   DBKeyInfo info_;
-  double putLeafTime_ = 0.0;
-  size_t nleaves_ = 0;
-  //friend class BaseDB; // was for private: DB(const BaseDB &other, std::string key_prefix);
 
   /** @returns key_prefix_ + key */
   std::string key_(const std::string &k);

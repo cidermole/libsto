@@ -7,6 +7,7 @@
 #include "DB.h"
 
 #include <iostream>
+#include <sstream>
 
 #include "rocksdb/db.h"
 #include "rocksdb/slice_transform.h"
@@ -22,7 +23,7 @@ static std::string now() {
   return std::string("[") + format_time(current_time()) + "] ";
 }
 
-BaseDB::BaseDB(const std::string &basePath, bool bulkLoad): bulk_(bulkLoad) {
+BaseDB::BaseDB(const std::string &basePath, bool bulkLoad): counters_(new PerformanceCounters), bulk_(bulkLoad) {
   rocksdb::DB *db = nullptr;
   rocksdb::Options options;
 
@@ -40,7 +41,7 @@ BaseDB::BaseDB(const std::string &basePath, bool bulkLoad): bulk_(bulkLoad) {
   db_.reset(db);
 }
 
-BaseDB::BaseDB(const BaseDB &other, const std::string &key_prefix) : db_(other.db_), key_prefix_(key_prefix), bulk_(other.bulk_)
+BaseDB::BaseDB(const BaseDB &other, const std::string &key_prefix) : counters_(other.counters_), db_(other.db_), key_prefix_(key_prefix), bulk_(other.bulk_)
 {}
 
 BaseDB::~BaseDB() {
@@ -69,8 +70,8 @@ DB<Token>::DB(const BaseDB &base) : BaseDB(base, "")
 template<class Token>
 DB<Token>::~DB() {
   //std::cerr << "closing DB." << std::endl;
-  if(this->nleaves_)
-    std::cerr << "DB: written " << this->nleaves_ << " in " << format_time(this->putLeafTime_) << " s" << std::endl;
+  if(this->counters_->leafCount_)
+    std::cerr << "DB: written " << this->counters_->leafCount_ << " in " << format_time(this->counters_->leafTime_) << " s" << std::endl;
 }
 
 /*
@@ -123,8 +124,12 @@ void DB<Token>::PutNodeInternal(const std::string &path, const std::vector<Vid> 
   rocksdb::Slice val(reinterpret_cast<const char *>(children.data()), children.size() * sizeof(Vid));
   std::string key = internal_key_(path);
   //std::cerr << "DB::PutNodeInternal(key=" << key << ", children.size()=" << children.size() << ")" << std::endl;
-  rocksdb::Status status = this->db_->Put(rocksdb::WriteOptions(), key, val);
-  assert(status.ok());
+  this->counters_->internalTime_ += benchmark_time([&](){
+    rocksdb::Status status = this->db_->Put(rocksdb::WriteOptions(), key, val);
+    assert(status.ok());
+  });
+  this->counters_->internalBytes_ += key.size() + val.size();
+  this->counters_->internalCount_++;
 }
 
 template<class Token>
@@ -206,12 +211,12 @@ void DB<Token>::PutNodeLeaf(const std::string &path, const SuffixArrayPosition<T
   std::string key = leaf_key_(path);
   //std::cerr << "DB::PutNodeLeaf(key=" << key << ", len=" << len << ")" << std::endl;
   rocksdb::Slice val((const char *) data, len * sizeof(SuffixArrayPosition<Token>));
-  this->putLeafTime_ += benchmark_time([&](){
+  this->counters_->leafTime_ += benchmark_time([&](){
     rocksdb::Status status = this->db_->Put(rocksdb::WriteOptions(), key, val);
     assert(status.ok());
   });
-
-  this->nleaves_++;
+  this->counters_->leafBytes_ += key.size() + val.size();
+  this->counters_->leafCount_++;
 }
 
 template<class Token>
@@ -326,6 +331,15 @@ DB<Token>::DB(const BaseDB &other, DBKeyInfo info) : BaseDB(other, ""), info_(in
 template<class Token>
 std::string DB<Token>::key_(const std::string &k) {
   return this->key_prefix_ + k;
+}
+
+std::string PerformanceCounters::DebugPerformanceSummary() const {
+  std::stringstream ss;
+
+  ss << "DB leaves: count=" << leafCount_ << " bytes=" << leafBytes_ << " time=" << leafTime_ << std::endl;
+  ss << "DB internal nodes: count=" << internalCount_ << " bytes=" << internalBytes_ << " time=" << internalTime_ << std::endl;
+
+  return ss.str();
 }
 
 // explicit template instantiation

@@ -225,29 +225,48 @@ Bitext::Add(const mmt::updateid_t &mmt_version, const mmt::domain_t domain,
   // (1) add to corpus first:
   XVERBOSE(2, "Bitext::Add() - Corpus\n");
 
-  // order of these three does not matter
-  auto isrc = src_->AddToCorpus(srcSent, domain, version);
-  auto itrg = trg_->AddToCorpus(trgSent, domain, version);
-  assert(isrc == itrg);
-  align_->AddSentenceIncremental(std::vector<AlignmentLink>{alignment.begin(), alignment.end()}, SentInfo{domain, version});
+  BitextSide<SrcToken>::Sid isrc;
+  BitextSide<TrgToken>::Sid itrg;
+
+  double time_corpus = benchmark_time([&](){
+    // order of these three does not matter
+    isrc = src_->AddToCorpus(srcSent, domain, version);
+    itrg = trg_->AddToCorpus(trgSent, domain, version);
+    assert(isrc == itrg);
+    align_->AddSentenceIncremental(std::vector<AlignmentLink>{alignment.begin(), alignment.end()}, SentInfo{domain, version});
+  });
+  XVERBOSE(2, "Bitext::Add() Corpus additions took " << format_time(time_corpus) << " s");
 
   // (3) domain-specific first: ensures that domain-specific indexes can provide, since we query the global index for the presence of source phrases first.
   XVERBOSE(2, "Bitext::Add() - AddToDomainIndex(" << domain << ")\n");
+  db_->GetPerformanceCounters().ResetCounters();
 
-  // currently, order of these two does not matter here (we query global index first)
-  trg_->AddToDomainIndex(itrg, domain, version);
-  src_->AddToDomainIndex(isrc, domain, version);
+  double time_domain_index = benchmark_time([&](){
+    // currently, order of these two does not matter here (we query global index first)
+    trg_->AddToDomainIndex(itrg, domain, version);
+    src_->AddToDomainIndex(isrc, domain, version);
+  });
+  XVERBOSE(2, "Bitext::Add() AddToDomainIndex additions took " << format_time(time_domain_index) << " s");
+  XVERBOSE(2, db_->GetPerformanceCounters().DebugPerformanceSummary());
 
   // (4) global index last - everything should be stored by the time readers see a new global source index entry
   XVERBOSE(2, "Bitext::Add() - AddToDomainIndex(kGlobalDomain)\n");
+  db_->GetPerformanceCounters().ResetCounters();
 
-  // target side first: ensures extraction will work
-  trg_->AddToDomainIndex(itrg, kGlobalDomain, version);
-  src_->AddToDomainIndex(isrc, kGlobalDomain, version);
+  double time_global_index = benchmark_time([&]() {
+    // target side first: ensures extraction will work
+    trg_->AddToDomainIndex(itrg, kGlobalDomain, version);
+    src_->AddToDomainIndex(isrc, kGlobalDomain, version);
+  });
+  XVERBOSE(2, "Bitext::Add() AddToGlobalIndex additions took " << format_time(time_global_index) << " s");
+  XVERBOSE(2, db_->GetPerformanceCounters().DebugPerformanceSummary());
 
-  // update versions in all domain indexes (for StreamVersions::Min() to work, all need to have most recent version)
-  trg_->Flush(version);
-  src_->Flush(version);
+  double time_domain_flush = benchmark_time([&]() {
+    // update versions in all domain indexes (for StreamVersions::Min() to work, all need to have most recent version)
+    trg_->Flush(version);
+    src_->Flush(version);
+  });
+  XVERBOSE(2, "Bitext::Add() Flush() for domain StreamVersions took " << format_time(time_domain_flush) << " s");
 }
 
 /** Write to (empty) DB and disk. */

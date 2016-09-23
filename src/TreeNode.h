@@ -138,6 +138,9 @@ public:
   /** check whether all Positions have our vid at depth. */
   virtual void DebugCheckVidConsistency() const override;
 
+  /** for collecting profiling information */
+  virtual std::shared_ptr<DB<Token>> GetDB() override { return std::shared_ptr<DB<Token>>(); }
+
   virtual void Flush(StreamVersions streamVersions) {}
   virtual StreamVersions streamVersions() const { /* stub! streamVersions_ is never updated. */ return streamVersions_; }
 

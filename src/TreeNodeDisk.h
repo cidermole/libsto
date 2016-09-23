@@ -85,6 +85,9 @@ public:
   /** Write vids of children to persistent storage */
   virtual void WriteChildren() override;
 
+  /** for collecting profiling information */
+  virtual std::shared_ptr<DB<Token>> GetDB() override { return db_; }
+
 private:
   std::string path_; /** path to the directory backing this DiskTreeNode */
   std::shared_ptr<DB<Token>> db_;

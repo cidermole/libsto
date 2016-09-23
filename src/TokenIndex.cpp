@@ -117,6 +117,11 @@ void TokenIndex<Token, TypeTag>::DebugPrint(std::ostream &os) {
 }
 
 template<class Token, typename TypeTag>
+std::shared_ptr<DB<Token>> TokenIndex<Token, TypeTag>::GetDB() {
+  return root_->GetDB();
+}
+
+template<class Token, typename TypeTag>
 void TokenIndex<Token, TypeTag>::AddSubsequence_(const Sentence<Token> &sent, Offset start) {
   /*
    * A hybrid suffix trie / suffix array implementation.

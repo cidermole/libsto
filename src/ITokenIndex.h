@@ -318,6 +318,8 @@ public:
 
   virtual void DebugPrint(std::ostream &os) = 0;
 
+  /** for collecting profiling information */
+  virtual std::shared_ptr<DB<Token>> GetDB() = 0;
 };
 
 } // namespace sto
