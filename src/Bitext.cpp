@@ -221,7 +221,7 @@ Bitext::Add(const mmt::updateid_t &mmt_version, const mmt::domain_t domain,
   auto isrc = src_->AddToCorpus(srcSent, domain, version);
   auto itrg = trg_->AddToCorpus(trgSent, domain, version);
   assert(isrc == itrg);
-  align_->AddSentence(std::vector<AlignmentLink>{alignment.begin(), alignment.end()}, SentInfo{domain, version});
+  align_->AddSentenceIncremental(std::vector<AlignmentLink>{alignment.begin(), alignment.end()}, SentInfo{domain, version});
 
   // (3) domain-specific first: ensures that domain-specific indexes can provide, since we query the global index for the presence of source phrases first.
   XVERBOSE(2, "Bitext::Add() - AddToDomainIndex(" << domain << ")\n");
@@ -277,6 +277,8 @@ StreamVersions Bitext::streamVersions() const {
   versions = StreamVersions::Min(versions, src_->streamVersions());
   versions = StreamVersions::Min(versions, trg_->streamVersions());
   versions = StreamVersions::Min(versions, align_->streamVersions());
+
+  XVERBOSE(2, "alignment: " << align_->streamVersions().DebugStr() << "\n");
 
   return versions;
 }
