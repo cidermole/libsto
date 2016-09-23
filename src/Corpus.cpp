@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <sstream>
 
+#include <boost/filesystem.hpp>
 #include <unistd.h>
 
 #include "Corpus.h"
@@ -28,7 +29,7 @@ Corpus<Token>::Corpus(const Corpus<Token>::Vocabulary *vocab) : vocab_(vocab), t
 
 /* Load corpus from mtt-build .mtt format or from split corpus/sentidx. */
 template<class Token>
-Corpus<Token>::Corpus(const std::string &filename, const Corpus<Token>::Vocabulary *vocab) : vocab_(vocab), writable_(false) {
+Corpus<Token>::Corpus(const std::string &filename, const Corpus<Token>::Vocabulary *vocab) : vocab_(vocab), writable_(false), track_filename_(filename) {
   track_.reset(new MappedFile(filename, /* offset = */ 0, O_RDWR));
   CorpusTrackHeader &header = *reinterpret_cast<CorpusTrackHeader *>(track_->ptr);
   trackHeader_ = header;
@@ -63,7 +64,50 @@ Corpus<Token>::Corpus(const std::string &filename, const Corpus<Token>::Vocabula
 
   init_index_type();
 
+  // TODO: debug only
+  if(header.versionMagic == tpt::CORPUS_V31_MAGIC)
+    DebugVerifyConsistency();
+
   streamVersions_ = ComputeStreamVersions();
+}
+
+template<class Token>
+void Corpus<Token>::DebugVerifyConsistency() {
+  // check that the amount of tokens referenced by the index file .six is really there
+
+  const Vid *b = trackTokens_; // including SentInfo
+  const Vid *e = size() != 0 ? end(size()-1) : b;
+
+  size_t size_vid = e - b; // track itself should be this size, in number of Vids
+  size_t size_bytes = sizeof(CorpusTrackHeader) + size_vid * sizeof(Vid); // index says track file should be this size
+
+  if(track_->size() == size_bytes)
+    return; // everything OK
+
+
+  // XVERBOSE never arrives because Loggable isn't set up at the time the ctor runs
+  std::cerr << "DebugVerifyConsistency(): .trk should be " << size_bytes << " bytes, but is " << track_->size() << " bytes\n";
+
+  if(track_->size() > size_bytes)
+    return;
+
+  size_t nsents_est;
+  for(nsents_est = size(); nsents_est != (size_t)-1; nsents_est--) {
+    e = end(nsents_est-1);
+    size_vid = e - b;
+    size_bytes = sizeof(CorpusTrackHeader) + size_vid * sizeof(Vid); // index says track file should be this size
+    if(size_bytes < track_->size())
+      break;
+  }
+
+  std::cerr << "DebugVerifyConsistency(): .trk size roughly equals " << nsents_est << " sentences stored.\n";
+
+  std::cerr << "Printing last 2k sto_updateid_t:\n";
+
+  for(size_t i = nsents_est - 2001; i < nsents_est; i++) {
+    auto inf = info(i).vid;
+    std::cerr << "sid=" << i << " sto_updateid_t{" << static_cast<uint32_t>(inf.stream_id) << ", " << inf.sentence_id << "}\n" << std::endl;
+  }
 }
 
 template<class Token>
@@ -262,13 +306,13 @@ void Corpus<Token>::WriteSentence() {
 
   // end at the time of first Corpus construction, in tokens
   size_t static_ntoks = sentIndexEntries_[sentIndexHeader_.idxSize] / sentIndexEntrySize_;
-  size_t dyn_nsents = dyn_sentIndex_.size()-2;
-  size_t dyn_ntoks_before = dyn_sentIndex_[dyn_nsents]; // size (in tokens) of dynamically added tokens, already written
-  size_t dyn_ntoks_after = dyn_sentIndex_[dyn_nsents+1];
+  size_t dyn_isent = dyn_sentIndex_.size()-2;
+  size_t dyn_ntoks_before = dyn_sentIndex_[dyn_isent]; // size (in tokens) of dynamically added tokens, already written
+  size_t dyn_ntoks_after = dyn_sentIndex_[dyn_isent+1];
   if(fseek(ftrack_, sizeof(CorpusTrackHeader) + (static_ntoks + sentIndexHeader_.idxSize * kSentInfoSizeToks + dyn_ntoks_before) * sizeof(Vid), SEEK_SET))
     throw std::runtime_error("Corpus: fseek() failed on track");
 
-  if(fwrite(&dyn_track_info_[dyn_nsents], sizeof(SentInfo), 1, ftrack_) != 1)
+  if(fwrite(&dyn_track_info_[dyn_isent], sizeof(SentInfo), 1, ftrack_) != 1)
     throw std::runtime_error("Corpus: fwrite() failed on track");
 
   size_t ntoks = dyn_ntoks_after - dyn_ntoks_before;
@@ -278,6 +322,20 @@ void Corpus<Token>::WriteSentence() {
   // enforce order: track write must be completed
   fflush(ftrack_);
   fsync(track_->fd());
+
+  // TODO DEBUG
+  size_t size_ntoks = (sentIndexHeader_.idxSize + dyn_isent+1) * kSentInfoSizeToks // add an offset for SentInfo
+  + (static_ntoks + dyn_ntoks_after);
+  size_t size_bytes = sizeof(CorpusTrackHeader) + size_ntoks * sizeof(Vid);
+
+  size_t real_size_bytes = boost::filesystem::file_size(track_filename_);
+  if(size_bytes != real_size_bytes) {
+    std::cerr << "Corpus<Token>::WriteSentence() should have appended " << (ntoks * sizeof(Vid) + sizeof(SentInfo)) << " bytes" << std::endl;
+    std::cerr << "Corpus<Token>::WriteSentence() but in fact, " << (size_bytes - real_size_bytes) << " bytes are missing." << std::endl;
+    throw std::runtime_error("Corpus<Token>::WriteSentence() size mismatch.");
+  }
+  // end DEBUG
+
 
   // update index: append first, then update counts in header
   SentIndexEntry entry = static_cast<SentIndexEntry>((static_ntoks + dyn_ntoks_after) * sentIndexEntrySize_);

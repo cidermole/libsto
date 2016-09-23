@@ -104,9 +104,12 @@ private:
   std::vector<SentIndexEntry> dyn_sentIndex_; /** indexes sentence start positions in dyn_track_, includes trailing sentinel */
 
   StreamVersions streamVersions_;
+  std::string track_filename_;
 
   /** Compute current persistence sequence number. This actually walks the whole Corpus. */
   StreamVersions ComputeStreamVersions() const;
+
+  void DebugVerifyConsistency();
 
   /**
    * Append the most recently added dynamic sentence to the v3 corpus on disk.
