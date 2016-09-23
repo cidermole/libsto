@@ -372,6 +372,16 @@ void Bitext::StartBitextStressThread() {
   stress_thread_ = std::thread(&Bitext::RunBitextStressThread, this);
 }
 
+bool Bitext::DebugLookupSrc(const std::vector<mmt::wid_t> &phrase) const {
+  IndexSpan<SrcToken> span = this->src_->index()->span();
+  for(size_t i = 0; i < phrase.size(); i++) {
+    if(!span.narrow(SrcToken{phrase[i]}))
+      return false;
+  }
+  return true;
+}
+
+
 template<class Token> constexpr domid_t BitextSide<Token>::kGlobalDomain;
 
 constexpr domid_t Bitext::kGlobalDomain;

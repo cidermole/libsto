@@ -40,6 +40,7 @@ set(TOOL_SOURCES
         src/tools/mtt-build.cpp
         src/tools/symal2mam.cpp
         src/tools/mmlex-build.cpp
+        src/tools/bitext-stress.cpp
         )
 
 foreach(toolSrc ${TOOL_SOURCES})

@@ -174,6 +174,8 @@ public:
 
   virtual void SetupLogging(std::shared_ptr<Logger> logger) override;
 
+  bool DebugLookupSrc(const std::vector<mmt::wid_t> &phrase) const;
+
 protected:
   std::string l1_; /** source language 2-letter code */
   std::string l2_; /** targetlanguage 2-letter code */
