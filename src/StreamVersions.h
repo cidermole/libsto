@@ -40,6 +40,9 @@ public:
 
   std::string DebugStr() const;
 
+  // for testing
+  bool operator==(const StreamVersions &other) const;
+
 private:
   std::unordered_map<stream_t, seqid_t> versions_;
   bool is_max_;

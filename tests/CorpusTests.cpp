@@ -290,3 +290,56 @@ TEST(CorpusTests, operator_less_orderings) {
   // apple </s> < apple and pear </s>
   EXPECT_TRUE(comp(apple_eos, apple_and_pear)) << "comp(a, b) means a < b.  (apple </s> < apple and ...) expected.  EOS and shorter-sequence ordering test.";
 }
+
+TEST(CorpusTests, basic_add_vids) {
+  Corpus<SrcToken> corpus;
+
+  std::vector<mmt::wid_t> surface = {10, 11, 12, 13};
+  std::vector<SrcToken> sentence;
+  for(auto s : surface)
+    sentence.push_back(s);
+
+  corpus.AddSentence(sentence);
+
+  // retrieve Sentence from Corpus
+  Sentence<SrcToken> sent = corpus.sentence(0);
+  EXPECT_EQ(SrcToken{11}, sent[1]) << "proper working of Sentence::operator[]()";
+}
+
+TEST(CorpusTests, sentence_info) {
+  Corpus<SrcToken> corpus;
+
+  domid_t domain = 1;
+  std::vector<mmt::wid_t> surface = {10, 11, 12, 13};
+  std::vector<SrcToken> sentence;
+  for(auto s : surface)
+    sentence.push_back(s);
+
+  sto_updateid_t expected_uid = sto_updateid_t{kInvalidStream, 0};
+
+  corpus.AddSentence(sentence, SentInfo{domain, expected_uid});
+
+  StreamVersions expected_ver;
+  expected_ver.Update(sto_updateid_t{kInvalidStream, 0});
+  std::cerr << "expected: " << expected_ver.DebugStr() << std::endl;
+
+  // retrieve Sentence from Corpus
+  Sentence<SrcToken> sent = corpus.sentence(0);
+  EXPECT_EQ(SrcToken{11}, sent[1]) << "proper working of Sentence::operator[]()";
+
+  auto ram_uid = sto_updateid_t{corpus.info(0).vid};
+  EXPECT_EQ(expected_uid, ram_uid) << "sentence info in RAM";
+  EXPECT_EQ(expected_ver, corpus.streamVersions()) << "StreamVersions in RAM";
+
+  remove_all("res/CorpusTests");
+  boost::filesystem::create_directory("res/CorpusTests");
+
+  // write and read back
+  corpus.Write("res/CorpusTests/sentence_info.trk");
+
+  Corpus<SrcToken> disk_corpus("res/CorpusTests/sentence_info.trk");
+
+  auto disk_uid = sto_updateid_t{disk_corpus.info(0).vid};
+  EXPECT_EQ(expected_uid, disk_uid) << "sentence info from disk";
+  EXPECT_EQ(expected_ver, disk_corpus.streamVersions()) << "StreamVersions from disk";
+}

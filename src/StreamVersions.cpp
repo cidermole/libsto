@@ -50,6 +50,21 @@ StreamVersions StreamVersions::Min(StreamVersions a, StreamVersions b) {
   return min;
 }
 
+bool StreamVersions::operator==(const StreamVersions &other) const {
+  std::unordered_set<stream_t> keys;
+
+  for(auto e : (*this))
+    keys.insert(e.first);
+  for(auto e : other)
+    keys.insert(e.first);
+
+  for(auto key : keys)
+    if(this->at(key) != other.at(key))
+      return false;
+
+  return true;
+}
+
 std::string StreamVersions::DebugStr() const {
   std::stringstream ss;
   ss << "StreamVersions(";

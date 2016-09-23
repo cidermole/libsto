@@ -39,6 +39,9 @@ struct sto_updateid_t {
   seqid_t sentence_id;
 
   constexpr sto_updateid_t(stream_t stream_id = 0, seqid_t sentence_id = 0) : stream_id(stream_id), sentence_id(sentence_id) {};
+
+  // for testing
+  bool operator==(const sto_updateid_t &other) const { return stream_id == other.stream_id && sentence_id == other.sentence_id; }
 };
 
 
