@@ -250,16 +250,23 @@ NodeType DB<Token>::IsNodeLeaf(const std::string &path) {
 
   //std::cerr << "DB::IsNodeLeaf(key=" << key << ", array_key=" << array_key_str << ")" << std::endl;
 
-  if(this->db_->Get(rocksdb::ReadOptions(), array_key_str, &value_discarded).ok()) {
+  if(this->has_key_(array_key_str)) {
     // has array -> leaf
     return NT_LEAF_EXISTS;
-  } else if(this->db_->Get(rocksdb::ReadOptions(), key, &value_discarded).ok()) {
+  } else if(this->has_key_(key)) {
     // has children -> internal node
     return NT_INTERNAL;
   } else {
     // no array, no children -> need empty leaf node
     return NT_LEAF_MISSING;
   }
+}
+
+template<class Token>
+bool DB<Token>::has_key_(const std::string &key) {
+  auto iter = this->db_->NewIterator(rocksdb::ReadOptions());
+  iter->Seek(key);
+  return iter->Valid() && iter->key().compare(key) == 0;
 }
 
 template<class Token>

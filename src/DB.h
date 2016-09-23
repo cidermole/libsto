@@ -191,6 +191,8 @@ private:
   /** @returns key_prefix_ + key */
   std::string key_(const std::string &k);
 
+  bool has_key_(const std::string &k);
+
   std::string vid_key_(Vid vid);
   std::string surface_key_(const std::string &surface);
   std::string leaf_key_(const std::string &path);
