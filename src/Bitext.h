@@ -57,10 +57,10 @@ struct BitextSide : public sto::Loggable {
   ~BitextSide();
 
   /** Add sentence to Vocab and Corpus. */
-  Sid AddToCorpus(const std::vector<Vid> &sent, domid_t domain, updateid_t version);
+  Sid AddToCorpus(const std::vector<Vid> &sent, domid_t domain, sto_updateid_t version);
 
   /** Add a sentence to the domain index docid. Sentence should already be added via AddToCorpus(). */
-  void AddToDomainIndex(Sid sid, tpt::docid_type docid, updateid_t version);
+  void AddToDomainIndex(Sid sid, tpt::docid_type docid, sto_updateid_t version);
 
   /** global index */
   std::shared_ptr<sto::ITokenIndex<Token>> index() { return domain_indexes[kGlobalDomain]; }

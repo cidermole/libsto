@@ -64,7 +64,7 @@ public:
   Sid AddSentence(const std::vector<Token> &sent, SentInfo info = SentInfo());
 
   /**
-   * Higher-level implementation that checks SentInfo updateid_t and ignores updates.
+   * Higher-level implementation that checks SentInfo sto_updateid_t and ignores updates.
    * @return most recent sentence ID, or if update ignored, the sentence ID that was added in an update before
    */
   Sid AddSentenceIncremental(const std::vector<Token> &sent, SentInfo info = SentInfo());

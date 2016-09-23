@@ -46,7 +46,7 @@ public:
 
   size_t numDomains() const { return docname2id_.size(); }
 
-  tpt::docid_type FindOrInsert(const std::string &docname, updateid_t version);
+  tpt::docid_type FindOrInsert(const std::string &docname, sto_updateid_t version);
 
   /** @return true if this doc name is mapped */
   bool contains(const std::string &docname) const;
@@ -58,7 +58,7 @@ public:
   std::string operator[](tpt::docid_type docid) const;
 
   /** add to sentence ID -> document ID mapping */
-  void AddSentence(sid_t sid, tpt::docid_type docid, updateid_t version);
+  void AddSentence(sid_t sid, tpt::docid_type docid, sto_updateid_t version);
 
   /**
    * Load document map from a v1 sapt .dmp file.
@@ -80,7 +80,7 @@ public:
   /** Finalize an update with seqNum. Flush writes to DB and apply a new persistence sequence number. */
   //void Flush();
   /** Persistence sequence number of Sentence with 'sid'. */
-  updateid_t version(Corpus<SentInfo>::Sid sid) const;
+  sto_updateid_t version(Corpus<SentInfo>::Sid sid) const;
 
   /** Current persistence sequence number. */
   StreamVersions streamVersions() const { return streamVersions_; }

@@ -19,7 +19,7 @@ seqid_t StreamVersions::at(stream_t stream) const {
     return is_max_ ? static_cast<seqid_t>(-1) : 0;
 }
 
-bool StreamVersions::Update(updateid_t addition) {
+bool StreamVersions::Update(sto_updateid_t addition) {
   if(addition.sentence_id > at(addition.stream_id)) {
     (*this)[addition.stream_id] = addition.sentence_id;
     return true;
@@ -30,7 +30,7 @@ bool StreamVersions::Update(updateid_t addition) {
 bool StreamVersions::Update(StreamVersions additions) {
   bool changes = false;
   for(auto entry : additions)
-    changes = changes || Update(updateid_t{entry.first, entry.second});
+    changes = changes || Update(sto_updateid_t{entry.first, entry.second});
   return changes;
 }
 
@@ -44,7 +44,7 @@ StreamVersions StreamVersions::Min(StreamVersions a, StreamVersions b) {
     keys.insert(e.first);
 
   for(auto key : keys)
-    min.Update(updateid_t{key, std::min(a.at(key), b.at(key))});
+    min.Update(sto_updateid_t{key, std::min(a.at(key), b.at(key))});
 
   return min;
 }

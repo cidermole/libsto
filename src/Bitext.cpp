@@ -43,7 +43,7 @@ BitextSide<Token>::~BitextSide()
 {}
 
 template<typename Token>
-typename BitextSide<Token>::Sid BitextSide<Token>::AddToCorpus(const std::vector<BitextSide<Token>::Vid> &sent, domid_t domain, updateid_t version) {
+typename BitextSide<Token>::Sid BitextSide<Token>::AddToCorpus(const std::vector<BitextSide<Token>::Vid> &sent, domid_t domain, sto_updateid_t version) {
   std::vector<Token> toks;
   for(auto t : sent)
     toks.push_back(t);
@@ -51,7 +51,7 @@ typename BitextSide<Token>::Sid BitextSide<Token>::AddToCorpus(const std::vector
 }
 
 template<typename Token>
-void BitextSide<Token>::AddToDomainIndex(Sid sid, tpt::docid_type docid, updateid_t version) {
+void BitextSide<Token>::AddToDomainIndex(Sid sid, tpt::docid_type docid, sto_updateid_t version) {
   if(domain_indexes.find(docid) == domain_indexes.end()) {
     if(db)
       // persisted in DB
@@ -166,20 +166,37 @@ void Bitext::Open(const std::string &base) {
 }
 
 std::vector<mmt::updateid_t> Bitext::GetLatestUpdatesIdentifier() {
-  // convert StreamVersions -> vector<mmt::updateid_t>
+  // convert StreamVersions -> vector<mmt::sto_updateid_t>
   StreamVersions versions = streamVersions();
   std::vector<mmt::updateid_t> updateids;
-  for(auto stream : versions)
-    updateids.push_back(mmt::updateid_t{stream.first, stream.second});
+
+  // We report a model just trained (without any updates) by omitting any streams -- see top comment in Bitext::Add()
+
+  for(auto stream : versions) {
+    if(stream.first != kInvalidStream) // never report static-trained stream
+      updateids.push_back(mmt::updateid_t{stream.first, stream.second - 1});
+  }
+
   return updateids;
 }
 
 void
-Bitext::Add(const mmt::updateid_t &version, const mmt::domain_t domain,
+Bitext::Add(const mmt::updateid_t &mmt_version, const mmt::domain_t domain,
             const std::vector<mmt::wid_t> &srcSent, const std::vector<mmt::wid_t> &trgSent,
             const mmt::alignment_t &alignment)
 {
-  XVERBOSE(2, "Bitext::Add() of updateid_t{"
+  /*
+   * First Kafka update comes as updateid_t{0,0} with sentence_id=0
+   * However, we have implicit sentence_id=0 in StreamVersions of non-existent streams.
+   * Therefore, we increment here, and decrement on reporting.
+   * We report a model just trained (without any updates) by omitting any streams.
+   */
+  sto_updateid_t version;
+  version.stream_id = mmt_version.stream_id;
+  version.sentence_id = mmt_version.sentence_id + 1;
+
+
+  XVERBOSE(2, "Bitext::Add() of sto_updateid_t{"
       << static_cast<uint32_t>(version.stream_id) << ","
       << static_cast<uint64_t>(version.sentence_id)
       << "}\n");

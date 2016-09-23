@@ -166,7 +166,7 @@ void read_input_lines(BitextSide<Token> &side, DocumentMap &docMap, Args &args) 
       sent.push_back(std::stoul(w));
 
     //std::cerr << "writing sid=" << (sid+1) << " to domain " << docMap.sid2did(sid+1) << std::endl;
-    sid = side.corpus->AddSentence(sent, SentInfo{docMap.sid2did(sid+1), updateid_t{static_cast<stream_t>(-1), 0}});
+    sid = side.corpus->AddSentence(sent, SentInfo{docMap.sid2did(sid+1), sto_updateid_t{static_cast<stream_t>(-1), 0}});
     side.index()->AddSentence(side.corpus->sentence(sid));
 
     if(!args.quiet) log_progress(sid);
