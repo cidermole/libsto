@@ -62,6 +62,9 @@ struct BitextSide : public sto::Loggable {
   /** Add a sentence to the domain index docid. Sentence should already be added via AddToCorpus(). */
   void AddToDomainIndex(Sid sid, tpt::docid_type docid, sto_updateid_t version);
 
+  /** update versions in all domain indexes (for Min() to work, all need to have most recent version) */
+  void Flush(sto_updateid_t version);
+
   /** global index */
   std::shared_ptr<sto::ITokenIndex<Token>> index() { return domain_indexes[kGlobalDomain]; }
 

@@ -65,6 +65,14 @@ void BitextSide<Token>::AddToDomainIndex(Sid sid, tpt::docid_type docid, sto_upd
 }
 
 template<typename Token>
+void BitextSide<Token>::Flush(sto_updateid_t version) {
+  StreamVersions versions;
+  versions.Update(version);
+  for(auto& d : domain_indexes)
+    d.second->Flush(versions);
+}
+
+template<typename Token>
 void BitextSide<Token>::Write(std::shared_ptr<DB<Token>> db, const std::string &base) {
   std::cerr << "BitextSide<Token>::Write() of lang=" << lang << "..." << std::endl;
 
@@ -236,6 +244,10 @@ Bitext::Add(const mmt::updateid_t &mmt_version, const mmt::domain_t domain,
   // target side first: ensures extraction will work
   trg_->AddToDomainIndex(itrg, kGlobalDomain, version);
   src_->AddToDomainIndex(isrc, kGlobalDomain, version);
+
+  // update versions in all domain indexes (for StreamVersions::Min() to work, all need to have most recent version)
+  trg_->Flush(version);
+  src_->Flush(version);
 }
 
 /** Write to (empty) DB and disk. */
