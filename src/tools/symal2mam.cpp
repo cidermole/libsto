@@ -23,7 +23,7 @@ void read_input_lines(Corpus<AlignmentLink> &corpus) {
   size_t a, b;
   char dash;
   vector<AlignmentLink> align;
-  typename Corpus<AlignmentLink>::Sid sid = 0;
+  typename Corpus<AlignmentLink>::Sid sid = -1;
 
   while(getline(cin, line)) {
     istringstream buf(line);
@@ -31,7 +31,9 @@ void read_input_lines(Corpus<AlignmentLink> &corpus) {
     while(buf >> a >> dash >> b)
       align.push_back(make_pair(a, b));
 
-    corpus.AddSentence(align);
+    // to do: domain ID is unused (here set to 0) in mam word alignment track
+    // (best way might be to unify src,trg,alignment in one track)
+    sid = corpus.AddSentence(align, SentInfo{0, sto_updateid_t{kInvalidStream, 0}});
 
     //if(!args.quiet) log_progress(sid);
   }

@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <sstream>
+#include <iostream>
 
 // get rid of moses definitions, if applicable
 #ifdef XVERBOSE
@@ -59,6 +60,24 @@ protected:
 
   virtual size_t verboseLevel() const { return verboseLevel_; }
 };
+
+/** only used in unit tests, moses has its own with a lock. */
+class DefaultLogger : public Logger {
+public:
+  DefaultLogger(size_t verbose) : verbose_(verbose) {}
+
+  /** called only if level is above verboseLevel */
+  virtual void log(const std::string &message) override {
+    std::cerr << message;
+  }
+
+  virtual size_t verboseLevel() const override {
+    return verbose_;
+  }
+private:
+  size_t verbose_;
+};
+
 
 } // namespace sto
 

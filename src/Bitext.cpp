@@ -233,9 +233,10 @@ Bitext::Add(const mmt::updateid_t &mmt_version, const mmt::domain_t domain,
     isrc = src_->AddToCorpus(srcSent, domain, version);
     itrg = trg_->AddToCorpus(trgSent, domain, version);
     assert(isrc == itrg);
+    XVERBOSE(2, "Bitext::Add() - alignment Corpus\n");
     align_->AddSentenceIncremental(std::vector<AlignmentLink>{alignment.begin(), alignment.end()}, SentInfo{domain, version});
   });
-  XVERBOSE(2, "Bitext::Add() Corpus additions took " << format_time(time_corpus) << " s");
+  XVERBOSE(2, "Bitext::Add() Corpus additions took " << format_time(time_corpus) << " s\n");
 
   // (3) domain-specific first: ensures that domain-specific indexes can provide, since we query the global index for the presence of source phrases first.
   XVERBOSE(2, "Bitext::Add() - AddToDomainIndex(" << domain << ")\n");
@@ -246,7 +247,7 @@ Bitext::Add(const mmt::updateid_t &mmt_version, const mmt::domain_t domain,
     trg_->AddToDomainIndex(itrg, domain, version);
     src_->AddToDomainIndex(isrc, domain, version);
   });
-  XVERBOSE(2, "Bitext::Add() AddToDomainIndex additions took " << format_time(time_domain_index) << " s");
+  XVERBOSE(2, "Bitext::Add() AddToDomainIndex additions took " << format_time(time_domain_index) << " s\n");
   XVERBOSE(2, db_->GetPerformanceCounters().DebugPerformanceSummary());
 
   // (4) global index last - everything should be stored by the time readers see a new global source index entry
@@ -258,7 +259,7 @@ Bitext::Add(const mmt::updateid_t &mmt_version, const mmt::domain_t domain,
     trg_->AddToDomainIndex(itrg, kGlobalDomain, version);
     src_->AddToDomainIndex(isrc, kGlobalDomain, version);
   });
-  XVERBOSE(2, "Bitext::Add() AddToGlobalIndex additions took " << format_time(time_global_index) << " s");
+  XVERBOSE(2, "Bitext::Add() AddToGlobalIndex additions took " << format_time(time_global_index) << " s\n");
   XVERBOSE(2, db_->GetPerformanceCounters().DebugPerformanceSummary());
 
   double time_domain_flush = benchmark_time([&]() {
@@ -266,7 +267,7 @@ Bitext::Add(const mmt::updateid_t &mmt_version, const mmt::domain_t domain,
     trg_->Flush(version);
     src_->Flush(version);
   });
-  XVERBOSE(2, "Bitext::Add() Flush() for domain StreamVersions took " << format_time(time_domain_flush) << " s");
+  XVERBOSE(2, "Bitext::Add() Flush() for domain StreamVersions took " << format_time(time_domain_flush) << " s\n");
 }
 
 /** Write to (empty) DB and disk. */
@@ -310,6 +311,8 @@ StreamVersions Bitext::streamVersions() const {
   versions = StreamVersions::Min(versions, align_->streamVersions());
 
   XVERBOSE(2, "alignment: " << align_->streamVersions().DebugStr() << "\n");
+
+  XVERBOSE(2, "complete Bitext: " << versions.DebugStr() << "\n");
 
   return versions;
 }

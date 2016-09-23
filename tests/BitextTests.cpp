@@ -86,9 +86,14 @@ TEST(BitextTests, create_add_write_read) {
 
   bitext.Write(base); // write an empty Bitext
 
+  std::shared_ptr<DefaultLogger> logger = std::make_shared<DefaultLogger>(2);
+
+  std::vector<std::pair<mmt::length_t, mmt::length_t>> alignments = {{0,0}, {1,2}};
 
   {
     Bitext writable(base, "fr", "en");
+
+    writable.SetupLogging(logger);
 
     // add to already existing, empty, persisted Bitext
     writable.Add(
@@ -96,7 +101,7 @@ TEST(BitextTests, create_add_write_read) {
         1, // domain
         std::vector<mmt::wid_t>{14, 15}, // source words
         std::vector<mmt::wid_t>{24, 25, 26}, // target sentence words
-        std::vector<std::pair<mmt::length_t, mmt::length_t>>{{0,0}, {1,2}}
+        alignments
     );
   }
 
@@ -106,10 +111,16 @@ TEST(BitextTests, create_add_write_read) {
   TestBitext updated(base, "fr", "en");
   EXPECT_EQ(1, updated.Align().size());
 
+  Sentence<AlignmentLink> align = updated.Align().sentence(0);
+  for(size_t i = 0; i < alignments.size(); i++) {
+    std::pair<mmt::length_t, mmt::length_t> link{align[i].vid.src, align[i].vid.trg};
+    EXPECT_EQ(alignments[i], link);
+  }
+
   // try adding another sent pair
 
   updated.Add(
-      mmt::updateid_t{static_cast<stream_t>(-1), 1},
+      mmt::updateid_t{static_cast<stream_t>(-1), 2},
       1, // domain
       std::vector<mmt::wid_t>{14, 17}, // source words
       std::vector<mmt::wid_t>{24, 25, 26, 28}, // target sentence words
