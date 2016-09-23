@@ -94,6 +94,7 @@ struct BitextSide : public sto::Loggable {
   DomainIterator begin() const { return DomainIterator(domain_indexes.begin(), domain_indexes.end()); }
   DomainIterator end() const { return DomainIterator(domain_indexes.end(), domain_indexes.end()); }
 
+  virtual void SetupLogging(std::shared_ptr<Logger> logger) override;
 };
 
 /**

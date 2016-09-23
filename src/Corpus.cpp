@@ -159,6 +159,11 @@ typename Corpus<Token>::Sid Corpus<Token>::AddSentenceIncremental(const std::vec
   if(!streamVersions_.Update(sentInfo.vid)) {
     // ignore update if too old
 
+    XVERBOSE(1, "Corpus::AddSentenceIncremental() ignoring updateid_t{"
+        << static_cast<uint32_t>(sentInfo.vid.stream_id) << ","
+        << static_cast<uint64_t>(sentInfo.vid.sentence_id)
+        << "} because in that stream we are already at " << streamVersions_[sentInfo.vid.stream_id] << "\n");
+
     // find old Sid: search backwards to the sentence added in an update before
     for(Sid i = size()-1; i != static_cast<Sid>(-1); i--)
       if(info(i).vid.stream_id == sentInfo.vid.stream_id && info(i).vid.sentence_id == sentInfo.vid.sentence_id)

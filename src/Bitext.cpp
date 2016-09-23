@@ -59,6 +59,7 @@ void BitextSide<Token>::AddToDomainIndex(Sid sid, tpt::docid_type docid, updatei
     else
       // memory only
       domain_indexes[docid] = std::make_shared<sto::TokenIndex<Token, IndexTypeMemBuf>>(*corpus, -1);
+    domain_indexes[docid]->SetupLogging(this->logger_);
   }
   domain_indexes[docid]->AddSentence(corpus->sentence(sid), version);
 }
@@ -107,6 +108,14 @@ typename BitextSide<Token>::DomainIterator &BitextSide<Token>::DomainIterator::o
   if(it_ != end_ && it_->first == kGlobalDomain)
     ++it_;
   return *this;
+}
+
+template<typename Token>
+void BitextSide<Token>::SetupLogging(std::shared_ptr<Logger> logger) {
+  corpus->SetupLogging(logger);
+  for(auto& d : domain_indexes)
+    d.second->SetupLogging(logger);
+  Loggable::SetupLogging(logger);
 }
 
 // explicit template instantiation
@@ -170,10 +179,16 @@ Bitext::Add(const mmt::updateid_t &version, const mmt::domain_t domain,
             const std::vector<mmt::wid_t> &srcSent, const std::vector<mmt::wid_t> &trgSent,
             const mmt::alignment_t &alignment)
 {
+  XVERBOSE(2, "Bitext::Add() of updateid_t{"
+      << static_cast<uint32_t>(version.stream_id) << ","
+      << static_cast<uint64_t>(version.sentence_id)
+      << "}\n");
+
   // we assume that the first update starts with sentence_id = 1
   // (sentence_id=0 would be ignored, since we init everything there)
 
   // (1) add to corpus first:
+  XVERBOSE(2, "Bitext::Add() - Corpus\n");
 
   // order of these three does not matter
   auto isrc = src_->AddToCorpus(srcSent, domain, version);
@@ -182,12 +197,14 @@ Bitext::Add(const mmt::updateid_t &version, const mmt::domain_t domain,
   align_->AddSentence(std::vector<AlignmentLink>{alignment.begin(), alignment.end()}, SentInfo{domain, version});
 
   // (3) domain-specific first: ensures that domain-specific indexes can provide, since we query the global index for the presence of source phrases first.
+  XVERBOSE(2, "Bitext::Add() - AddToDomainIndex(" << domain << ")\n");
 
   // currently, order of these two does not matter here (we query global index first)
   trg_->AddToDomainIndex(itrg, domain, version);
   src_->AddToDomainIndex(isrc, domain, version);
 
   // (4) global index last - everything should be stored by the time readers see a new global source index entry
+  XVERBOSE(2, "Bitext::Add() - AddToDomainIndex(kGlobalDomain)\n");
 
   // target side first: ensures extraction will work
   trg_->AddToDomainIndex(itrg, kGlobalDomain, version);

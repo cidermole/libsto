@@ -16,6 +16,7 @@
 #include "ITreeNode.h"
 #include "ObjIterator.h"
 #include "StreamVersions.h"
+#include "Loggable.h"
 
 namespace sto {
 
@@ -272,7 +273,7 @@ private:
  * This is the public interface, which is implemented by TokenIndex for memory or disk-backed storage.
  */
 template<class Token>
-class ITokenIndex {
+class ITokenIndex : public sto::Loggable {
 public:
   virtual ~ITokenIndex() {}
 

@@ -18,6 +18,7 @@
 #include "Types.h"
 #include "CorpusTypes.h"
 #include "StreamVersions.h"
+#include "Loggable.h"
 
 namespace sto {
 
@@ -27,7 +28,7 @@ template<class Token> class Sentence;
  * Memory-mapped corpus.
  */
 template<class Token>
-class Corpus {
+class Corpus : public sto::Loggable {
 public:
   typedef sid_t Sid; /** sentence ID type */
   typedef offset_t Offset; /** type of token offset within sentence */
