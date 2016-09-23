@@ -14,7 +14,7 @@
 
 #include <iostream>
 #include <sstream>
-
+#include <atomic>
 #include <memory>
 #include <vector>
 #include <cstddef>
@@ -104,12 +104,12 @@ class RBTree {
   size_t ChildSize(const KeyType& key) const {
     std::shared_ptr<Node> node = FindNodeOrParent(key);
     assert(!IsNil(node) && node->key == key);
-    return node->partial_sum;
+    return node->partial_sum.load();
   }
 
   /** total number of positions spanned (size sum of this node + its children) */
   size_t Size() const {
-    return root_->partial_sum;
+    return root_->partial_sum.load();
   }
 
   /**
@@ -249,13 +249,27 @@ class RBTree {
   struct Node {
     KeyType key;
 
-    size_t partial_sum; /** size sum of this node + its children */
-    size_t own_size; /** size of this node only */
-    ValueType value;
+    std::atomic<size_t> partial_sum; /** size sum of this node + its children */
+    std::atomic<size_t> own_size; /** size of this node only */
+    ValueType value; // not needed to be atomic, should never change
 
     Node(std::shared_ptr<Node> p, std::shared_ptr<Node> l, std::shared_ptr<Node> r, Color c, KeyType k): key(k), partial_sum(0), own_size(0), value(), parent(p), left(l), right(r), color(c) {}
 
     Node(): partial_sum(0), own_size(0), value(), parent(), left(nullptr), right(nullptr) {}
+
+    Node &operator=(const Node &other) {
+      key = other.key;
+      partial_sum.store(other.partial_sum.load());
+      own_size.store(other.own_size.load());
+      value = other.value;
+
+      parent = other.parent;
+      left = other.left;
+      right = other.right;
+      color = other.color;
+
+      return *this;
+    }
 
   private:
     std::weak_ptr<Node> parent; /** only used for modifying access, hence we don't need reference counting (and also break reference cycles here) */
@@ -275,7 +289,7 @@ class RBTree {
 
     std::shared_ptr<Node> n = node;
     while(!IsNil(n)) {
-      n->partial_sum += add_size;
+      n->partial_sum.store(n->partial_sum.load() + add_size);
       n = n->parent.lock();
     }
   }
@@ -283,19 +297,19 @@ class RBTree {
   // note: changes offset to be relative into the node returned
   inline std::shared_ptr<Node> At(std::shared_ptr<Node> node, size_t &offset) {
     //std::shared_ptr<Node> prev = node;
-    assert(offset < node->partial_sum);
+    assert(offset < node->partial_sum.load());
 
     // nodes in-order like this: (left, node, right)
     while(node != nil_) {
       //prev = node;
       // to do: to work with 0-sized nodes, this should be upper_bound style!
-      if(offset < node->left->partial_sum) {
+      if(offset < node->left->partial_sum.load()) {
         node = node->left;
-      } else if(offset < node->left->partial_sum + node->own_size) {
-        offset -= node->left->partial_sum;
+      } else if(offset < node->left->partial_sum.load() + node->own_size.load()) {
+        offset -= node->left->partial_sum.load();
         return node;
       } else { // offset < node->left->partial_sum + node->own_size + node->right->partial_sum == node->partial_sum
-        offset -= node->left->partial_sum + node->own_size;
+        offset -= node->left->partial_sum.load() + node->own_size.load();
         node = node->right;
       }
     }
@@ -342,7 +356,7 @@ class RBTree {
       //std::cerr << ss.str() << "vid=" << n.lock()->key << " (s use_count=" << (n.lock().use_count() - 1) << ", w use_count=" << n.use_count() << ") " << n.lock().get() << std::endl;
       std::shared_ptr<Node> node = n.lock();
       //std::cerr << ss.str() << "vid=" << node->key << " (s use_count=" << (node.use_count() - 1) << ") " << node.get() << std::endl;
-      std::cerr << ss.str() << "vid=" << node->key << " (partial_sum=" << node->partial_sum << " own_size=" << node->own_size << ") " << node.get() << std::endl;
+      std::cerr << ss.str() << "vid=" << node->key << " (partial_sum=" << node->partial_sum.load() << " own_size=" << node->own_size.load() << ") " << node.get() << std::endl;
     });
     std::cerr << std::endl;
   }
@@ -417,10 +431,10 @@ class RBTree {
     std::shared_ptr<Node> p = std::make_shared<Node>(nil_ /* set below */, node->left, child->left, child->color, node->key); p->value = node->value;
     std::shared_ptr<Node> q = std::make_shared<Node>(node, p, child->right, node->color, child->key); q->value = child->value;
     p->parent = q;
-    q->own_size = child->own_size;
-    q->partial_sum = node->partial_sum;
-    p->own_size = node->own_size;
-    p->partial_sum = p->own_size + p->left->partial_sum + p->right->partial_sum;
+    q->own_size.store(child->own_size.load());
+    q->partial_sum.store(node->partial_sum.load());
+    p->own_size.store(node->own_size.load());
+    p->partial_sum.store(p->own_size.load() + p->left->partial_sum.load() + p->right->partial_sum.load());
     ReplaceChild(node, q);
 
     // keep the reference to the node just inserted
@@ -463,10 +477,10 @@ class RBTree {
     std::shared_ptr<Node> q = std::make_shared<Node>(nil_ /* set below */, child->right, node->right, child->color, node->key); q->value = node->value;
     std::shared_ptr<Node> p = std::make_shared<Node>(node, child->left, q, node->color, child->key); p->value = child->value;
     q->parent = p;
-    p->own_size = child->own_size;
-    p->partial_sum = node->partial_sum;
-    q->own_size = node->own_size;
-    q->partial_sum = q->own_size + q->left->partial_sum + q->right->partial_sum;
+    p->own_size.store(child->own_size.load());
+    p->partial_sum.store(node->partial_sum.load());
+    q->own_size.store(node->own_size.load());
+    q->partial_sum.store(q->own_size.load() + q->left->partial_sum.load() + q->right->partial_sum.load());
     ReplaceChild(node, p);
 
     // keep the reference to the node just inserted
