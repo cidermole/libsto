@@ -309,7 +309,7 @@ void Corpus<Token>::WriteSentence() {
   size_t dyn_isent = dyn_sentIndex_.size()-2;
   size_t dyn_ntoks_before = dyn_sentIndex_[dyn_isent]; // size (in tokens) of dynamically added tokens, already written
   size_t dyn_ntoks_after = dyn_sentIndex_[dyn_isent+1];
-  if(fseek(ftrack_, sizeof(CorpusTrackHeader) + (static_ntoks + sentIndexHeader_.idxSize * kSentInfoSizeToks + dyn_ntoks_before) * sizeof(Vid), SEEK_SET))
+  if(fseek(ftrack_, sizeof(CorpusTrackHeader) + (static_ntoks + sentIndexHeader_.idxSize * kSentInfoSizeToks + dyn_ntoks_before + dyn_isent * kSentInfoSizeToks) * sizeof(Vid), SEEK_SET))
     throw std::runtime_error("Corpus: fseek() failed on track");
 
   if(fwrite(&dyn_track_info_[dyn_isent], sizeof(SentInfo), 1, ftrack_) != 1)
