@@ -445,6 +445,117 @@ TYPED_TEST(TokenIndexTests, tree_2level_common_prefix_the_15) {
   this->tree_2level_common_prefix_the_m(/* maxLeafSize = */ 15);
 }
 
+
+TYPED_TEST(TokenIndexTests, tree_2level_no_eos_leaf_split) {
+  typedef TypeParam TokenIndexType;
+  typedef typename TypeParam::TokenT Token;
+
+  TokenIndexType tokenIndex(this->basePath, this->corpus, this->db, /* maxLeafSize = */ 2);
+  this->fill_tree_2level_common_prefix_the(tokenIndex);
+
+  std::vector<std::string> sent3_words = {"the", "mat", "on", "the"};
+  Sentence<Token> sentence = this->AddSentence(sent3_words);
+  tokenIndex.AddSentence(sentence);
+
+  std::vector<std::string> sent4_words = {"dog", "on", "the"};
+  Sentence<Token> sentence4 = this->AddSentence(sent4_words);
+  tokenIndex.AddSentence(sentence4);
+
+  /*
+   * * 'on' vid=8
+   *   TreeNode size=3 is_leaf=false
+   *   * 'the' vid=9
+   *     TreeNode size=3 is_leaf=true
+   *     * [sid=3 offset=2]  <<< shorter sentences come first
+   *     * [sid=4 offset=1]
+   *     * [sid=0 offset=5]  <<< this is longer
+   *
+   * So if a leaf does not support splitting...
+   */
+
+  // maybe we (incorrectly) do not split if appending a </s> style Position to the beginning?
+  // let's see if it is split if we add a longer sentence.
+
+  std::vector<std::string> sent5_words = {"cat", "on", "the", "dog"};
+  Sentence<Token> sentence5 = this->AddSentence(sent5_words);
+  tokenIndex.AddSentence(sentence5);
+
+  // yep, it was split now:
+
+  /*
+   * * 'on' vid=8
+   *   TreeNode size=4 is_leaf=false
+   *   * 'the' vid=9
+   *     TreeNode size=4 is_leaf=false
+   *     * '</s>' vid=2
+   *       TreeNode size=2 is_leaf=true
+   *       * [sid=3 offset=2]
+   *       * [sid=4 offset=1]
+   *     * 'dog' vid=6
+   *       TreeNode size=1 is_leaf=true
+   *       * [sid=5 offset=1]
+   *     * 'mat' vid=7
+   *       TreeNode size=1 is_leaf=true
+   *       * [sid=0 offset=5]
+   */
+  
+  // => TODO: allow_split computation is sometimes too strict
+
+  tokenIndex.DebugPrint(std::cerr, this->id2surface);
+
+  std::stringstream actual_tree;
+  tokenIndex.DebugPrint(actual_tree, this->id2surface);
+
+  // hardcoding the tree structure in ASCII is pretty crude, I know.
+  std::string expected_tree = R"(TreeNode size=12 is_leaf=false
+* 'bit' vid=4
+  TreeNode size=2 is_leaf=true
+  * [sid=1 offset=2]
+  * [sid=0 offset=2]
+* 'cat' vid=5
+  TreeNode size=1 is_leaf=true
+  * [sid=0 offset=4]
+* 'dog' vid=6
+  TreeNode size=2 is_leaf=true
+  * [sid=1 offset=1]
+  * [sid=0 offset=1]
+* 'mat' vid=7
+  TreeNode size=1 is_leaf=true
+  * [sid=0 offset=7]
+* 'on' vid=8
+  TreeNode size=1 is_leaf=true
+  * [sid=0 offset=5]
+* 'the' vid=9
+  TreeNode size=5 is_leaf=false
+  * '</s>' vid=2
+    TreeNode size=1 is_leaf=true
+    * [sid=2 offset=0]
+  * 'cat' vid=5
+    TreeNode size=1 is_leaf=true
+    * [sid=0 offset=3]
+  * 'dog' vid=6
+    TreeNode size=2 is_leaf=true
+    * [sid=1 offset=0]
+    * [sid=0 offset=0]
+  * 'mat' vid=7
+    TreeNode size=1 is_leaf=true
+    * [sid=0 offset=6]
+)";
+
+  EXPECT_EQ(expected_tree, actual_tree.str()) << "tree structure";
+
+
+  // array is sorted in ascending order
+  auto span = tokenIndex.span();
+  for(size_t i = 0; i + 1 < span.size(); i++) {
+    Position<Token> p = span[i], q = span[i+1];
+    //assert(p <= q) == assert(!(p > q)); // equivalent formula if we had > operator
+    EXPECT_TRUE(!q.compare(p, this->corpus, /* pos_order_dupes = */ false)); // ascending order (tolerates old v2 mtt-build style order)
+    EXPECT_TRUE(!(p == q)); // ensure no duplicates
+  }
+}
+
+
 namespace std {
 template<>
 template<typename Token>
