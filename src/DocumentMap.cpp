@@ -42,9 +42,9 @@ tpt::docid_type DocumentMap::sid2did(sto::sid_t sid) const {
   return sent_info_->begin(sid)->domid;
 }
 
-void DocumentMap::Load(std::string const& fname, size_t num_sents) {
+bool DocumentMap::Load(std::string const& fname, size_t num_sents) {
   if(access(fname.c_str(), F_OK))
-    return; // file does not exist
+    return false; // file does not exist
 
   // ug_mm_bitext.h copypasta: load_document_map()
 
@@ -75,6 +75,7 @@ void DocumentMap::Load(std::string const& fname, size_t num_sents) {
     throw std::runtime_error(std::string("Document map doesn't match corpus! b=") + std::to_string(b) + ", num_sents=" + std::to_string(num_sents));
 
   XVERBOSE(1, "DocumentMap::Load() loaded " << numDomains() << " domains, " << (sent_info_->size()) << " sentences.\n");
+  return true;
 }
 
 tpt::docid_type DocumentMap::FindOrInsert(const std::string &docname, sto_updateid_t version) {

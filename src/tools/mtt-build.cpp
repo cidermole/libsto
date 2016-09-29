@@ -199,7 +199,9 @@ int main(int argc, char **argv) {
   shared_ptr<BaseDB> db = open_db(args.base + "db");
 
   DocumentMap docMap;
-  docMap.Load(args.base + "dmp");
+  //if(!docMap.Load(args.base + "dmp"))
+  if(!docMap.Load(args.docMap))
+    throw std::runtime_error("failed to load docMap " + args.base + "dmp");
 
   BitextSide<Token> side(args.lang); // in-memory type BitextSide
 
