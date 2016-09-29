@@ -110,7 +110,7 @@ public:
   void AddSize(Vid vid, size_t add_size);
 
   /** find the bounds of an existing Token or insertion point of a new one */
-  Range find_bounds_array_(Corpus<Token> &corpus, Range prev_bounds, Token t, size_t depth);
+  Range find_bounds_array_(Corpus<Token> &corpus, Range prev_bounds, Token t, size_t depth, std::shared_ptr<SuffixArray> array);
 
   /** @return true if child with 'vid' as the key was found, and optionally sets 'child'. */
   bool find_child_(Vid vid, TreeNode<Token, SuffixArray> **child = nullptr);
@@ -143,6 +143,8 @@ public:
 
   virtual void Flush(StreamVersions streamVersions) {}
   virtual StreamVersions streamVersions() const { /* stub! streamVersions_ is never updated. */ return streamVersions_; }
+
+  std::shared_ptr<SuffixArray> get_array_() const override { return array_; }
 
 protected:
   ITokenIndex<Token> &index_;           /** TokenIndex that this TreeNode belongs to */

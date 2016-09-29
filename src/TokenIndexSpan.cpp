@@ -22,8 +22,10 @@ TokenIndex<Token, TypeTag>::Span::Span(const TokenIndex<Token, TypeTag> &index) 
 
   // this sentinel should be handled in narrow(),
   // but for a leaf-only tree (rooted in a suffix array) we cannot do better:
-  if(this->node()->is_leaf())
-    array_path_.push_back(Range{0, this->node()->size()});
+
+  array_ = this->node()->get_array_();
+  if(array_)
+    array_path_.push_back(Range{0, array_->size()});
 }
 
 template<class Token, typename TypeTag>
@@ -41,8 +43,9 @@ TokenIndex<Token, TypeTag>::Span::Span(ITreeNode<Token> &node):
   std::reverse(tree_path_.begin(), tree_path_.end());
   std::reverse(sequence_.begin(), sequence_.end());
 
-  if(this->node()->is_leaf())
-    array_path_.push_back(Range{0, this->node()->size()});
+  array_ = this->node()->get_array_();
+  if(array_)
+    array_path_.push_back(Range{0, array_->size()});
 }
 
 template<class Token, typename TypeTag>
@@ -62,11 +65,13 @@ size_t TokenIndex<Token, TypeTag>::Span::narrow(Token t) {
 
   // if we just descended into the suffix array, add sentinel: spanning full array range
   // array_path_: entries always index relative to the specific suffix array
-  if (in_array() && array_path_.size() == 0)
-    array_path_.push_back(Range{0, tree_path_.back()->size()});
+  array_ = this->node()->get_array_();
+  if (array_ && array_path_.size() == 0)
+    array_path_.push_back(Range{0, array_->size()});
+  else if(!array_ && this->node()->is_leaf())
+    array_path_.push_back(Range{0, 0}); // for writing empty TokenIndex::Span use e.g. Merge(), AddSubsequence_()
 
-  //                                                    v == in_array()
-  assert(sequence_.size() == (tree_path_.size() - 1) + (array_path_.size() ? (array_path_.size() - 1) : 0));
+  assert(sequence_.size() == (tree_path_.size() - 1) + (in_array() ? (array_path_.size() - 1) : 0));
 
   return new_span;
 }
@@ -74,7 +79,7 @@ size_t TokenIndex<Token, TypeTag>::Span::narrow(Token t) {
 template<class Token, typename TypeTag>
 Range TokenIndex<Token, TypeTag>::Span::find_bounds_array_(Token t) const {
   TreeNodeT *node = dynamic_cast<TreeNodeT *>(this->node()); assert(node);
-  return node->find_bounds_array_(*index_->corpus_, array_path_.back(), t, sequence_.size());
+  return node->find_bounds_array_(*index_->corpus_, array_path_.back(), t, sequence_.size(), array_);
 }
 
 template<class Token, typename TypeTag>
@@ -141,7 +146,7 @@ size_t TokenIndex<Token, TypeTag>::Span::depth() const {
 
 template<class Token, typename TypeTag>
 bool TokenIndex<Token, TypeTag>::Span::in_array() const {
-  return tree_path_.back()->is_leaf();
+  return array_path_.size() > 0;
 }
 
 template<class Token, typename TypeTag>

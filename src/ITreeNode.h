@@ -10,6 +10,7 @@
 #include <memory>
 
 #include "Corpus.h"
+#include "SuffixArrayMemory.h"
 #include "StreamVersions.h"
 
 namespace sto {
@@ -108,6 +109,8 @@ public:
 
   /** for collecting profiling information */
   virtual std::shared_ptr<DB<Token>> GetDB() = 0;
+
+  virtual std::shared_ptr<SuffixArrayMemory<Token>> get_array_() const = 0;
 };
 
 } // namespace sto

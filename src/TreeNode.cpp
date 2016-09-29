@@ -38,13 +38,13 @@ void TreeNode<Token, SuffixArray>::AddSize(Vid vid, size_t add_size) {
 }
 
 template<class Token, class SuffixArray>
-Range TreeNode<Token, SuffixArray>::find_bounds_array_(Corpus<Token> &corpus, Range prev_bounds, Token t, size_t depth) {
+Range TreeNode<Token, SuffixArray>::find_bounds_array_(Corpus<Token> &corpus, Range prev_bounds, Token t, size_t depth, std::shared_ptr<SuffixArray> array) {
   // for each token position, we need to check if it's long enough to extend as far as we do
   // (note: lexicographic sort order means shorter stuff is always at the beginning - so if Pos is too short, then Pos < Tok.)
   // then, we only need to compare at the depth of new_sequence_size, since all tokens before should be equal
   size_t old_sequence_size = depth;
 
-  auto array = array_;
+  //auto array = array_;
   Range bounds;
 
   // binary search for the range containing Token t
@@ -120,7 +120,7 @@ void TreeNode<Token, SuffixArray>::Merge(IndexSpan<Token> &spanSource, IndexSpan
     if(num_new == 0)
       continue; // tolerate (skip) empty leaf nodes
 
-    IndexSpan<Token> spant = spanTarget;
+    IndexSpan<Token> spant = span(); // cannot be spanTarget after SplitNode() since IndexSpan now caches is_leaf()/in_array()
     size_t spanSize = spant.narrow(Token{vid});
     if(spanSize == 0) {
       // (1) create tree entry (leaf)

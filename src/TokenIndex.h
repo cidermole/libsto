@@ -205,6 +205,7 @@ public:
     std::vector<Token> sequence_; /** partial lookup sequence so far, as appended by narrow() */
     std::vector<ITreeNode<Token> *> tree_path_; /** first part of path from root through the tree */
     std::vector<Range> array_path_; /** second part of path from leaf through the suffix array. These Ranges always index relative to the specific suffix array. */
+    std::shared_ptr<SuffixArray> array_; /** hold on to the node's array as long as we exist - a concurrent writing thread may split it meanwhile */
 
     /** narrow() in suffix array.
      * returns > 0 on success, STO_NOT_FOUND on failure: for consistency with narrow_tree_() */
