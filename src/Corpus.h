@@ -215,6 +215,29 @@ public:
   std::string DebugStr(const Corpus<Token> &corpus) const;
 };
 
+/**
+ * Position that is saved to disk.
+ */
+template<class Token>
+struct __attribute__((packed)) DiskPosition {
+public:
+  typedef typename Corpus<Token>::Vid Vid;
+  typedef typename Corpus<Token>::Sid Sid;
+  typedef typename Corpus<Token>::Offset Offset;
+
+  Sid sid; /** sentence ID */
+  Offset offset; /** offset within sentence */
+
+  DiskPosition(): sid(0), offset(0) {}
+  DiskPosition(const DiskPosition &other) = default;
+  DiskPosition(const Position<Token> &other): sid(other.sid), offset(other.offset) {}
+  DiskPosition &operator=(const Position<Token> &other) {
+    sid = other.sid;
+    offset = other.offset;
+    return *this;
+  }
+  operator Position<Token>() const { return Position<Token>(sid, offset); }
+};
 
 /**
  * Atomic Position<Token> wrapper to provide safe concurrent access to individual entries of a vector of these.
@@ -225,6 +248,9 @@ struct AtomicPosition {
 
   AtomicPosition() {}
   AtomicPosition(const Position<Token> &p) {
+    pos.store(p, order);
+  }
+  AtomicPosition(const DiskPosition<Token> &p) {
     pos.store(p, order);
   }
   AtomicPosition(const AtomicPosition<Token> &&p) {

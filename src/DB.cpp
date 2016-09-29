@@ -207,8 +207,9 @@ template<class Token>
 void DB<Token>::PutNodeLeaf(const std::string &path, const SuffixArrayMemory<Token> &array) {
   std::string key = leaf_key_(path);
   //std::cerr << "DB::PutNodeLeaf(key=" << key << ", len=" << len << ")" << std::endl;
-  typedef typename SuffixArrayMemory<Token>::value_type entry;
-  rocksdb::Slice val(reinterpret_cast<const char *>(array.data()), array.size() * sizeof(entry));
+  std::vector<DiskPosition<Token>> diskFormat(array.size());
+  std::copy(array.begin(), array.end(), diskFormat.begin());
+  rocksdb::Slice val(reinterpret_cast<const char *>(diskFormat.data()), diskFormat.size() * sizeof(DiskPosition<Token>));
   this->counters_->leafTime_ += benchmark_time([&](){
     rocksdb::Status status = this->db_->Put(rocksdb::WriteOptions(), key, val);
     assert(status.ok());
@@ -226,9 +227,13 @@ bool DB<Token>::GetNodeLeaf(const std::string &path, SuffixArrayMemory<Token> &a
   //std::cerr << "DB::GetNodeLeaf(key=" << key << ") = " << status.ok() << std::endl;
 
   //array = value;
-  typedef typename SuffixArrayMemory<Token>::value_type entry;
-  array.resize(value.size() / sizeof(entry));
-  std::copy(reinterpret_cast<const entry *>(value.data()), reinterpret_cast<const entry *>(value.data() + value.size()), array.data());
+
+  array.resize(value.size() / sizeof(DiskPosition<Token>));
+  std::copy(
+      reinterpret_cast<const DiskPosition<Token> *>(value.data()),
+      reinterpret_cast<const DiskPosition<Token> *>(value.data() + value.size()),
+      array.begin()
+  );
 
   assert(status.ok() || status.IsNotFound());
   return status.ok();
