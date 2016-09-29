@@ -4,17 +4,14 @@
  * Licensed under GNU LGPL Version 2.1, see COPYING *
  ****************************************************/
 
-#include "DB.h"
-
 #include <iostream>
 #include <sstream>
 
-#include "rocksdb/db.h"
-#include "rocksdb/slice_transform.h"
+#include <rocksdb/db.h>
+#include <rocksdb/slice_transform.h>
 
-// for SuffixArrayPosition, SuffixArrayDisk
-#include "SuffixArrayDisk.h"
-
+#include "DB.h"
+#include "SuffixArrayMemory.h"
 #include "util/Time.h"
 
 namespace sto {
@@ -207,10 +204,11 @@ std::string DB<Token>::domain_prefix_(const std::string &lang) {
 }
 
 template<class Token>
-void DB<Token>::PutNodeLeaf(const std::string &path, const SuffixArrayPosition<Token> *data, size_t len) {
+void DB<Token>::PutNodeLeaf(const std::string &path, const SuffixArrayMemory<Token> &array) {
   std::string key = leaf_key_(path);
   //std::cerr << "DB::PutNodeLeaf(key=" << key << ", len=" << len << ")" << std::endl;
-  rocksdb::Slice val((const char *) data, len * sizeof(SuffixArrayPosition<Token>));
+  typedef typename SuffixArrayMemory<Token>::value_type entry;
+  rocksdb::Slice val(reinterpret_cast<const char *>(array.data()), array.size() * sizeof(entry));
   this->counters_->leafTime_ += benchmark_time([&](){
     rocksdb::Status status = this->db_->Put(rocksdb::WriteOptions(), key, val);
     assert(status.ok());
@@ -220,13 +218,17 @@ void DB<Token>::PutNodeLeaf(const std::string &path, const SuffixArrayPosition<T
 }
 
 template<class Token>
-bool DB<Token>::GetNodeLeaf(const std::string &path, SuffixArrayDisk<Token> &array) {
+bool DB<Token>::GetNodeLeaf(const std::string &path, SuffixArrayMemory<Token> &array) {
   std::string key = leaf_key_(path);
   std::string value;
 
   rocksdb::Status status = this->db_->Get(rocksdb::ReadOptions(), key, &value);
   //std::cerr << "DB::GetNodeLeaf(key=" << key << ") = " << status.ok() << std::endl;
-  array = value;
+
+  //array = value;
+  typedef typename SuffixArrayMemory<Token>::value_type entry;
+  array.resize(value.size() / sizeof(entry));
+  std::copy(reinterpret_cast<const entry *>(value.data()), reinterpret_cast<const entry *>(value.data() + value.size()), array.data());
 
   assert(status.ok() || status.IsNotFound());
   return status.ok();

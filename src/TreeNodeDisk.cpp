@@ -10,32 +10,26 @@
 #include <cstdio>
 #include <array>
 
+#include <rocksdb/db.h>
 #include <boost/filesystem.hpp>
 
 #include "TreeNodeDisk.h"
 #include "SuffixArrayMemory.h"
 #include "TokenIndex.h"
-#include "DB.h"
-
-#include "rocksdb/db.h"
 #include "ITokenIndex.h"
-
-#define static_assert(x) static_cast<void>(0)
+#include "DB.h"
 
 namespace sto {
 
 template<class Token>
 TreeNodeDisk<Token>::TreeNodeDisk(ITokenIndex<Token> &index, size_t maxArraySize, std::string path, std::shared_ptr<DB<Token>> db, ITreeNode<Token> *parent, Vid vid, bool create_new_leaf) :
-    TreeNode<Token, SuffixArrayDisk<Token>>(index, maxArraySize, parent, vid), path_(path), db_(db), sync_(true) {
+    TreeNode<Token, SuffixArrayMemory<Token>>(index, maxArraySize, parent, vid), path_(path), db_(db), sync_(true) {
   using namespace boost::filesystem;
 
   assert(db != nullptr);
 
   if(is_root())
     this->streamVersions_ = db->GetStreamVersions();
-
-  // TODO: no need for SuffixArrayDisk. We keep everything in memory anyway.
-  // (we could unify SuffixArrayDisk and SuffixArrayMemory)
 
   if(create_new_leaf) {
     // we are sure to be a new leaf (from SplitNode() or AddLeaf())
@@ -49,7 +43,7 @@ TreeNodeDisk<Token>::TreeNodeDisk(ITokenIndex<Token> &index, size_t maxArraySize
   }
 
   if(this->is_leaf_) {
-    this->array_.reset(new SuffixArrayDisk<Token>());
+    this->array_.reset(new SuffixArrayMemory<Token>());
     if(!create_new_leaf)
       db_->GetNodeLeaf(path_, *this->array_);
   } else {
@@ -121,8 +115,8 @@ void TreeNodeDisk<Token>::MergeLeaf(const ITokenIndexSpan<Token> &addSpan, LeafM
 
   // disallow splits of </s> - as argued in TreeNodeMemory::AddPosition()
   // bool allow_split = sent.size() + 1 > start + depth; // +1 for implicit </s>
-  bool allow_split = (curSize > 0 && corpus.sentence(curSpan[0].sid).size() + 1 > curSpan[0].offset + depth) ||
-                     (addSize > 0 && corpus.sentence(addSpan[0].sid).size() + 1 > addSpan[0].offset + depth);
+  bool allow_split = (curSize > 0 && corpus.sentence(Position<Token>(curSpan[0]).sid).size() + 1 > Position<Token>(curSpan[0]).offset + depth) ||
+                     (addSize > 0 && corpus.sentence(Position<Token>(addSpan[0]).sid).size() + 1 > Position<Token>(addSpan[0]).offset + depth);
   // because shorter sequences come first in lexicographic order, we can compare the length of the first entry
   // (of either available index -- either cur or add may be empty, unfortunately)
 
@@ -130,7 +124,7 @@ void TreeNodeDisk<Token>::MergeLeaf(const ITokenIndexSpan<Token> &addSpan, LeafM
 
   if(sync_) {
     // overwrite the DB key now; the existing array_ continues to hold the old data afterwards
-    db_->PutNodeLeaf(this->path_, array->data(), array->size());
+    db_->PutNodeLeaf(this->path_, *array);
   }
 
   // replace atomically
@@ -139,7 +133,7 @@ void TreeNodeDisk<Token>::MergeLeaf(const ITokenIndexSpan<Token> &addSpan, LeafM
   /*
    * note: should it become necessary to split </s> array, a simple sharding concept
    * would involve fixed-size blocks. For that, we need to change Merge() to deal with shards
-   * and SuffixArrayDisk to transparently map access to several blocks as one sequence.
+   * and SuffixArray to transparently map access to several blocks as one sequence.
    *
    * We implement a much easier workaround: for allow_split=false arrays (like ". </s>"), appending the new
    * Positions will always be legal. Therefore, don't build in RAM, and just append to the file on disk.
@@ -156,8 +150,8 @@ template<class Token>
 std::shared_ptr<typename TreeNodeDisk<Token>::SuffixArray> TreeNodeDisk<Token>::MergeLeafArray(std::shared_ptr<typename TreeNodeDisk<Token>::SuffixArray> curSpan, const ITokenIndexSpan<Token> &addSpan) {
   Corpus<Token> &corpus = *addSpan.corpus();
   size_t newSize = curSpan->size() + addSpan.size();
-  std::shared_ptr<SuffixArrayDisk<Token>> newArray = std::make_shared<SuffixArrayDisk<Token>>(newSize);
-  SuffixArrayPosition<Token> *pnew = newArray->data();
+  std::shared_ptr<SuffixArray> newArray = std::make_shared<SuffixArray>(newSize);
+  auto *pnew = newArray->data();
 
   // merge the two spans' Positions into newArray
   //PosComp<Token> comp(corpus, depth);
@@ -225,19 +219,18 @@ std::string TreeNodeDisk<Token>::child_sub_path(Vid vid) {
 template<class Token>
 TreeNodeDisk<Token> *TreeNodeDisk<Token>::make_child_(Vid vid, typename SuffixArray::iterator first, typename SuffixArray::iterator last, const Corpus<Token> &corpus) {
   TreeNodeDisk<Token> *new_child = new TreeNodeDisk<Token>(this->index_, this->kMaxArraySize, child_path(vid), this->db_, this, vid, /* create_new_leaf = */ true);
-  new_child->Assign(first.ptr(), last.ptr(), corpus);
-  //new_array->insert(new_array->begin(), first, last); // this is the TreeNodeMemory interface. Maybe we could have implemented insert() here on SuffixArrayDisk, and use a common call?
+  new_child->Assign(first, last, corpus);
+  //new_array->insert(new_array->begin(), first, last); // this is the TreeNodeMemory interface. Maybe we could have implemented insert() here on SuffixArray, and use a common call?
   return new_child;
 }
 
 template<class Token>
 void TreeNodeDisk<Token>::Assign(typename SuffixArray::iterator first, typename SuffixArray::iterator last, const Corpus<Token> &corpus) {
-  size_t newSize = last.ptr() - first.ptr();
-  std::shared_ptr<SuffixArrayDisk<Token>> newArray = std::make_shared<SuffixArrayDisk<Token>>(first.ptr(), newSize);
+  std::shared_ptr<SuffixArray> newArray = std::make_shared<SuffixArray>(first, last);
 
   if(sync_) {
     // overwrite the DB key now; the existing array_ continues to hold the old data afterwards
-    db_->PutNodeLeaf(this->path_, newArray->begin().ptr(), newSize);
+    db_->PutNodeLeaf(this->path_, *newArray);
   }
   // atomically replace the old array_
   this->array_ = newArray;

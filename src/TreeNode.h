@@ -16,7 +16,6 @@
 #include "Corpus.h"
 #include "util/rbtree.hpp"
 
-#include "SuffixArrayDisk.h"
 #include "ITreeNode.h"
 
 namespace sto {

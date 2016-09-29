@@ -10,7 +10,7 @@
 #include <memory>
 
 #include "TreeNode.h"
-#include "SuffixArrayDisk.h"
+#include "SuffixArrayMemory.h"
 #include "ITokenIndex.h"
 
 namespace sto {
@@ -30,9 +30,9 @@ struct IndexTypeDisk;
  * Leaves (suffix array chunks) can be memory mapped.
  */
 template<class Token>
-class TreeNodeDisk : public TreeNode<Token, SuffixArrayDisk<Token>> {
+class TreeNodeDisk : public TreeNode<Token, SuffixArrayMemory<Token>> {
 public:
-  typedef SuffixArrayDisk<Token> SuffixArray;
+  typedef SuffixArrayMemory<Token> SuffixArray;
   typedef typename TreeNode<Token, SuffixArray>::Vid Vid;
   typedef typename TreeNode<Token, SuffixArray>::Offset Offset;
   typedef typename TreeNode<Token, SuffixArray>::SuffixArrayT SuffixArrayT; // to do: mmap

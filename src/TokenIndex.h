@@ -15,7 +15,6 @@
 #include "Range.h"
 #include "SuffixArrayMemory.h"
 #include "TreeNodeMemory.h"
-#include "SuffixArrayDisk.h"
 #include "TreeNodeDisk.h"
 #include "Corpus.h"
 #include "util/rbtree.hpp"
@@ -49,7 +48,7 @@ struct IndexTypes {
 template<>
 template<typename Token>
 struct IndexTypes<Token, IndexTypeDisk> {
-  typedef SuffixArrayDisk<Token> SuffixArray;
+  typedef SuffixArrayMemory<Token> SuffixArray;
   typedef TreeNodeDisk<Token> TreeNode;
 };
 

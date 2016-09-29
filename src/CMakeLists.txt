@@ -23,8 +23,6 @@ set(SOURCES
         TreeNode.h
         TreeNodeDisk.cpp
         TreeNodeDisk.h
-        SuffixArrayDisk.cpp
-        SuffixArrayDisk.h
         Range.h
         TreeNodeMemory.cpp
         TreeNodeMemory.h

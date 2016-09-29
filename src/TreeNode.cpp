@@ -231,7 +231,4 @@ void TreeNode<Token, SuffixArray>::DebugCheckVidConsistency() const {
 template class TreeNode<SrcToken, SuffixArrayMemory<SrcToken>>;
 template class TreeNode<TrgToken, SuffixArrayMemory<TrgToken>>;
 
-template class TreeNode<SrcToken, SuffixArrayDisk<SrcToken>>;
-template class TreeNode<TrgToken, SuffixArrayDisk<TrgToken>>;
-
 } // namespace sto

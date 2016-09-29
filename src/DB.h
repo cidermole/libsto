@@ -15,15 +15,13 @@
 
 #include "Types.h"
 #include "StreamVersions.h"
+#include "SuffixArrayMemory.h"
 
 namespace rocksdb {
 class DB;
 }
 
 namespace sto {
-
-template<class Token> struct SuffixArrayPosition;
-template<class Token> struct SuffixArrayDisk;
 
 /** indicates TreeNodeDisk type, returned by DB::IsNodeLeaf() */
 enum NodeType {
@@ -155,10 +153,9 @@ public:
   /**
    * Write the suffix array of a leaf node.
    * @param path  path from the root to this TreeNode
-   * @param data  pointer to array data
-   * @param len   number of entries (positions) in array
+   * @param array pointer to array data
    */
-  void PutNodeLeaf(const std::string &path, const SuffixArrayPosition<Token> *data, size_t len);
+  void PutNodeLeaf(const std::string &path, const SuffixArrayMemory<Token> &array);
 
   /**
    * Read the suffix array of a leaf node.
@@ -166,7 +163,7 @@ public:
    * @param array  data returned here
    * @returns true if the leaf was found
    */
-  bool GetNodeLeaf(const std::string &path, SuffixArrayDisk<Token> &array);
+  bool GetNodeLeaf(const std::string &path, SuffixArrayMemory<Token> &array);
 
   /** Delete leaf at the given path. */
   void DeleteNodeLeaf(const std::string &path);
