@@ -10,6 +10,7 @@
 #include <memory>
 #include <atomic>
 #include <algorithm>
+#include <unordered_map>
 
 #include "Range.h"
 #include "Corpus.h"
@@ -72,7 +73,7 @@ public:
    */
   Position<Token> At(size_t abs_offset, size_t rel_offset);
 
-  void DebugPrint(std::ostream &os, const Corpus<Token> &corpus, size_t depth = 0);
+  void DebugPrint(std::ostream &os, const std::unordered_map<Vid, std::string> &id2surface, size_t depth = 0);
 
 
   /** Merge 'spanSource' into this TreeNode. 'spanTarget' must be a span over this TreeNode. */

@@ -10,6 +10,7 @@
 #include <iostream>
 #include <vector>
 #include <memory>
+#include <unordered_map>
 
 #include "Range.h"
 #include "SuffixArrayMemory.h"
@@ -80,6 +81,7 @@ public:
   typedef Token TokenT;
   typedef TypeTag TypeTagT;
   typedef typename Corpus<Token>::Offset Offset;
+  typedef typename Corpus<Token>::Vid Vid;
 
   typedef typename IndexTypes<Token, TypeTag>::SuffixArray SuffixArray;
   typedef typename IndexTypes<Token, TypeTag>::TreeNode TreeNodeT;
@@ -264,7 +266,7 @@ public:
   /** call this after external low-level addition of Positions */
   virtual void Flush(StreamVersions streamVersions) override;
 
-  virtual void DebugPrint(std::ostream &os);
+  virtual void DebugPrint(std::ostream &os, const std::unordered_map<Vid, std::string> &id2surface);
 
   /** for collecting profiling information */
   virtual std::shared_ptr<DB<Token>> GetDB() override;

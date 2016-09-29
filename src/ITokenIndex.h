@@ -316,7 +316,7 @@ public:
   //virtual void SetSeqNum(seq_t seqNum) = 0;
   virtual void Flush(StreamVersions streamVersions) = 0;
 
-  virtual void DebugPrint(std::ostream &os) = 0;
+  //virtual void DebugPrint(std::ostream &os, const std::unordered_map<Vid, std::string> &id2surface) = 0;
 
   /** for collecting profiling information */
   virtual std::shared_ptr<DB<Token>> GetDB() = 0;

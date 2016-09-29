@@ -173,7 +173,7 @@ void read_input_lines(std::istream &is, BitextSide<Token> &side, DocumentMap &do
     double t_AddToDomainIndex = benchmark_time([&](){
       if(domains) {
         auto docid = docMap.sid2did(sid);
-        side.AddToDomainIndex(sid, docid, sid + 1);
+        side.AddToDomainIndex(sid, docid, sto_updateid_t{kInvalidStream, sid + 1});
       }
     });
 

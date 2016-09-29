@@ -175,15 +175,15 @@ std::string nspaces(size_t n) {
 }
 
 template<class Token, class SuffixArray>
-void TreeNode<Token, SuffixArray>::DebugPrint(std::ostream &os, const Corpus<Token> &corpus, size_t depth) {
+void TreeNode<Token, SuffixArray>::DebugPrint(std::ostream &os, const std::unordered_map<Vid, std::string> &id2surface, size_t depth) {
   std::string spaces = nspaces(depth * 2);
   os << spaces << "TreeNode size=" << size() << " is_leaf=" << (is_leaf() ? "true" : "false") << std::endl;
 
   // for internal TreeNodes (is_leaf=false), these have children_ entries
-  children_.Walk([&corpus, &os, &spaces, depth](Vid vid, TreeNode<Token, SuffixArray> *e) {
-    std::string surface = corpus.vocab()[Token{vid}];
+  children_.Walk([&](Vid vid, TreeNode<Token, SuffixArray> *e) {
+    std::string surface = id2surface.at(vid);
     os << spaces << "* '" << surface << "' vid=" << static_cast<int>(vid) << std::endl;
-    e->DebugPrint(os, corpus, depth + 1);
+    e->DebugPrint(os, id2surface, depth + 1);
   });
 
   // for suffix arrays (is_leaf=true)

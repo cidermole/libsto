@@ -9,6 +9,7 @@
 #include <sstream>
 #include <utility>
 #include <unordered_set>
+#include <unordered_map>
 #include <type_traits>
 
 #include <gtest/gtest.h>
@@ -44,16 +45,31 @@ struct TokenIndexTests : ::testing::Test {
   typedef typename TokenIndexType::TokenT Token;
   typedef typename TokenIndexType::TypeTagT TypeTag;
   typedef TokenIndexType TokenIndexTypeT;
+  typedef typename Corpus<Token>::Vid Vid;
 
   std::string basePath;
-  Vocab<Token> vocab;
+  std::unordered_map<std::string, Vid> vocab; // now from surface forms -> string IDs (for passing into various stuff)
+  std::unordered_map<Vid, std::string> id2surface;
   Corpus<Token> corpus;
   std::shared_ptr<DB<Token>> db;
+  size_t next_vid = 4;
+
+  void PutVocab(std::string surface) {
+    auto id = next_vid;
+    if(vocab.find(surface) == vocab.end()) {
+      vocab[surface] = id;
+      id2surface[id] = surface;
+      next_vid++;
+    }
+  }
 
   Sentence<Token> AddSentence(const std::vector<std::string> &surface) {
     std::vector<Token> sent;
-    for(auto s : surface)
-      sent.push_back(vocab[s]); // vocabulary insert/lookup
+    for(auto s : surface) {
+       // vocabulary insert
+      PutVocab(s);
+      sent.push_back(vocab[s]);
+    }
 
     corpus.AddSentence(sent);
 
@@ -64,7 +80,10 @@ struct TokenIndexTests : ::testing::Test {
   void fill_tree_2level_common_prefix_the(TokenIndexType &tokenIndex);
   void tree_2level_common_prefix_the_m(size_t maxLeafSize);
 
-  TokenIndexTests() : basePath(getCleanBasePath<TypeTag>()), corpus(&vocab), db(nullptr) {
+  TokenIndexTests() : basePath(getCleanBasePath<TypeTag>()), corpus(), db(nullptr) {
+    vocab["</s>"] = Vocab<Token>::kEosVid;
+    id2surface[Vocab<Token>::kEosVid] = "</s>";
+    
     // note: cleaning of basePath needs to happen before tokenIndex construction, hence getCleanBasePath()
     openDatabase();
   }
@@ -106,7 +125,7 @@ TYPED_TEST_CASE(TokenIndexTests, TokenIndexTypes);
 TYPED_TEST(TokenIndexTests, get_word) {
   typedef typename TypeParam::TokenT Token;
   Sentence<Token> sentence = this->AddSentence({"this", "is", "an", "example"});
-  EXPECT_EQ("this", this->vocab[sentence[0]]) << "retrieving a word from Sentence";
+  EXPECT_EQ("this", this->id2surface[sentence[0].vid]) << "retrieving a word from Sentence";
 }
 
 TYPED_TEST(TokenIndexTests, add_sentence) {
@@ -125,13 +144,12 @@ TYPED_TEST(TokenIndexTests, suffix_array_paper_example) {
   typedef typename TypeParam::TokenT Token;
   auto &vocab = this->vocab;
 
-  //                                      1       2      3      4      5      6     7
   std::vector<std::string> vocab_id_order{"</s>", "bit", "cat", "dog", "mat", "on", "the"};
   for(auto s : vocab_id_order)
-    this->vocab[s]; // vocabulary insert (in this ID order, so sort by vid is intuitive)
+    this->PutVocab(s); // vocabulary insert (in this ID order, so sort by vid is intuitive)
 
-  EXPECT_EQ(1, vocab["</s>"].vid);
-  EXPECT_LT(vocab["dog"].vid, vocab["the"].vid);
+  EXPECT_EQ(Vocab<Token>::kEosVid, vocab["</s>"]);
+  EXPECT_LT(vocab["dog"], vocab["the"]);
 
   // '", "'.join(['"'] + 'the dog bit the cat on the mat </s>'.split() + ['"'])
   //                                     0      1      2      3      4      5     6      7
@@ -150,7 +168,7 @@ TYPED_TEST(TokenIndexTests, suffix_array_paper_example) {
   // as long as we're accessing the SA, we are properly ordered.
   //assert(tokenIndex.root_->is_leaf()); // private member...
 
-  //tokenIndex.DebugPrint(std::cerr);
+  //tokenIndex.DebugPrint(std::cerr, this->id2surface);
 
   Position<Token> pos{/* sid = */ 0, /* offset = */ 2};
   EXPECT_EQ(pos, span[0]) << "verifying token position for 'bit'";
@@ -160,19 +178,20 @@ TYPED_TEST(TokenIndexTests, suffix_array_paper_example) {
   std::vector<std::string> expect_suffix_array_surface = {"bit", "cat", "dog", "mat", "on", "the", "the", "the"};
 
   for(size_t i = 0; i < expect_suffix_array_surface.size(); i++) {
-    EXPECT_EQ(expect_suffix_array_surface[i], span[i].surface(this->corpus)) << "verifying surface @ SA position " << i;
+    EXPECT_EQ(expect_suffix_array_surface[i], this->id2surface[span[i].vid(this->corpus)]) << "verifying surface @ SA position " << i;
     EXPECT_EQ(expect_suffix_array_offset[i], span[i].offset) << "verifying offset @ SA position " << i;
   }
 }
 
+/*
 TYPED_TEST(TokenIndexTests, load_v2) {
   typedef TypeParam TokenIndexType;
   typedef typename TypeParam::TokenT Token;
 
   // 'index.sfa' file built like this:
   // $ echo "apple and orange and pear and apple and orange" | mtt-build -i -o index
-  Vocab<Token> sv("res/vocab.tdx");
-  Corpus<Token> sc("res/corpus.mct", &sv);
+  //Vocab<Token> sv("res/vocab.tdx");
+  Corpus<Token> sc("res/corpus.mct");
   TokenIndex<Token, IndexTypeMemory> staticIndex("res/index.sfa", sc); // built with mtt-build
 
   TokenIndexType dynamicIndex(this->basePath, sc, this->db); // building dynamically
@@ -188,6 +207,7 @@ TYPED_TEST(TokenIndexTests, load_v2) {
     EXPECT_EQ(staticSpan[i], dynamicSpan[i]) << "Position entry " << i << " must match between static and dynamic TokenIndex";
   }
 }
+*/
 
 TYPED_TEST(TokenIndexTests, suffix_array_split) {
   typedef TypeParam TokenIndexType;
@@ -197,7 +217,7 @@ TYPED_TEST(TokenIndexTests, suffix_array_split) {
   //                                      1       2      3      4      5      6     7
   std::vector<std::string> vocab_id_order{"</s>", "bit", "cat", "dog", "mat", "on", "the"};
   for(auto s : vocab_id_order)
-    this->vocab[s]; // vocabulary insert (in this ID order, so sort by vid is intuitive)
+    this->PutVocab(s); // vocabulary insert (in this ID order, so sort by vid is intuitive)
 
 
   TokenIndexType tokenIndex(this->basePath, this->corpus, this->db, /* maxLeafSize = */ 7);
@@ -213,7 +233,7 @@ TYPED_TEST(TokenIndexTests, suffix_array_split) {
   // so this is not a good test.
 
   auto span = tokenIndex.span();
-  //tokenIndex.DebugPrint(std::cerr);
+  //tokenIndex.DebugPrint(std::cerr, this->id2surface);
   EXPECT_FALSE(span.in_array()) << "the TreeNode root of TokenIndex should have been split";
   EXPECT_EQ(sent_words.size(), span.size()) << "the Sentence should have added its tokens to the IndexSpan";
 
@@ -221,11 +241,11 @@ TYPED_TEST(TokenIndexTests, suffix_array_split) {
   std::vector<std::string> expect_suffix_array_surface = {"bit", "cat", "dog", "mat", "on", "the", "the", "the"};
 
   for(size_t i = 0; i < expect_suffix_array_surface.size(); i++) {
-    EXPECT_EQ(expect_suffix_array_surface[i], span[i].surface(this->corpus)) << "verifying surface @ SA position " << i;
+    EXPECT_EQ(expect_suffix_array_surface[i], this->id2surface[span[i].vid(this->corpus)]) << "verifying surface @ SA position " << i;
     EXPECT_EQ(expect_suffix_array_offset[i], span[i].offset) << "verifying offset @ SA position " << i;
   }
 
-  //tokenIndex.DebugPrint(std::cerr);
+  //tokenIndex.DebugPrint(std::cerr, this->id2surface);
 
   span.narrow(vocab["bit"]);
   EXPECT_EQ(1, span.size()) << "'bit' range size check";
@@ -247,10 +267,9 @@ TYPED_TEST(TokenIndexTests, tree_common_prefix) {
   typedef TypeParam TokenIndexType;
   typedef typename TypeParam::TokenT Token;
 
-  //                                      1       2      3      4      5      6     7
   std::vector<std::string> vocab_id_order{"</s>", "bit", "cat", "dog", "mat", "on", "the"};
   for(auto s : vocab_id_order)
-    this->vocab[s]; // vocabulary insert (in this ID order, so sort by vid is intuitive)
+    this->PutVocab(s); // vocabulary insert (in this ID order, so sort by vid is intuitive)
 
 
   TokenIndexType tokenIndex(this->basePath, this->corpus, this->db, /* maxLeafSize = */ 7);
@@ -269,28 +288,28 @@ TYPED_TEST(TokenIndexTests, tree_common_prefix) {
 
 
   std::stringstream actual_tree;
-  tokenIndex.DebugPrint(actual_tree);
+  tokenIndex.DebugPrint(actual_tree, this->id2surface);
 
   // hardcoding the tree structure in ASCII is pretty crude, I know.
   std::string expected_tree = R"(TreeNode size=11 is_leaf=false
-* 'bit' vid=2
+* 'bit' vid=4
   TreeNode size=2 is_leaf=true
   * [sid=1 offset=2]
   * [sid=0 offset=2]
-* 'cat' vid=3
+* 'cat' vid=5
   TreeNode size=1 is_leaf=true
   * [sid=0 offset=4]
-* 'dog' vid=4
+* 'dog' vid=6
   TreeNode size=2 is_leaf=true
   * [sid=1 offset=1]
   * [sid=0 offset=1]
-* 'mat' vid=5
+* 'mat' vid=7
   TreeNode size=1 is_leaf=true
   * [sid=0 offset=7]
-* 'on' vid=6
+* 'on' vid=8
   TreeNode size=1 is_leaf=true
   * [sid=0 offset=5]
-* 'the' vid=7
+* 'the' vid=9
   TreeNode size=4 is_leaf=true
   * [sid=0 offset=3]
   * [sid=1 offset=0]
@@ -304,10 +323,9 @@ TYPED_TEST(TokenIndexTests, tree_common_prefix) {
 template<typename TokenIndexType>
 void TokenIndexTests<TokenIndexType>::fill_tree_2level_common_prefix_the(TokenIndexType &tokenIndex) {
 
-  //                                      1       2      3      4      5      6     7
   std::vector<std::string> vocab_id_order{"</s>", "bit", "cat", "dog", "mat", "on", "the"};
   for(auto s : vocab_id_order)
-    this->vocab[s]; // vocabulary insert (in this ID order, so sort by vid is intuitive)
+    this->PutVocab(s); // vocabulary insert (in this ID order, so sort by vid is intuitive)
 
   //                                      0      1      2      3      4      5     6      7
   std::vector<std::string> sent0_words = {"the", "dog", "bit", "the", "cat", "on", "the", "mat"};
@@ -324,7 +342,7 @@ void TokenIndexTests<TokenIndexType>::fill_tree_2level_common_prefix_the(TokenIn
   // a leaf </s> attached to 'the' which itself should be split:
 
   std::stringstream nil;
-  tokenIndex.DebugPrint(nil); // print to nowhere, but still run size asserts etc.
+  tokenIndex.DebugPrint(nil, this->id2surface); // print to nowhere, but still run size asserts etc.
 
   //                                      0
   std::vector<std::string> sent2_words = {"the"};
@@ -332,7 +350,7 @@ void TokenIndexTests<TokenIndexType>::fill_tree_2level_common_prefix_the(TokenIn
   Sentence<Token> sentence2 = this->AddSentence(sent2_words);
   tokenIndex.AddSentence(sentence2);
 
-  tokenIndex.DebugPrint(nil); // print to nowhere, but still run size asserts etc.
+  tokenIndex.DebugPrint(nil, this->id2surface); // print to nowhere, but still run size asserts etc.
 }
 
 TYPED_TEST(TokenIndexTests, tree_2level_common_prefix_the) {
@@ -342,40 +360,40 @@ TYPED_TEST(TokenIndexTests, tree_2level_common_prefix_the) {
   this->fill_tree_2level_common_prefix_the(tokenIndex);
 
   std::stringstream actual_tree;
-  tokenIndex.DebugPrint(actual_tree);
+  tokenIndex.DebugPrint(actual_tree, this->id2surface);
 
   // hardcoding the tree structure in ASCII is pretty crude, I know.
   std::string expected_tree = R"(TreeNode size=12 is_leaf=false
-* 'bit' vid=2
+* 'bit' vid=4
   TreeNode size=2 is_leaf=true
   * [sid=1 offset=2]
   * [sid=0 offset=2]
-* 'cat' vid=3
+* 'cat' vid=5
   TreeNode size=1 is_leaf=true
   * [sid=0 offset=4]
-* 'dog' vid=4
+* 'dog' vid=6
   TreeNode size=2 is_leaf=true
   * [sid=1 offset=1]
   * [sid=0 offset=1]
-* 'mat' vid=5
+* 'mat' vid=7
   TreeNode size=1 is_leaf=true
   * [sid=0 offset=7]
-* 'on' vid=6
+* 'on' vid=8
   TreeNode size=1 is_leaf=true
   * [sid=0 offset=5]
-* 'the' vid=7
+* 'the' vid=9
   TreeNode size=5 is_leaf=false
-  * '</s>' vid=1
+  * '</s>' vid=2
     TreeNode size=1 is_leaf=true
     * [sid=2 offset=0]
-  * 'cat' vid=3
+  * 'cat' vid=5
     TreeNode size=1 is_leaf=true
     * [sid=0 offset=3]
-  * 'dog' vid=4
+  * 'dog' vid=6
     TreeNode size=2 is_leaf=true
     * [sid=1 offset=0]
     * [sid=0 offset=0]
-  * 'mat' vid=5
+  * 'mat' vid=7
     TreeNode size=1 is_leaf=true
     * [sid=0 offset=6]
 )";
@@ -438,12 +456,13 @@ struct hash<Position<Token>> {
 };
 } // namespace std
 
+/*
 TYPED_TEST(TokenIndexTests, static_vs_dynamic_eim) {
   typedef TypeParam TokenIndexType;
   typedef typename TypeParam::TokenT Token;
 
-  Vocab<Token> sv("/home/david/MMT/engines/default/models/phrase_tables/model.en.tdx");
-  Corpus<Token> sc("/home/david/MMT/engines/default/models/phrase_tables/model.en.mct", &sv);
+  //Vocab<Token> sv("/home/david/MMT/engines/default/models/phrase_tables/model.en.tdx");
+  Corpus<Token> sc("/home/david/MMT/engines/default/models/phrase_tables/model.en.mct");
   TokenIndex<Token, IndexTypeMemory> staticIndex("/home/david/MMT/engines/default/models/phrase_tables/model.en.sfa", sc); // built with mtt-build
 
   TokenIndexType dynamicIndex(this->basePath, sc, this->db); // building dynamically
@@ -461,10 +480,10 @@ TYPED_TEST(TokenIndexTests, static_vs_dynamic_eim) {
 
   EXPECT_EQ(staticSpan.size(), dynamicSpan.size()) << "two ways of indexing the same corpus must be equivalent";
 
-  auto surface = [&sc](Position<Token> pos){
+  auto surface = [&](Position<Token> pos){
     std::stringstream ss;
     for(size_t j = 0; j + pos.offset <= sc.sentence(pos.sid).size(); j++)
-      ss << (j == 0 ? "" : " ") << pos.add(j, sc).surface(sc);
+      ss << (j == 0 ? "" : " ") << this->id2surface[pos.add(j, sc).vid(sc)];
     return ss.str();
   };
 
@@ -493,6 +512,7 @@ TYPED_TEST(TokenIndexTests, static_vs_dynamic_eim) {
   }
   EXPECT_EQ(staticBucket, dynamicBucket);
 }
+*/
 
 TYPED_TEST(TokenIndexTests, test_persistence) {
   typedef typename TypeParam::TokenT Token;
@@ -505,10 +525,9 @@ TYPED_TEST(TokenIndexTests, test_persistence) {
   // for now, like suffix_array_split
   auto &vocab = this->vocab;
 
-  //                                      1       2      3      4      5      6     7
   std::vector<std::string> vocab_id_order{"</s>", "bit", "cat", "dog", "mat", "on", "the"};
   for(auto s : vocab_id_order)
-    this->vocab[s]; // vocabulary insert (in this ID order, so sort by vid is intuitive)
+    this->PutVocab(s); // vocabulary insert (in this ID order, so sort by vid is intuitive)
 
   //                                     0      1      2      3      4      5     6      7
   std::vector<std::string> sent_words = {"the", "dog", "bit", "the", "cat", "on", "the", "mat"};
@@ -533,7 +552,7 @@ TYPED_TEST(TokenIndexTests, test_persistence) {
   // so this is not a good test.
 
   auto span = loadedTokenIndex.span();
-  loadedTokenIndex.DebugPrint(std::cerr);
+  loadedTokenIndex.DebugPrint(std::cerr, this->id2surface);
   EXPECT_FALSE(span.in_array()) << "the TreeNode root of TokenIndex should have been split";
   EXPECT_EQ(sent_words.size(), span.size()) << "the Sentence should have added its tokens to the IndexSpan";
 
@@ -541,11 +560,11 @@ TYPED_TEST(TokenIndexTests, test_persistence) {
   std::vector<std::string> expect_suffix_array_surface = {"bit", "cat", "dog", "mat", "on", "the", "the", "the"};
 
   for(size_t i = 0; i < expect_suffix_array_surface.size(); i++) {
-    EXPECT_EQ(expect_suffix_array_surface[i], span[i].surface(this->corpus)) << "verifying surface @ SA position " << i;
+    EXPECT_EQ(expect_suffix_array_surface[i], this->id2surface[span[i].vid(this->corpus)]) << "verifying surface @ SA position " << i;
     EXPECT_EQ(expect_suffix_array_offset[i], span[i].offset) << "verifying offset @ SA position " << i;
   }
 
-  //loadedTokenIndex.DebugPrint(std::cerr);
+  //loadedTokenIndex.DebugPrint(std::cerr, this->id2surface);
 
   span.narrow(vocab["bit"]);
   EXPECT_EQ(1, span.size()) << "'bit' range size check";
@@ -637,7 +656,7 @@ TYPED_TEST(TokenIndexTests, test_merge_duplicates) {
   //indexDisk.Merge(tokenIndex); // merge of 'sentence' into empty TokenIndex
   indexDisk.AddSentence(sentence);
 
-  size_t i = 1;
+  size_t j = 1;
   do {
     auto span = indexDisk.span();
     EXPECT_EQ(4, span.size()) << "the Sentence should have added 4 tokens to the IndexSpan";
@@ -648,6 +667,6 @@ TYPED_TEST(TokenIndexTests, test_merge_duplicates) {
     }
 
     // repeated AddSentence() should merge, avoiding duplicates -- even if seqNum is newer!
-    indexDisk.AddSentence(sentence, /* seqNum = */ i);
-  } while(i++ < 2);
+    indexDisk.AddSentence(sentence, /* seqNum = */ sto_updateid_t{kInvalidStream, j + 1});
+  } while(j++ < 2);
 }

@@ -69,6 +69,7 @@ void TokenIndex<Token, TypeTag>::AddSentence(const Sentence<Token> &sent, sto_up
 
     // merge every sentence
     TokenIndex<Token, IndexTypeMemory> add(*corpus());
+    //std::cerr << add.streamVersions().DebugStr() << std::endl;
     add.AddSentence(sent, version);
 
     // Merge() has its own streamVersions check
@@ -112,8 +113,8 @@ void TokenIndex<Token, TypeTag>::Write(std::shared_ptr<DB<Token>> db) const {
 }
 
 template<class Token, typename TypeTag>
-void TokenIndex<Token, TypeTag>::DebugPrint(std::ostream &os) {
-  root_->DebugPrint(os, *corpus_);
+void TokenIndex<Token, TypeTag>::DebugPrint(std::ostream &os, const std::unordered_map<Vid, std::string> &id2surface) {
+  root_->DebugPrint(os, id2surface);
 }
 
 template<class Token, typename TypeTag>

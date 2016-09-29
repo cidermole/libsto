@@ -17,7 +17,7 @@ BatchIndexBuffer<Token>::BatchIndexBuffer(ITokenIndex<Token> &index, size_t batc
 {}
 
 template<class Token>
-void BatchIndexBuffer<Token>::AddSentence(const Sentence<Token> &sent, seq_t seqNum) {
+void BatchIndexBuffer<Token>::AddSentence(const Sentence<Token> &sent, sto_updateid_t version) {
   // add to memory index, then merge in when batch size has been reached
 
 #if 0
@@ -27,7 +27,7 @@ void BatchIndexBuffer<Token>::AddSentence(const Sentence<Token> &sent, seq_t seq
   this->index_.Merge(add);
 #else
   // merge in batches of batchSize_
-  buffer_->AddSentence(sent, seqNum);
+  buffer_->AddSentence(sent, version);
   if(++nsents_ == batchSize_)
     Flush();
 #endif
